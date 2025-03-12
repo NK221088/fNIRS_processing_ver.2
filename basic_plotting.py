@@ -12,9 +12,9 @@ import numpy as np
 ############################
 
 # Data set:
-data_set = "AudioSpeechNoise" #   "fNirs_motor_full_data" # "fNIRS_Alexandros_Healthy_data" # "fNIrs_motor" #      
+data_set = "fNirs_motor_full_data" # "AudioSpeechNoise" #    "fNIRS_Alexandros_Healthy_data" # "fNIrs_motor" #      
 
-epoch_type = "Speech"
+epoch_type = "Tapping"
 combine_strategy = "mean"
 individuals = False
 
@@ -29,8 +29,8 @@ K = 5
 interpolate_bad_channels = False
 
 # Plotting and saving:
-plot_epochs = False
-plot_std_fNIRS_response = False
+plot_epochs = True
+plot_std_fNIRS_response = True
 plot_accuracy_across_k_folds = True
 
 save_plot_epochs = True
