@@ -126,10 +126,7 @@ class fNIRS_data_load:
         # Update all_data with control_dict
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
-        if self.individuals:
-            return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
-        else:
-            return self.all_epochs, self.data_name, all_data, all_freq, self.data_types
+        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants if self.individuals else None
 
 ###############################################################################################################################################################################################
 
