@@ -97,7 +97,7 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
 
     # Plot evoked data
     plot = mne.viz.plot_compare_evokeds(
-        evoked_dict, combine="mean", ci=0.95, colors=color_dict, styles=styles_dict
+        evoked_dict, combine="mean", ci=0.95, colors=color_dict, styles=styles_dict, show=False,
     )
 
     # Save the plot if specified
@@ -107,3 +107,4 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
         plot[0].savefig(filename)
         print(f"Plot saved as {filename}")
         plt.close(plot[0])  # Close the figure after saving
+    return plot

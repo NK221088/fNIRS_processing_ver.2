@@ -15,7 +15,7 @@ def epoch_plot(epochs, epoch_type: str, bad_channels_strategy: str, save : bool,
     epoch_type : str
         Type to be plotted, e.g. "Tapping" or "Noise". Dependant on the specific dataset.
     bad_channels_strategy : str
-        Way to deal with differing bad channels according different epoch elements. Choose between "delete" or "all".
+        Way to deal with differing bad channels according different epoch elements. Choose between "delete", "threshold" or "all".
     combine_strategy : str
         Strategy for combining epochs, default is mean.
     save : bool.
@@ -26,8 +26,8 @@ def epoch_plot(epochs, epoch_type: str, bad_channels_strategy: str, save : bool,
         raise ValueError("Invalid bad_channels_strategy. Please use 'delete', 'all' or 'threshold'.")
     
     # Check if combine_strategy is valid
-    if combine_strategy not in ("mean", "median", "sum", "gfp"):
-        raise ValueError("Invalid combine_strategy. Please use 'mean', 'median', or 'sum'.")
+    if combine_strategy not in ("mean", "median", "std", "gfp"):
+        raise ValueError("Invalid combine_strategy. Please use 'mean', 'median', 'std' or 'gfp'.")
     
     # Check if save is a boolean
     if not isinstance(save, bool):
@@ -72,6 +72,7 @@ def epoch_plot(epochs, epoch_type: str, bad_channels_strategy: str, save : bool,
         vmin=-30,
         vmax=30,
         ts_args=dict(ylim=dict(hbo=[-15, 15], hbr=[-15, 15])),
+        show=False,
     )
 
     # Save each plot if save is True
@@ -84,4 +85,6 @@ def epoch_plot(epochs, epoch_type: str, bad_channels_strategy: str, save : bool,
             plot.savefig(filename)
             print(f"Plot {plot_type} saved as {filename}")
             plt.close(plot)  # Close the figure after saving
+    
+    return plots
 
