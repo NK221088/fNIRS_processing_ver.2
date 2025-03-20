@@ -5,6 +5,7 @@ from load_data_function import load_data
 from epoch_plot import epoch_plot
 from standard_fNIRS_response_plot import standard_fNIRS_response_plot
 from paradigm_plot import paradigm_plot
+from individual_frequency_plot import individual_frequency_plot
 import mne
 
 # Default settings
@@ -46,13 +47,45 @@ def update_epoch_types(*args):
 
 # Function to show/hide individual selection based on plot type
 def toggle_individual_menu(*args):
-    """Show or hide the individual selection dropdown based on plot type."""
-    if plot_type_var.get() == "paradigm_plot":
+    """Show or hide settings based on plot type."""
+    if plot_type_var.get() in ["paradigm_plot", "individual frequency plot"]:
+        # Show individual selection
         individual_label.pack(anchor="w")
         individuals_menu.pack(pady=5)
+
+        # Hide irrelevant settings
+        combine_strategy_label.pack_forget()
+        combine_strategy_menu.pack_forget()
+        bad_channels_strategy_label.pack_forget()
+        bad_channels_strategy_menu.pack_forget()
+        short_channel_correction_label.pack_forget()
+        short_channel_correction_checkbox.pack_forget()
+        negative_correlation_label.pack_forget()
+        negative_correlation_checkbox.pack_forget()
+        interpolate_bad_channels_label.pack_forget()
+        interpolate_bad_channels_checkbox.pack_forget()
+        threshold_label.pack_forget()
+        threshold_entry.pack_forget()
+
     else:
+        # Hide individual selection
         individual_label.pack_forget()
         individuals_menu.pack_forget()
+
+        # Show relevant settings
+        combine_strategy_label.pack(anchor="w")
+        combine_strategy_menu.pack(pady=5)
+        bad_channels_strategy_label.pack(anchor="w")
+        bad_channels_strategy_menu.pack(pady=5)
+        short_channel_correction_label.pack(anchor="w")
+        short_channel_correction_checkbox.pack(anchor="w")
+        negative_correlation_label.pack(anchor="w")
+        negative_correlation_checkbox.pack(anchor="w")
+        interpolate_bad_channels_label.pack(anchor="w")
+        interpolate_bad_channels_checkbox.pack(anchor="w")
+        threshold_label.pack(anchor="w")
+        threshold_entry.pack(pady=5)
+
 
 # Function to run the selected analysis
 def run_analysis():
@@ -92,6 +125,9 @@ def run_analysis():
     elif settings["plot_type"] == "paradigm_plot":
         selected_individual = Individual_var.get()
         figures = [paradigm_plot(all_individuals[int(selected_individual.strip("Participant_"))-1])]
+    elif settings["plot_type"] == "individual frequency plot":
+        selected_individual = Individual_var.get()
+        figures = [individual_frequency_plot(all_individuals[int(selected_individual.strip("Participant_"))-1])]
     else:
         figures = []
 
@@ -139,40 +175,10 @@ epoch_type_var = tk.StringVar()
 epoch_type_menu = ttk.Combobox(left_frame, textvariable=epoch_type_var)
 epoch_type_menu.pack(pady=5)
 
-# Combine strategy selection
-tk.Label(left_frame, text="Combine Strategy:", font=("Arial", 12)).pack(anchor="w")
-combine_strategy_var = tk.StringVar(value=settings["combine_strategy"])
-combine_strategy_menu = ttk.Combobox(left_frame, textvariable=combine_strategy_var, values=["mean", "median", "std", "gfp"])
-combine_strategy_menu.pack(pady=5)
-
-# Bad Channels Strategy
-tk.Label(left_frame, text="Bad Channels Strategy:", font=("Arial", 12)).pack(anchor="w")
-bad_channels_strategy_var = tk.StringVar(value=settings["bad_channels_strategy"])
-bad_channels_strategy_menu = ttk.Combobox(left_frame, textvariable=bad_channels_strategy_var, values=["all", "delete", "threshold"])
-bad_channels_strategy_menu.pack(pady=5)
-
-# Short channel correction
-short_channel_correction_var = tk.BooleanVar(value=settings["short_channel_correction"])
-tk.Checkbutton(left_frame, text="Short Channel Correction", variable=short_channel_correction_var).pack(anchor="w")
-
-# Negative correlation enhancement
-negative_correlation_enhancement_var = tk.BooleanVar(value=settings["negative_correlation_enhancement"])
-tk.Checkbutton(left_frame, text="Negative Correlation Enhancement", variable=negative_correlation_enhancement_var).pack(anchor="w")
-
-# Interpolate bad channels
-interpolate_bad_channels_var = tk.BooleanVar(value=settings["interpolate_bad_channels"])
-tk.Checkbutton(left_frame, text="Interpolate Bad Channels", variable=interpolate_bad_channels_var).pack(anchor="w")
-
-# Threshold selection
-tk.Label(left_frame, text="Threshold:", font=("Arial", 12)).pack(anchor="w")
-threshold_var = tk.StringVar(value=str(settings["threshold"]))
-threshold_entry = tk.Entry(left_frame, textvariable=threshold_var)
-threshold_entry.pack(pady=5)
-
 # Plot type selection
 tk.Label(left_frame, text="Select Plot Type:", font=("Arial", 12)).pack(anchor="w")
 plot_type_var = tk.StringVar(value=settings["plot_type"])
-plot_type_menu = ttk.Combobox(left_frame, textvariable=plot_type_var, values=["Epoch Plot", "Standard fNIRS Response Plot", "paradigm_plot"])
+plot_type_menu = ttk.Combobox(left_frame, textvariable=plot_type_var, values=["Epoch Plot", "Standard fNIRS Response Plot", "paradigm_plot", "individual frequency plot"])
 plot_type_menu.pack(pady=5)
 plot_type_var.trace_add("write", toggle_individual_menu)
 
@@ -182,6 +188,48 @@ Individual_var = tk.StringVar()
 individuals_menu = ttk.Combobox(left_frame, textvariable=Individual_var)
 individual_label.pack_forget()
 individuals_menu.pack_forget()
+
+# Combine strategy selection
+combine_strategy_label = tk.Label(left_frame, text="Combine Strategy:", font=("Arial", 12))
+combine_strategy_label.pack(anchor="w")
+combine_strategy_var = tk.StringVar(value=settings["combine_strategy"])
+combine_strategy_menu = ttk.Combobox(left_frame, textvariable=combine_strategy_var, values=["mean", "median", "std", "gfp"])
+combine_strategy_menu.pack(pady=5)
+
+# Bad Channels Strategy
+bad_channels_strategy_label = tk.Label(left_frame, text="Bad Channels Strategy:", font=("Arial", 12))
+bad_channels_strategy_label.pack(anchor="w")
+bad_channels_strategy_var = tk.StringVar(value=settings["bad_channels_strategy"])
+bad_channels_strategy_menu = ttk.Combobox(left_frame, textvariable=bad_channels_strategy_var, values=["all", "delete", "threshold"])
+bad_channels_strategy_menu.pack(pady=5)
+
+# Short channel correction
+short_channel_correction_label = tk.Label(left_frame, text="Short Channel Correction:", font=("Arial", 12))
+short_channel_correction_label.pack(anchor="w")
+short_channel_correction_var = tk.BooleanVar(value=settings["short_channel_correction"])
+short_channel_correction_checkbox = tk.Checkbutton(left_frame, text="Enable", variable=short_channel_correction_var)
+short_channel_correction_checkbox.pack(anchor="w")
+
+# Negative correlation enhancement
+negative_correlation_label = tk.Label(left_frame, text="Negative Correlation Enhancement:", font=("Arial", 12))
+negative_correlation_label.pack(anchor="w")
+negative_correlation_enhancement_var = tk.BooleanVar(value=settings["negative_correlation_enhancement"])
+negative_correlation_checkbox = tk.Checkbutton(left_frame, text="Enable", variable=negative_correlation_enhancement_var)
+negative_correlation_checkbox.pack(anchor="w")
+
+# Interpolate bad channels
+interpolate_bad_channels_label = tk.Label(left_frame, text="Interpolate Bad Channels:", font=("Arial", 12))
+interpolate_bad_channels_label.pack(anchor="w")
+interpolate_bad_channels_var = tk.BooleanVar(value=settings["interpolate_bad_channels"])
+interpolate_bad_channels_checkbox = tk.Checkbutton(left_frame, text="Enable", variable=interpolate_bad_channels_var)
+interpolate_bad_channels_checkbox.pack(anchor="w")
+
+# Threshold selection
+threshold_label = tk.Label(left_frame, text="Threshold:", font=("Arial", 12))
+threshold_label.pack(anchor="w")
+threshold_var = tk.StringVar(value=str(settings["threshold"]))
+threshold_entry = tk.Entry(left_frame, textvariable=threshold_var)
+threshold_entry.pack(pady=5)
 
 # Run Analysis button
 run_button = tk.Button(left_frame, text="Run Analysis", command=run_analysis, bg="green", fg="white")

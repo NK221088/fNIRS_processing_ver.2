@@ -3,6 +3,7 @@ from load_data_function import load_data
 from epoch_plot import epoch_plot
 from standard_fNIRS_response_plot import standard_fNIRS_response_plot
 from paradigm_plot import paradigm_plot
+from individual_frequency_plot import individual_frequency_plot
 import mne
 import os
 from collections import Counter
@@ -32,7 +33,8 @@ interpolate_bad_channels = False
 # Plotting and saving:
 plot_epochs = False
 plot_std_fNIRS_response = False
-plot_paradigms = True
+plot_paradigms = False
+plot_individual_frequency_plot = True
 plot_accuracy_across_k_folds = False
 
 save_plot_epochs = False
@@ -54,3 +56,7 @@ if plot_std_fNIRS_response:
 
 if plot_paradigms:
     paradigm_plot(all_individuals[0])
+
+if plot_individual_frequency_plot:
+    plots = individual_frequency_plot(all_individuals[0])
+    print("hej")
