@@ -588,6 +588,8 @@ class fNIRS_Melika_data_load(fNIRS_data_load):
         
     def load_data(self):
         for i in range(1, self.number_of_participants + 1):
+            if i == 3:
+                continue
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
             raw_intensity = self.make_annotations(raw_intensity)
@@ -678,7 +680,7 @@ class fNIRS_Melika_data_load(fNIRS_data_load):
         cropped_raw_data = raw_intensity.copy()
         cropped_raw_data.annotations.set_durations(self.stimulus_duration)
         for id,event in enumerate(events):
-            cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
+            cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration-5, "Rest")
         # cropped_raw_data.plot(n_channels=len(cropped_raw_data.ch_names), duration=600, show_scrollbars=True)
         # plt.show()
         # events, event_dict = mne.events_from_annotations(cropped_raw_data)
