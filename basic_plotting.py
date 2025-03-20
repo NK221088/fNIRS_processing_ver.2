@@ -12,14 +12,14 @@ import numpy as np
 ############################
 
 # Data set:
-data_set = "fNirs_motor_full_data" # "AudioSpeechNoise" #    "fNIRS_Alexandros_Healthy_data" # "fNIrs_motor" #      
+data_set = "fNIRS_Melika_data" # "fNIRS_Alexandros_Healthy_data" # "fNirs_motor_full_data" # "AudioSpeechNoise" #     "fNIrs_motor" #      
 
-epoch_type = "Tapping"
+epoch_type = "Control"
 combine_strategy = "mean"
 individuals = False
 
 # Data processing:
-bad_channels_strategy = "all"
+bad_channels_strategy = "delete"
 short_channel_correction = True
 negative_correlation_enhancement = True
 threshold = 3
@@ -33,10 +33,10 @@ plot_epochs = True
 plot_std_fNIRS_response = True
 plot_accuracy_across_k_folds = True
 
-save_plot_epochs = True
-save_plot_std_fNIRS_response = True
-save_plot_accuracy_across_k_folds = True
-save_results = True
+save_plot_epochs = False
+save_plot_std_fNIRS_response = False
+save_plot_accuracy_across_k_folds = False
+save_results = False
 
 ############################
 
