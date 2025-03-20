@@ -18,7 +18,7 @@ settings = {
     "bad_channels_strategy": "all",
     "threshold": 3,
     "plot_type": "Epoch Plot",
-    "individual": True  # Default individual selection
+    "individual": True  
 }
 
 # Function to update epoch types when dataset changes
@@ -91,7 +91,7 @@ def run_analysis():
                                                 threshold=settings["threshold"], data_set=data_name)]
     elif settings["plot_type"] == "paradigm_plot":
         selected_individual = Individual_var.get()
-        figures = [paradigm_plot(all_individuals[selected_individual])]
+        figures = [paradigm_plot(all_individuals[int(selected_individual.strip("Participant_"))-1])]
     else:
         figures = []
 

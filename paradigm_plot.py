@@ -14,5 +14,5 @@ def paradigm_plot(individual: individual_participant_class, duration: int= 600, 
     show_scrollbars : boolean
         Whether the scroolbars should be shown or not.
     """
-    plot = individual.raw_intensity.plot(n_channels=len(individual.raw_intensity.ch_names), duration=duration, show_scrollbars=show_scrollbars)
+    plot = individual.raw_intensity.plot(n_channels=len(individual.raw_intensity.ch_names), duration=duration, show_scrollbars=show_scrollbars, show=False)
     return plot
