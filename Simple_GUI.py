@@ -10,7 +10,7 @@ import mne
 
 # Default settings
 settings = {
-    "data_set": "fNirs_motor_full_data",
+    "data_set": "fNIrs_motor",
     "epoch_type": "Tapping",
     "combine_strategy": "mean",
     "short_channel_correction": True,
@@ -22,28 +22,36 @@ settings = {
     "individual": True  
 }
 
-# Function to update epoch types when dataset changes
+# Track previous selections
+previous_dataset = settings["data_set"]
+previous_epoch_type = settings["epoch_type"]
+
 def update_epoch_types(*args):
     """Load data and update epoch type dropdown based on dataset selection."""
-    dataset = dataset_var.get()
+    global previous_dataset
 
-    # Load data to extract available epoch types
-    all_epochs, data_name, all_data, freq, data_types, all_individuals = load_data(
-        data_set=dataset,
-        short_channel_correction=settings["short_channel_correction"],
-        negative_correlation_enhancement=settings["negative_correlation_enhancement"],
-        interpolate_bad_channels=settings["interpolate_bad_channels"],
-        individuals=settings["individual"]
-    )
+    dataset = dataset_var.get()
     
-    # Update epoch type menu options
-    epoch_type_menu["values"] = data_types
-    epoch_type_var.set(data_types[0] if data_types else "N/A")  # Select first available type
-    
-    # Update individual selection dropdown
-    individuals_menu["values"] = [individual.name for individual in all_individuals]
-    if all_individuals:
-        Individual_var.set(all_individuals[0].name)  # Select first individual by default
+    # Only reload data if dataset is changed or if plot type is not "individual frequency plot"
+    if dataset != previous_dataset or plot_type_var.get() != "individual frequency plot":
+        all_epochs, data_name, all_data, freq, data_types, all_individuals = load_data(
+            data_set=dataset,
+            short_channel_correction=settings["short_channel_correction"],
+            negative_correlation_enhancement=settings["negative_correlation_enhancement"],
+            interpolate_bad_channels=settings["interpolate_bad_channels"],
+            individuals=settings["individual"]
+        )
+
+        # Update dropdown options
+        epoch_type_menu["values"] = data_types
+        if data_types:
+            epoch_type_var.set(data_types[0])  # Select first available type
+
+        individuals_menu["values"] = [individual.name for individual in all_individuals]
+        if all_individuals:
+            Individual_var.set(all_individuals[0].name)
+
+        previous_dataset = dataset  # Update stored dataset
 
 # Function to show/hide individual selection based on plot type
 def toggle_individual_menu(*args):
@@ -90,6 +98,9 @@ def toggle_individual_menu(*args):
 # Function to run the selected analysis
 def run_analysis():
     """Run data processing and visualization based on selected plot type."""
+
+    global previous_epoch_type, all_epochs, data_name, all_data, freq, data_types, all_individuals
+
     settings["data_set"] = dataset_var.get()
     settings["epoch_type"] = epoch_type_var.get()
     settings["combine_strategy"] = combine_strategy_var.get()
@@ -100,14 +111,21 @@ def run_analysis():
     settings["threshold"] = int(threshold_var.get())
     settings["plot_type"] = plot_type_var.get()
 
-    # Load data
-    all_epochs, data_name, all_data, freq, data_types, all_individuals = load_data(
-        data_set=settings["data_set"],
-        short_channel_correction=settings["short_channel_correction"],
-        negative_correlation_enhancement=settings["negative_correlation_enhancement"],
-        interpolate_bad_channels=settings["interpolate_bad_channels"],
-        individuals=settings["individual"]
+    # Determine if data needs to be reloaded
+    reload_data = (
+        settings["plot_type"] != "individual frequency plot"
+        or settings["epoch_type"] != previous_epoch_type  # Reload only if epoch type changed
     )
+
+    if reload_data:
+        all_epochs, data_name, all_data, freq, data_types, all_individuals = load_data(
+            data_set=settings["data_set"],
+            short_channel_correction=settings["short_channel_correction"],
+            negative_correlation_enhancement=settings["negative_correlation_enhancement"],
+            interpolate_bad_channels=settings["interpolate_bad_channels"],
+            individuals=settings["individual"]
+        )
+        previous_epoch_type = settings["epoch_type"]  # Update stored epoch type
 
     # Clear previous plots
     for widget in right_frame.winfo_children():

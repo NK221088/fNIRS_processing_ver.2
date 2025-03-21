@@ -530,10 +530,6 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
             if id == 0:
                 duration = event[0] / cropped_raw_data.info['sfreq']
                 cropped_raw_data.annotations.append(0, duration, "Pause")
-        # cropped_raw_data.plot(n_channels=len(cropped_raw_data.ch_names), duration=600, show_scrollbars=True)
-        # plt.show()
-        # events, event_dict = mne.events_from_annotations(cropped_raw_data)
-        # print(events)
         return cropped_raw_data
 
 ###############################################################################################################################################################################################
