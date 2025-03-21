@@ -113,7 +113,7 @@ def run_analysis():
 
     # Determine if data needs to be reloaded
     reload_data = (
-        settings["plot_type"] != "individual frequency plot"
+        (settings["plot_type"] != "individual frequency plot" and settings["plot_type"] != "paradigm_plot")
         or settings["epoch_type"] != previous_epoch_type  # Reload only if epoch type changed
     )
 
