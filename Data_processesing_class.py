@@ -546,11 +546,11 @@ class fNIRS_Melika_data_load(fNIRS_data_load):
         self.file_path = mne.datasets.fnirs_motor.data_path()
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
-        self.stimulus_duration = 20
+        self.stimulus_duration = 28
         self.scalp_coupling_threshold = 0.5  # Change this value if needed
         self.reject_criteria = dict(hbo=80e-6)
-        self.tmin = 0
-        self.tmax = 15
+        self.tmin = -5
+        self.tmax = 28
         self.baseline = (0, 0)
         self.data_types = ["HandMI", "TongueMI"]
         self.number_of_data_types = 2
