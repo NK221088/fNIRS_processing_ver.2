@@ -22,6 +22,8 @@ settings = {
     "individual": True  
 }
 
+first_data_load = True
+
 # Track previous selections
 previous_dataset = settings["data_set"]
 previous_epoch_type = settings["epoch_type"]
@@ -99,7 +101,7 @@ def toggle_individual_menu(*args):
 def run_analysis():
     """Run data processing and visualization based on selected plot type."""
 
-    global previous_epoch_type, all_epochs, data_name, all_data, freq, data_types, all_individuals
+    global previous_epoch_type, all_epochs, data_name, all_data, freq, data_types, all_individuals, first_data_load
 
     settings["data_set"] = dataset_var.get()
     settings["epoch_type"] = epoch_type_var.get()
@@ -114,7 +116,7 @@ def run_analysis():
     # Determine if data needs to be reloaded
     reload_data = (
         (settings["plot_type"] != "individual frequency plot" and settings["plot_type"] != "paradigm_plot")
-        or settings["epoch_type"] != previous_epoch_type  # Reload only if epoch type changed
+        or settings["epoch_type"] != previous_epoch_type  or first_data_load == True # Reload only if epoch type changed
     )
 
     if reload_data:
@@ -126,6 +128,8 @@ def run_analysis():
             individuals=settings["individual"]
         )
         previous_epoch_type = settings["epoch_type"]  # Update stored epoch type
+    
+    first_data_load = False
 
     # Clear previous plots
     for widget in right_frame.winfo_children():
