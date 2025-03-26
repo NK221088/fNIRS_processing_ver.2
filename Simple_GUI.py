@@ -182,8 +182,8 @@ tk.Label(left_frame, text="Select Dataset:", font=("Arial", 12)).pack(anchor="w"
 dataset_var = tk.StringVar(value=settings["data_set"])
 dataset_menu = ttk.Combobox(left_frame, textvariable=dataset_var, values=[
     "fNIrs_motor", "AudioSpeechNoise", "fNirs_motor_full_data", "fNIRS_Alexandros_DoC_data",
-    "fNIRS_Alexandros_Healthy_data", "fNIRS_CUH_patient_data", "fNIRS_Melika_data"
-])
+    "fNIRS_Alexandros_Healthy_data", "fNIRS_CUH_patient_data", "fNIRS_Melika_hand_data_load", "fNIRS_Melika_tongue_data_load"])
+
 dataset_menu.pack(pady=5)
 dataset_var.trace_add("write", update_epoch_types)
 
