@@ -536,7 +536,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
 
 class fNIRS_Melika_hand_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False):
-        self.number_of_participants = 3
+        self.number_of_participants = 2
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "HandMI",
@@ -683,7 +683,7 @@ class fNIRS_Melika_hand_data_load(fNIRS_data_load):
 
 class fNIRS_Melika_tongue_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False):
-        self.number_of_participants = 1
+        self.number_of_participants = 2
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "TongueMI",
@@ -730,8 +730,6 @@ class fNIRS_Melika_tongue_data_load(fNIRS_data_load):
         
     def load_data(self):
         for i in range(1, self.number_of_participants + 1):
-            if i == 2:
-                continue
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
             raw_intensity = self.make_annotations(raw_intensity)
