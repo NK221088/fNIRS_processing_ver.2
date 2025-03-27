@@ -536,7 +536,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
 
 class fNIRS_Melika_hand_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False):
-        self.number_of_participants = 2
+        self.number_of_participants = 4
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "HandMI",
@@ -556,7 +556,7 @@ class fNIRS_Melika_hand_data_load(fNIRS_data_load):
         self.data_name = "fNIRS_Melika_data"
         self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = "Pause"
+        self.unwanted = ""
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -586,7 +586,11 @@ class fNIRS_Melika_hand_data_load(fNIRS_data_load):
         for i in range(1, self.number_of_participants + 1):
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
-            raw_intensity = self.make_annotations(raw_intensity)
+            if i == 1 or i == 2 or i == 3 or i == 4:# When data for the first patient was recorded, the introduction was not added in Satori, so we add it manually
+                raw_intensity = self.make_without_intro_annotations(raw_intensity)
+            else: # For all other patients we just add the resting phases
+                raw_intensity = self.make_annotations(raw_intensity)
+
 
             raw_intensity.annotations.rename(self.annotation_names)
             unwanted = np.nonzero(raw_intensity.annotations.description == self.unwanted)
@@ -668,26 +672,72 @@ class fNIRS_Melika_hand_data_load(fNIRS_data_load):
         return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants if self.individuals else None
 
     
+    def make_without_intro_annotations(self, raw_intensity):
+        sampling_frequency = raw_intensity.info["sfreq"]
+        events, event_dict = mne.events_from_annotations(raw_intensity)
+        cropped_raw_data = raw_intensity.copy()
+        cropped_raw_data.annotations.set_durations(self.stimulus_duration)
+        cropped_raw_data.annotations.rename({"0": "End"})
+
+        for id,event in enumerate(events):
+            if id == 0:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] - 30, 30, "Resting state") # Adding resting state in the beginning
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] - 110, 80, "Introduction")
+            if id == 5:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
+            if id == 11:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 10, "Outro")
+            cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
+        
+        return cropped_raw_data
+
     def make_annotations(self, raw_intensity):
         sampling_frequency = raw_intensity.info["sfreq"]
         events, event_dict = mne.events_from_annotations(raw_intensity)
         cropped_raw_data = raw_intensity.copy()
         cropped_raw_data.annotations.set_durations(self.stimulus_duration)
+        cropped_raw_data.annotations.description[0] = "I"
+        cropped_raw_data.annotations.set_durations({"I" : 80})
+        cropped_raw_data.annotations.rename({"I": "Introduction"})
+        cropped_raw_data.annotations.rename({"0": "End"})
+
+        
         for id,event in enumerate(events):
-            cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
-        # cropped_raw_data.plot(n_channels=len(cropped_raw_data.ch_names), duration=600, show_scrollbars=True)
-        # plt.show()
-        # events, event_dict = mne.events_from_annotations(cropped_raw_data)
-        # print(events)
+            if id == 0:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + 80, 30, "Resting state") # Adding resting state in the beginning
+            elif id == 6:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
+            elif id == 12:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 10, "Outro")
+            else:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
         return cropped_raw_data
+
+        
+        for id,event in enumerate(events):
+            if id == 0:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + 80, 30, "Resting state") # Adding resting state in the beginning
+            elif id == 6:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
+            elif id == 12:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 10, "Outro")
+            else:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
+        return cropped_raw_data
+
+###############################################################################################################################################################################################
 
 class fNIRS_Melika_tongue_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False):
-        self.number_of_participants = 2
+        self.number_of_participants = 4
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "TongueMI",
-                                 "Rest": "Control"
+                                 "Rest": "Control",
                                 }
         self.file_path = mne.datasets.fnirs_motor.data_path()
         self.short_channel_correction = short_channel_correction
@@ -732,11 +782,16 @@ class fNIRS_Melika_tongue_data_load(fNIRS_data_load):
         for i in range(1, self.number_of_participants + 1):
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
-            raw_intensity = self.make_annotations(raw_intensity)
+            if i == 1 : # When data for the first patient was recorded, the introduction was not added in Satori, so we add it manually
+                raw_intensity = self.make_without_intro_annotations(raw_intensity)
+            else: # For all other patients we just add the resting phases
+                raw_intensity = self.make_annotations(raw_intensity)
 
             raw_intensity.annotations.rename(self.annotation_names)
             unwanted = np.nonzero(raw_intensity.annotations.description == self.unwanted)
             raw_intensity.annotations.delete(unwanted)
+
+            raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
             
@@ -814,17 +869,47 @@ class fNIRS_Melika_tongue_data_load(fNIRS_data_load):
         return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants if self.individuals else None
 
     
+    def make_without_intro_annotations(self, raw_intensity):
+        sampling_frequency = raw_intensity.info["sfreq"]
+        events, event_dict = mne.events_from_annotations(raw_intensity)
+        cropped_raw_data = raw_intensity.copy()
+        cropped_raw_data.annotations.set_durations(self.stimulus_duration)
+        cropped_raw_data.annotations.rename({"0": "End"})
+
+        for id,event in enumerate(events):
+            if id == 0:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] - 30, 30, "Resting state") # Adding resting state in the beginning
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] - 110, 80, "Introduction")
+            if id == 5:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
+            if id == 11:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 10, "Outro")
+            cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
+        
+        return cropped_raw_data
+
     def make_annotations(self, raw_intensity):
         sampling_frequency = raw_intensity.info["sfreq"]
         events, event_dict = mne.events_from_annotations(raw_intensity)
         cropped_raw_data = raw_intensity.copy()
         cropped_raw_data.annotations.set_durations(self.stimulus_duration)
+        cropped_raw_data.annotations.description[0] = "I"
+        cropped_raw_data.annotations.set_durations({"I" : 80})
+        cropped_raw_data.annotations.rename({"I": "Introduction"})
+        cropped_raw_data.annotations.rename({"0": "End"})
+
+        
         for id,event in enumerate(events):
-            cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
-        # cropped_raw_data.plot(n_channels=len(cropped_raw_data.ch_names), duration=600, show_scrollbars=True)
-        # plt.show()
-        # events, event_dict = mne.events_from_annotations(cropped_raw_data)
-        # print(events)
+            if id == 0:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + 80, 30, "Resting state") # Adding resting state in the beginning
+            elif id == 6:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
+            elif id == 12:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 10, "Outro")
+            else:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
         return cropped_raw_data
 
 ###############################################################################################################################################################################################
@@ -971,7 +1056,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
         cropped_raw_data = raw_intensity.copy()
         cropped_raw_data.annotations.set_durations(self.stimulus_duration)
         for id,event in enumerate(events):
-            cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration-5, "Rest")
+            cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
         # cropped_raw_data.plot(n_channels=len(cropped_raw_data.ch_names), duration=600, show_scrollbars=True)
         # plt.show()
         # events, event_dict = mne.events_from_annotations(cropped_raw_data)
