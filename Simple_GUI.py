@@ -23,6 +23,8 @@ settings = {
 }
 
 first_data_load = True
+all_individuals = []
+
 
 # Track previous selections
 previous_dataset = settings["data_set"]
@@ -30,12 +32,12 @@ previous_epoch_type = settings["epoch_type"]
 
 def update_epoch_types(*args):
     """Load data and update epoch type dropdown based on dataset selection."""
-    global previous_dataset
+    global previous_dataset, all_individuals
 
     dataset = dataset_var.get()
     
     # Only reload data if dataset is changed or if plot type is not "individual frequency plot"
-    if dataset != previous_dataset or plot_type_var.get() != "individual frequency plot":
+    if dataset != previous_dataset or (plot_type_var.get() not in ["paradigm_plot", "individual frequency plot", "Epoch Plot"]):
         all_epochs, data_name, all_data, freq, data_types, all_individuals = load_data(
             data_set=dataset,
             short_channel_correction=settings["short_channel_correction"],
@@ -49,14 +51,17 @@ def update_epoch_types(*args):
         if data_types:
             epoch_type_var.set(data_types[0])  # Select first available type
 
-        individuals_menu["values"] = [individual.name for individual in all_individuals]
+        individuals_menu["values"] = ["All Individuals"] + [individual.name for individual in all_individuals]
         if all_individuals:
-            Individual_var.set(all_individuals[0].name)
+            Individual_var.set("All Individuals")  # Default to "All Individuals"
+
 
         previous_dataset = dataset  # Update stored dataset
 
 # Function to show/hide individual selection based on plot type
 def toggle_individual_menu(*args):
+    global all_individuals  # Ensure access to the global variable
+
     """Show or hide settings based on plot type."""
     if plot_type_var.get() in ["paradigm_plot", "individual frequency plot"]:
         # Show individual selection
@@ -76,6 +81,14 @@ def toggle_individual_menu(*args):
         interpolate_bad_channels_checkbox.pack_forget()
         threshold_label.pack_forget()
         threshold_entry.pack_forget()
+    
+    elif plot_type_var.get() in ["Epoch Plot"]:
+        # Show individual selection
+        individuals_menu["values"] = ["All Individuals"] + [getattr(ind, "name", f"Participant {i+1}") for i, ind in enumerate(all_individuals)]
+        Individual_var.set("All Individuals")  # Default to "All Individuals"
+        individual_label.pack(anchor="w")
+        individuals_menu.pack(pady=5)
+
 
     else:
         # Hide individual selection
@@ -115,7 +128,7 @@ def run_analysis():
 
     # Determine if data needs to be reloaded
     reload_data = (
-        (settings["plot_type"] != "individual frequency plot" and settings["plot_type"] != "paradigm_plot")
+        (settings["plot_type"] != "individual frequency plot" and settings["plot_type"] != "paradigm_plot" and settings["plot_type"] != "Epoch Plot")
         or settings["epoch_type"] != previous_epoch_type  or first_data_load == True # Reload only if epoch type changed
     )
 
@@ -137,9 +150,27 @@ def run_analysis():
 
     # Run the selected plot function
     if settings["plot_type"] == "Epoch Plot":
-        figures = epoch_plot(all_epochs, epoch_type=settings["epoch_type"], combine_strategy=settings["combine_strategy"],
-                             save=False, bad_channels_strategy=settings["bad_channels_strategy"],
-                             threshold=settings["threshold"], data_set=data_name)
+        selected_individual = Individual_var.get()
+        
+        selected_individual = Individual_var.get()
+        if selected_individual == "All Individuals":
+            figures = [epoch_plot(
+                all_epochs, epoch_type=settings["epoch_type"], 
+                combine_strategy=settings["combine_strategy"],
+                save=False, bad_channels_strategy=settings["bad_channels_strategy"],
+                threshold=settings["threshold"], data_set=data_name
+            )]
+        else:
+            individual_index = next((i for i, ind in enumerate(all_individuals) if ind.name == selected_individual), None)
+            if individual_index is not None:
+                individual_data = all_individuals[individual_index]
+                figures = [epoch_plot(
+                    [individual_data.epochs], epoch_type=settings["epoch_type"], 
+                    combine_strategy=settings["combine_strategy"],
+                    save=False, bad_channels_strategy=settings["bad_channels_strategy"],
+                    threshold=settings["threshold"], data_set=data_name
+                )]
+
     elif settings["plot_type"] == "Standard fNIRS Response Plot":
         figures = [standard_fNIRS_response_plot(all_epochs, data_types, bad_channels_strategy=settings["bad_channels_strategy"],
                                                 save=False, combine_strategy=settings["combine_strategy"],
