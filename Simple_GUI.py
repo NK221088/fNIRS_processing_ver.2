@@ -169,13 +169,19 @@ def run_analysis():
     for widget in right_frame.winfo_children():
         widget.destroy()
 
+    # Modify channel selection for plotting
+    selected_channels = [channel for channel, var in channel_vars.items() if var.get()]
+    
+    # If ALL channels are selected, set picks to None to let MNE handle channel types
+    picks = selected_channels if len(selected_channels) < len(channel_vars) else "all"
+
     # Run the selected plot function
     if settings["plot_type"] == "Epoch Plot":
         selected_individual = Individual_var.get()
         
         if selected_individual == "All Individuals":
             figures = [epoch_plot(
-                all_epochs, epoch_type=settings["epoch_type"], 
+                all_epochs, picks=picks, epoch_type=settings["epoch_type"], 
                 combine_strategy=settings["combine_strategy"],
                 save=False, bad_channels_strategy=settings["bad_channels_strategy"],
                 threshold=settings["threshold"], data_set=data_name
@@ -185,7 +191,7 @@ def run_analysis():
             if individual_index is not None:
                 individual_data = all_individuals[individual_index]
                 figures = [epoch_plot(
-                    [individual_data.epochs], epoch_type=settings["epoch_type"], 
+                    [individual_data.epochs], picks=picks, epoch_type=settings["epoch_type"], 
                     combine_strategy=settings["combine_strategy"],
                     save=False, bad_channels_strategy=settings["bad_channels_strategy"],
                     threshold=settings["threshold"], data_set=data_name
@@ -314,6 +320,96 @@ threshold_label.pack(anchor="w")
 threshold_var = tk.StringVar(value=str(settings["threshold"]))
 threshold_entry = tk.Entry(left_frame, textvariable=threshold_var)
 threshold_entry.pack(pady=5)
+
+# Channel selection
+channel_selection_label = tk.Label(left_frame, text="Select Channels:", font=("Arial", 12))
+channel_selection_label.pack(anchor="w")
+
+# Create a frame to hold the channel checkboxes with a scrollbar
+channel_frame = tk.Frame(left_frame)
+channel_frame.pack(fill="x", expand=True)
+
+channel_canvas = tk.Canvas(channel_frame)
+channel_scrollbar = tk.Scrollbar(channel_frame, orient="vertical", command=channel_canvas.yview)
+channel_scrollbar_horizontal = tk.Scrollbar(channel_frame, orient="horizontal", command=channel_canvas.xview)
+
+channel_container = tk.Frame(channel_canvas)
+
+channel_canvas.create_window((0, 0), window=channel_container, anchor="nw")
+channel_canvas.configure(yscrollcommand=channel_scrollbar.set, xscrollcommand=channel_scrollbar_horizontal.set)
+
+# Variable to track channel selections
+channel_vars = {}
+
+def populate_channels():
+    # Clear existing checkboxes
+    for widget in channel_container.winfo_children():
+        widget.destroy()
+
+    # Reset channel variables
+    channel_vars.clear()
+
+    # Determine which individual's channels to display
+    selected_individual_name = Individual_var.get()
+
+    # Hide channel selection if "All Individuals" is selected
+    if selected_individual_name == "All Individuals":
+        channel_selection_label.pack_forget()
+        channel_frame.pack_forget()
+        return  # Exit function early
+
+    # Show channel selection if an individual is selected
+    channel_selection_label.pack(anchor="w")
+    channel_frame.pack(fill="x", expand=True)
+
+    # Find the selected individual
+    selected_individual = next((ind for ind in all_individuals if ind.name == selected_individual_name), None)
+
+    # Populate channel checkboxes if an individual is found
+    if selected_individual and hasattr(selected_individual, 'epochs'):
+        channels = selected_individual.epochs[epoch_type_var.get()].ch_names
+        for i, channel in enumerate(channels):
+            channel_vars[channel] = tk.BooleanVar(value=True)  # Default to selected
+            cb = tk.Checkbutton(channel_container, text=channel, variable=channel_vars[channel])
+            cb.grid(row=i // 3, column=i % 3, sticky="w")
+
+    # Update scroll region
+    channel_container.update_idletasks()
+    channel_canvas.config(scrollregion=channel_canvas.bbox("all"))
+
+
+# Modify the existing traces to prevent multiple updates
+def combined_update(*args):
+    # Remove existing traces to prevent multiple calls
+    Individual_var.trace_remove("write", update_traces[0])
+    
+    # Perform updates
+    update_epoch_types()
+    toggle_individual_menu()
+    populate_channels()
+
+# Store the trace ID to allow removal
+update_traces = []
+trace_id = Individual_var.trace_add("write", combined_update)
+update_traces.append(trace_id)
+
+# Add trace to Individual_var to update channels when individual changes
+Individual_var.trace_add("write", lambda *args: populate_channels())
+
+# Pack the scrollable frame
+channel_canvas.pack(side="left", fill="both", expand=True)
+channel_scrollbar.pack(side="right", fill="y")
+channel_scrollbar_horizontal.pack(side="bottom", fill="x")
+
+# Add this to update channels when dataset changes
+def update_channel_selection(*args):
+    populate_channels()
+
+# Trace the dataset variable to update channel selection
+dataset_var.trace_add("write", update_channel_selection)
+
+# Initial population
+populate_channels()
 
 # Run Analysis button
 run_button = tk.Button(left_frame, text="Run Analysis", command=run_analysis, bg="green", fg="white")

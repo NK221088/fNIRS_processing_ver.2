@@ -4,7 +4,7 @@ import os
 from collections import Counter
 from datetime import datetime
 
-def epoch_plot(epochs, epoch_type: str, bad_channels_strategy: str, save : bool, combine_strategy: str = "mean", threshold = None, data_set : str = "data_name"):
+def epoch_plot(epochs, picks: list, epoch_type: str, bad_channels_strategy: str, save : bool, combine_strategy: str = "mean", threshold = None, data_set : str = "data_name"):
 
     """Plot epochs for one or multiple patients
 
@@ -66,25 +66,77 @@ def epoch_plot(epochs, epoch_type: str, bad_channels_strategy: str, save : bool,
                 epochs[i].info['bads'] = bad_channels
             epochs = mne.concatenate_epochs(epochs)
     
-    # Plot the epochs
-    plots = epochs[epoch_type].plot_image(
-        combine=combine_strategy,
-        vmin=-30,
-        vmax=30,
-        ts_args=dict(ylim=dict(hbo=[-15, 15], hbr=[-15, 15])),
-        show=False,
-    )
-
-    # Save each plot if save is True
+    # Separate channel types if picks is provided
+    if picks is not "all":
+        # Identify the channel types in the picks
+        channel_types = set(ch.split('_')[-1].lower() for ch in picks)
+        
+        if len(channel_types) > 1:
+            # If multiple types are selected, split into separate type lists
+            hbo_picks = [ch for ch in picks if ch.lower().endswith('hbo')]
+            hbr_picks = [ch for ch in picks if ch.lower().endswith('hbr')]
+            
+            # Create separate plots for each type
+            plots = []
+            
+            if hbo_picks:
+                hbo_plots = epochs[epoch_type].plot_image(
+                    picks=hbo_picks,
+                    combine=combine_strategy,
+                    vmin=-30,
+                    vmax=30,
+                    ts_args=dict(ylim=dict(hbo=[-15, 15])),
+                    show=False,
+                )
+                plots.extend(hbo_plots if isinstance(hbo_plots, list) else [hbo_plots])
+            
+            if hbr_picks:
+                hbr_plots = epochs[epoch_type].plot_image(
+                    picks=hbr_picks,
+                    combine=combine_strategy,
+                    vmin=-30,
+                    vmax=30,
+                    ts_args=dict(ylim=dict(hbr=[-15, 15])),
+                    show=False,
+                )
+                plots.extend(hbr_plots if isinstance(hbr_plots, list) else [hbr_plots])
+        else:
+            # If only one type is selected, proceed normally
+            plots = epochs[epoch_type].plot_image(
+                picks=picks,
+                combine=combine_strategy,
+                vmin=-30,
+                vmax=30,
+                ts_args=dict(ylim=dict(hbo=[-15, 15], hbr=[-15, 15])),
+                show=False,
+            )
+    else:
+        # If no picks (all channels), proceed with original method
+        plots = epochs[epoch_type].plot_image(
+            combine=combine_strategy,
+            vmin=-30,
+            vmax=30,
+            ts_args=dict(ylim=dict(hbo=[-15, 15], hbr=[-15, 15])),
+            show=False,
+        )
+    
+    # Save each plot if save is True (same as before)
     plots_folder = "Plots"
     if save:
         current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         Plot_types = ["Oxyhemoglobin", "Deoxyhemoglobin"]
-        for plot_type, plot in zip(Plot_types, plots):
+        saved_plots = []
+        
+        # Ensure plots is a list
+        if not isinstance(plots, list):
+            plots = [plots]
+        
+        for plot_type, plot in zip(Plot_types[:len(plots)], plots):
             filename = os.path.join(plots_folder, f"{epoch_type}_epochs_plot_{plot_type}_{bad_channels_strategy}_{data_set}_{current_datetime}.pdf")
             plot.savefig(filename)
             print(f"Plot {plot_type} saved as {filename}")
             plt.close(plot)  # Close the figure after saving
+            saved_plots.append(plot)
     
     return plots
 

@@ -14,7 +14,7 @@ import numpy as np
 ############################
 
 # Data set:
-data_set = "fNIRS_Melika_data" # "fNIRS_Alexandros_Healthy_data" # "fNirs_motor_full_data" # "AudioSpeechNoise" #     "fNIrs_motor" #      
+data_set = "fNIRS_Melika_tongue_data" # "fNIRS_Alexandros_Healthy_data" # "fNirs_motor_full_data" # "AudioSpeechNoise" #     "fNIrs_motor" #      
 
 epoch_type = "Control"
 combine_strategy = "mean"
@@ -29,9 +29,10 @@ startTime = 7.5
 stopTime = 12.5
 K = 5
 interpolate_bad_channels = False
+picks = ['S1_D1 hbo', 'S2_D2 hbo', 'S2_D3 hbo', 'S2_D5 hbo']
 
 # Plotting and saving:
-plot_epochs = False
+plot_epochs = True
 plot_std_fNIRS_response = False
 plot_paradigms = False
 plot_individual_frequency_plot = False
