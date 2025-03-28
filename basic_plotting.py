@@ -32,9 +32,9 @@ interpolate_bad_channels = False
 picks = ['S1_D1 hbo', 'S2_D2 hbo', 'S2_D3 hbo', 'S2_D5 hbo']
 
 # Plotting and saving:
-plot_epochs = True
+plot_epochs = False
 plot_std_fNIRS_response = False
-plot_paradigms = False
+plot_paradigms = True
 plot_individual_frequency_plot = False
 plot_accuracy_across_k_folds = False
 

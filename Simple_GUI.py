@@ -8,7 +8,7 @@ from paradigm_plot import paradigm_plot
 from individual_frequency_plot import individual_frequency_plot
 import mne
 
-# Default settings
+# Default settings (add hemoglobin type to settings)
 settings = {
     "data_set": "fNIrs_motor",
     "epoch_type": "Tapping",
@@ -19,9 +19,9 @@ settings = {
     "bad_channels_strategy": "all",
     "threshold": 3,
     "plot_type": "Epoch Plot",
-    "individual": True  
+    "individual": True,
+    "haemo_type": "hbo"  # New setting for hemoglobin type
 }
-
 first_data_load = True
 all_individuals = []
 start_up = True
@@ -77,6 +77,16 @@ def toggle_individual_menu(*args):
         
         individuals_menu.pack(pady=5)
 
+        # Specifically for paradigm_plot
+        if plot_type_var.get() == "paradigm_plot":
+            # Show hemoglobin type selection
+            haemo_type_label.pack(anchor="w")
+            haemo_type_menu.pack(pady=5)
+        else:
+            # Hide hemoglobin type selection for other plot types
+            haemo_type_label.pack_forget()
+            haemo_type_menu.pack_forget()
+
         # Hide irrelevant settings
         combine_strategy_label.pack_forget()
         combine_strategy_menu.pack_forget()
@@ -97,6 +107,23 @@ def toggle_individual_menu(*args):
         Individual_var.set("All Individuals")  # Default to "All Individuals"
         individual_label.pack(anchor="w")
         individuals_menu.pack(pady=5)
+        # Show relevant settings
+        combine_strategy_label.pack(anchor="w")
+        combine_strategy_menu.pack(pady=5)
+        bad_channels_strategy_label.pack(anchor="w")
+        bad_channels_strategy_menu.pack(pady=5)
+        short_channel_correction_label.pack(anchor="w")
+        short_channel_correction_checkbox.pack(anchor="w")
+        negative_correlation_label.pack(anchor="w")
+        negative_correlation_checkbox.pack(anchor="w")
+        interpolate_bad_channels_label.pack(anchor="w")
+        interpolate_bad_channels_checkbox.pack(anchor="w")
+        threshold_label.pack(anchor="w")
+        threshold_entry.pack(pady=5)
+        # Hide hemoglobin type selection for other plot types
+        haemo_type_label.pack_forget()
+        haemo_type_menu.pack_forget()
+    
     
     elif plot_type_var.get() in ["Standard fNIRS Response Plot"]:
         # Show individual selection
@@ -107,6 +134,10 @@ def toggle_individual_menu(*args):
 
         interpolate_bad_channels_label.pack_forget()
         interpolate_bad_channels_checkbox.pack_forget()
+        # Hide hemoglobin type selection for other plot types
+        haemo_type_label.pack_forget()
+        haemo_type_menu.pack_forget()
+    
 
 
     else:
@@ -127,6 +158,10 @@ def toggle_individual_menu(*args):
         interpolate_bad_channels_checkbox.pack(anchor="w")
         threshold_label.pack(anchor="w")
         threshold_entry.pack(pady=5)
+        # Hide hemoglobin type selection for other plot types
+        haemo_type_label.pack_forget()
+        haemo_type_menu.pack_forget()
+    
 
 
 # Function to run the selected analysis
@@ -175,6 +210,9 @@ def run_analysis():
     # If ALL channels are selected, set picks to None to let MNE handle channel types
     picks = selected_channels if len(selected_channels) < len(channel_vars) else "all"
 
+    # Add hemoglobin type to settings
+    settings["haemo_type"] = haemo_type_var.get()
+
     # Run the selected plot function
     if settings["plot_type"] == "Epoch Plot":
         selected_individual = Individual_var.get()
@@ -213,7 +251,19 @@ def run_analysis():
 
     elif settings["plot_type"] == "paradigm_plot":
         selected_individual = Individual_var.get()
-        figures = [paradigm_plot(all_individuals[int(selected_individual.strip("Participant_"))-1])]
+        
+        # Use the global all_individuals list
+        individual_index = int(selected_individual.strip("Participant_")) - 1
+        
+        # Pass the hemoglobin type to the paradigm_plot function
+        figures = [paradigm_plot(
+            all_individuals[individual_index], 
+            picks_=picks, 
+            haemo_type=settings["haemo_type"]
+        )]
+
+
+        
     elif settings["plot_type"] == "individual frequency plot":
         selected_individual = Individual_var.get()
         figures = [individual_frequency_plot(all_individuals[int(selected_individual.strip("Participant_"))-1])]
@@ -271,6 +321,13 @@ plot_type_menu = ttk.Combobox(left_frame, textvariable=plot_type_var, values=["E
 # Call the function that updates the UI based on the selected plot type
 plot_type_menu.pack(pady=5)
 plot_type_var.trace_add("write", toggle_individual_menu)
+
+# Add hemoglobin type selection (similar to other dropdowns)
+haemo_type_label = tk.Label(left_frame, text="Hemoglobin Type:", font=("Arial", 12))
+haemo_type_var = tk.StringVar(value=settings["haemo_type"])
+haemo_type_menu = ttk.Combobox(left_frame, textvariable=haemo_type_var, values=["hbo", "hbr"])
+haemo_type_label.pack_forget()
+haemo_type_menu.pack_forget()
 
 # Individual selection (Initially hidden)
 individual_label = tk.Label(left_frame, text="Select Individual:", font=("Arial", 12))
@@ -367,7 +424,24 @@ def populate_channels():
 
     # Populate channel checkboxes if an individual is found
     if selected_individual and hasattr(selected_individual, 'epochs'):
-        channels = selected_individual.epochs[epoch_type_var.get()].ch_names
+        # Get channels for the selected epoch type
+        epochs = selected_individual.epochs[epoch_type_var.get()]
+        
+        # If paradigm plot is active, filter channels by hemoglobin type
+        if plot_type_var.get() == "paradigm_plot":
+            # Get the current hemoglobin type
+            current_haemo_type = haemo_type_var.get()
+            
+            # Filter channels to only include those of the selected hemoglobin type
+            channels = [
+                channel for channel in epochs.ch_names 
+                if current_haemo_type in channel.lower()
+            ]
+        else:
+            # For other plot types, use all channels
+            channels = epochs.ch_names
+
+        # Create checkboxes for filtered channels
         for i, channel in enumerate(channels):
             channel_vars[channel] = tk.BooleanVar(value=True)  # Default to selected
             cb = tk.Checkbutton(channel_container, text=channel, variable=channel_vars[channel])
@@ -376,6 +450,13 @@ def populate_channels():
     # Update scroll region
     channel_container.update_idletasks()
     channel_canvas.config(scrollregion=channel_canvas.bbox("all"))
+
+# Add a trace to hemoglobin type to update channels when it changes
+def update_channels_on_haemo_type_change(*args):
+    if plot_type_var.get() == "paradigm_plot":
+        populate_channels()
+
+haemo_type_var.trace_add("write", update_channels_on_haemo_type_change)
 
 
 # Modify the existing traces to prevent multiple updates
@@ -387,6 +468,12 @@ def combined_update(*args):
     update_epoch_types()
     toggle_individual_menu()
     populate_channels()
+
+    # Add hemoglobin type visibility check
+    if plot_type_var.get() != "paradigm_plot":
+        # Hide hemoglobin type selection
+        haemo_type_label.pack_forget()
+        haemo_type_menu.pack_forget()
 
 # Store the trace ID to allow removal
 update_traces = []
