@@ -67,8 +67,14 @@ def toggle_individual_menu(*args):
 
     """Show or hide settings based on plot type."""
     if plot_type_var.get() in ["paradigm_plot", "individual frequency plot"]:
-        # Show individual selection
+        # Show individual selection with only specific individuals
         individual_label.pack(anchor="w")
+        individuals_menu["values"] = [getattr(ind, "name", f"Participant {i+1}") for i, ind in enumerate(all_individuals)]
+        
+        # Set to the first individual if "All Individuals" was previously selected
+        if Individual_var.get() == "All Individuals" and all_individuals:
+            Individual_var.set(individuals_menu["values"][0])
+        
         individuals_menu.pack(pady=5)
 
         # Hide irrelevant settings
@@ -154,6 +160,8 @@ def run_analysis():
             individuals=settings["individual"]
         )
         previous_epoch_type = settings["epoch_type"]  # Update stored epoch type
+        toggle_individual_menu()
+
     
     first_data_load = False
 
@@ -242,7 +250,7 @@ dataset_menu = ttk.Combobox(left_frame, textvariable=dataset_var, values=[
     "fNIRS_Alexandros_Healthy_data", "fNIRS_CUH_patient_data", "fNIRS_Melika_hand_data", "fNIRS_Melika_tongue_data", "fNIRS_Melika_old_data"])
 
 dataset_menu.pack(pady=5)
-dataset_var.trace_add("write", update_epoch_types)
+dataset_var.trace_add("write", lambda *args: (update_epoch_types(), toggle_individual_menu()))# dataset_var.trace_add("write", lambda *args: (update_epoch_types(), toggle_individual_menu()))
 
 # Epoch type selection
 tk.Label(left_frame, text="Epoch Type:", font=("Arial", 12)).pack(anchor="w")
