@@ -24,6 +24,7 @@ settings = {
 
 first_data_load = True
 all_individuals = []
+start_up = True
 
 
 # Track previous selections
@@ -31,13 +32,14 @@ previous_dataset = settings["data_set"]
 previous_epoch_type = settings["epoch_type"]
 
 def update_epoch_types(*args):
+    global start_up
     """Load data and update epoch type dropdown based on dataset selection."""
     global previous_dataset, all_individuals
 
     dataset = dataset_var.get()
     
     # Only reload data if dataset is changed or if plot type is not "individual frequency plot"
-    if dataset != previous_dataset or (plot_type_var.get() not in ["paradigm_plot", "individual frequency plot", "Epoch Plot"]):
+    if dataset != previous_dataset or (plot_type_var.get() not in ["paradigm_plot", "individual frequency plot", "Epoch Plot"]) or start_up:
         all_epochs, data_name, all_data, freq, data_types, all_individuals = load_data(
             data_set=dataset,
             short_channel_correction=settings["short_channel_correction"],
@@ -57,6 +59,7 @@ def update_epoch_types(*args):
 
 
         previous_dataset = dataset  # Update stored dataset
+        start_up = False
 
 # Function to show/hide individual selection based on plot type
 def toggle_individual_menu(*args):
@@ -88,6 +91,16 @@ def toggle_individual_menu(*args):
         Individual_var.set("All Individuals")  # Default to "All Individuals"
         individual_label.pack(anchor="w")
         individuals_menu.pack(pady=5)
+    
+    elif plot_type_var.get() in ["Standard fNIRS Response Plot"]:
+        # Show individual selection
+        individuals_menu["values"] = ["All Individuals"] + [getattr(ind, "name", f"Participant {i+1}") for i, ind in enumerate(all_individuals)]
+        Individual_var.set("All Individuals")  # Default to "All Individuals"
+        individual_label.pack(anchor="w")
+        individuals_menu.pack(pady=5)
+
+        interpolate_bad_channels_label.pack_forget()
+        interpolate_bad_channels_checkbox.pack_forget()
 
 
     else:
@@ -152,7 +165,6 @@ def run_analysis():
     if settings["plot_type"] == "Epoch Plot":
         selected_individual = Individual_var.get()
         
-        selected_individual = Individual_var.get()
         if selected_individual == "All Individuals":
             figures = [epoch_plot(
                 all_epochs, epoch_type=settings["epoch_type"], 
@@ -172,9 +184,19 @@ def run_analysis():
                 )]
 
     elif settings["plot_type"] == "Standard fNIRS Response Plot":
-        figures = [standard_fNIRS_response_plot(all_epochs, data_types, bad_channels_strategy=settings["bad_channels_strategy"],
+        selected_individual = Individual_var.get()
+        if selected_individual == "All Individuals":
+            figures = [standard_fNIRS_response_plot(all_epochs, data_types, bad_channels_strategy=settings["bad_channels_strategy"],
                                                 save=False, combine_strategy=settings["combine_strategy"],
                                                 threshold=settings["threshold"], data_set=data_name)]
+        else:
+            individual_index = next((i for i, ind in enumerate(all_individuals) if ind.name == selected_individual), None)
+            if individual_index is not None:
+                individual_data = all_individuals[individual_index]
+                figures = [standard_fNIRS_response_plot([individual_data.epochs], data_types, bad_channels_strategy=settings["bad_channels_strategy"],
+                                                save=False, combine_strategy=settings["combine_strategy"],
+                                                threshold=settings["threshold"], data_set=data_name)]
+
     elif settings["plot_type"] == "paradigm_plot":
         selected_individual = Individual_var.get()
         figures = [paradigm_plot(all_individuals[int(selected_individual.strip("Participant_"))-1])]
@@ -232,6 +254,7 @@ epoch_type_menu.pack(pady=5)
 tk.Label(left_frame, text="Select Plot Type:", font=("Arial", 12)).pack(anchor="w")
 plot_type_var = tk.StringVar(value=settings["plot_type"])
 plot_type_menu = ttk.Combobox(left_frame, textvariable=plot_type_var, values=["Epoch Plot", "Standard fNIRS Response Plot", "paradigm_plot", "individual frequency plot"])
+# Call the function that updates the UI based on the selected plot type
 plot_type_menu.pack(pady=5)
 plot_type_var.trace_add("write", toggle_individual_menu)
 
@@ -294,4 +317,5 @@ right_frame.pack(side="right", padx=20, pady=20, expand=True, fill="both")
 
 # Initialize GUI
 update_epoch_types()
+toggle_individual_menu()
 root.mainloop()
