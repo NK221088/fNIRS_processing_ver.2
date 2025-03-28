@@ -66,7 +66,7 @@ def toggle_individual_menu(*args):
     global all_individuals  # Ensure access to the global variable
 
     """Show or hide settings based on plot type."""
-    if plot_type_var.get() in ["paradigm_plot", "individual frequency plot"]:
+    if plot_type_var.get() in ["paradigm_plot", "individual frequency plot", "Standard fNIRS Response Plot"]:
         # Show individual selection with only specific individuals
         individual_label.pack(anchor="w")
         individuals_menu["values"] = [getattr(ind, "name", f"Participant {i+1}") for i, ind in enumerate(all_individuals)]
@@ -78,7 +78,7 @@ def toggle_individual_menu(*args):
         individuals_menu.pack(pady=5)
 
         # Specifically for paradigm_plot
-        if plot_type_var.get() == "paradigm_plot":
+        if plot_type_var.get() == "paradigm_plot" or plot_type_var.get() == "Standard fNIRS Response Plot":
             # Show hemoglobin type selection
             haemo_type_label.pack(anchor="w")
             haemo_type_menu.pack(pady=5)
@@ -238,16 +238,17 @@ def run_analysis():
     elif settings["plot_type"] == "Standard fNIRS Response Plot":
         selected_individual = Individual_var.get()
         if selected_individual == "All Individuals":
+
             figures = [standard_fNIRS_response_plot(all_epochs, data_types, bad_channels_strategy=settings["bad_channels_strategy"],
                                                 save=False, combine_strategy=settings["combine_strategy"],
-                                                threshold=settings["threshold"], data_set=data_name)]
+                                                threshold=settings["threshold"], data_set=data_name, picks_=picks)]
         else:
             individual_index = next((i for i, ind in enumerate(all_individuals) if ind.name == selected_individual), None)
             if individual_index is not None:
                 individual_data = all_individuals[individual_index]
                 figures = [standard_fNIRS_response_plot([individual_data.epochs], data_types, bad_channels_strategy=settings["bad_channels_strategy"],
                                                 save=False, combine_strategy=settings["combine_strategy"],
-                                                threshold=settings["threshold"], data_set=data_name)]
+                                                threshold=settings["threshold"], data_set=data_name, picks_=picks)]
 
     elif settings["plot_type"] == "paradigm_plot":
         selected_individual = Individual_var.get()

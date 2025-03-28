@@ -4,7 +4,7 @@ import os
 from collections import Counter
 from datetime import datetime
 
-def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy: str, save: bool, combine_strategy: str = "mean", threshold=None, data_set: str = "data_name"):
+def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy: str, save: bool, combine_strategy: str = "mean", threshold=None, data_set: str = "data_name", picks_ : list = "all"):
     """Plot standard functional near-infrared spectroscopy (fNIRS) responses.
 
     This function plots the standard fNIRS responses for different conditions, such as tapping or control.
@@ -82,7 +82,9 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
                 epochs[i].info['bads'] = bad_channels
             epochs = mne.concatenate_epochs(epochs)
     
-    # Create evoked data dictionary
+    
+
+  # Create evoked data dictionary
     evoked_dict = {}
     for data_type in data_types:
         for hemoglobin in ("HbO", "HbR"):
@@ -95,10 +97,19 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
     color_dict = dict(HbO="#AA3377", HbR="b")
     styles_dict = dict(Control=dict(linestyle="dashed"))
 
-    # Plot evoked data
-    plot = mne.viz.plot_compare_evokeds(
-        evoked_dict, combine="mean", ci=0.95, colors=color_dict, styles=styles_dict, show=False,
-    )
+    
+    if picks_ != "all":
+
+        picks_ = [s.removesuffix(" hbo").removesuffix(" hbr") for s in picks_]
+        # Plot evoked data
+        plot = mne.viz.plot_compare_evokeds(
+            evoked_dict, combine="mean", ci=0.95, colors=color_dict, styles=styles_dict, show=False, picks=picks_,
+        )
+    else:
+        # Plot evoked data
+        plot = mne.viz.plot_compare_evokeds(
+            evoked_dict, combine="mean", ci=0.95, colors=color_dict, styles=styles_dict, show=False,
+        )
 
     # Save the plot if specified
     if save:

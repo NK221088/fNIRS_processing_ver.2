@@ -33,8 +33,8 @@ picks = ['S1_D1 hbo', 'S2_D2 hbo', 'S2_D3 hbo', 'S2_D5 hbo']
 
 # Plotting and saving:
 plot_epochs = False
-plot_std_fNIRS_response = False
-plot_paradigms = True
+plot_std_fNIRS_response = True
+plot_paradigms = False
 plot_individual_frequency_plot = False
 plot_accuracy_across_k_folds = False
 
@@ -53,7 +53,7 @@ if plot_epochs:
 
 # Plot the standard fNIRS response plot
 if plot_std_fNIRS_response:
-    standard_fNIRS_response_plot(all_epochs, data_types, combine_strategy=combine_strategy, save=save_plot_std_fNIRS_response, bad_channels_strategy=bad_channels_strategy, threshold = threshold, data_set = data_name)
+    standard_fNIRS_response_plot(all_epochs, data_types, combine_strategy=combine_strategy, save=save_plot_std_fNIRS_response, bad_channels_strategy=bad_channels_strategy, threshold = threshold, data_set = data_name, picks_=picks)
 
 if plot_paradigms:
     paradigm_plot(all_individuals[0])
