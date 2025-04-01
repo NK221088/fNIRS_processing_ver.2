@@ -1,7 +1,7 @@
 from Participant_class import individual_participant_class
 import mne
 
-def paradigm_plot(individual: individual_participant_class, picks_ : list = ["all"], duration: int= 1000, show_scrollbars: bool=True, haemo_type : str = "hbo"):
+def paradigm_plot(individual: individual_participant_class, picks_ : list = ["all"], duration: int= 500, show_scrollbars: bool=True, haemo_type : str = "hbo"):
 
     """Plot channels for one patient along the paradigm
 
