@@ -10,3 +10,6 @@ class individual_participant_class:
     
     def get_name(self):
         return self.name
+    
+    def get_epochs(self):
+        return self.epochs
