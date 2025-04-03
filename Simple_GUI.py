@@ -78,10 +78,11 @@ def toggle_individual_menu(*args):
         individuals_menu.pack(pady=5)
 
         # Specifically for paradigm_plot
-        if plot_type_var.get() == "paradigm_plot" or plot_type_var.get() == "Standard fNIRS Response Plot":
+        if plot_type_var.get() == "paradigm_plot":
             # Show hemoglobin type selection
             haemo_type_label.pack(anchor="w")
             haemo_type_menu.pack(pady=5)
+
         else:
             # Hide hemoglobin type selection for other plot types
             haemo_type_label.pack_forget()
