@@ -257,8 +257,10 @@ def run_analysis():
         individual_index = int(selected_individual.strip("Participant_")) - 1
         
         # Pass the hemoglobin type to the paradigm_plot function
+        index = next((i for i, ind in enumerate(all_individuals) if ind.get_name() == selected_individual), -1)
+
         figures = [paradigm_plot(
-            all_individuals[individual_index], 
+            all_individuals[index], 
             picks_=picks, 
             haemo_type=settings["haemo_type"]
         )]
@@ -303,8 +305,17 @@ left_frame.pack(side="left", padx=20, pady=20, fill="y")
 tk.Label(left_frame, text="Select Dataset:", font=("Arial", 12)).pack(anchor="w")
 dataset_var = tk.StringVar(value=settings["data_set"])
 dataset_menu = ttk.Combobox(left_frame, textvariable=dataset_var, values=[
-    "fNIrs_motor", "AudioSpeechNoise", "fNirs_motor_full_data", "fNIRS_Alexandros_DoC_data",
-    "fNIRS_Alexandros_Healthy_data", "fNIRS_CUH_patient_data", "fNIRS_Melika_hand_data_5Hz_load", "fNIRS_Melika_tongue_5Hz_data_load", "fNIRS_Melika_old_data"])
+    "fNIrs_motor",
+    "AudioSpeechNoise",
+    "fNirs_motor_full_data",
+    "fNIRS_Alexandros_DoC_data",
+    "fNIRS_Alexandros_Healthy_data",
+    "fNIRS_CUH_patient_data",
+    "fNIRS_Melika_hand_data_5Hz_load",
+    "fNIRS_Melika_tongue_5Hz_data_load",
+    "fNIRS_Melika_old_data",
+    "fNIRS_Melika_hand_data_10Hz_load",
+    "fNIRS_Melika_tongue_10Hz_data_load",])
 
 dataset_menu.pack(pady=5)
 dataset_var.trace_add("write", lambda *args: (update_epoch_types(), toggle_individual_menu()))# dataset_var.trace_add("write", lambda *args: (update_epoch_types(), toggle_individual_menu()))

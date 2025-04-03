@@ -6,6 +6,7 @@ import mne_nirs
 import mne_bids
 import os
 from Participant_class import individual_participant_class
+import os
 
 class fNIRS_data_load:
     def __init__(self, file_path, number_of_participants=1, annotation_names=None, stimulus_duration=5,
@@ -1009,13 +1010,13 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
 
 class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False):
-        self.number_of_participants = 4
+        self.number_of_participants = 9
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "HandMI",
                                  "Rest": "Control"
                                 }
-        self.file_path = mne.datasets.fnirs_motor.data_path()
+        self.file_path = rf"L:\LovbeskyttetMapper\CONNECT-ME\Melika\Målinger_kopi\snirf_files_hand_10hz"
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 28
@@ -1050,19 +1051,16 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
             unwanted = self.unwanted)
 
     def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(rf"L:\LovbeskyttetMapper\CONNECT-ME\Melika\Målinger_kopi\snirf_files_hand\subj-{sub_id}.snirf", verbose=True)
-        
+        file_path = os.path.join(self.file_path, f"subj-{sub_id}.snirf")  # Correct formatting
+        raw_intensity = mne.io.read_raw_snirf(file_path, verbose=True)
         raw_intensity.load_data()
         return raw_intensity
         
     def load_data(self):
-        for i in range(1, self.number_of_participants + 1):
+        for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
-            if i == 1 or i == 2 or i == 3 or i == 4:# When data for the first patient was recorded, the introduction was not added in Satori, so we add it manually
-                raw_intensity = self.make_without_intro_annotations(raw_intensity)
-            else: # For all other patients we just add the resting phases
-                raw_intensity = self.make_annotations(raw_intensity)
+            raw_intensity = self.make_without_intro_annotations(raw_intensity)
 
 
             raw_intensity.annotations.rename(self.annotation_names)
@@ -1193,13 +1191,13 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
 
 class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False):
-        self.number_of_participants = 4
+        self.number_of_participants = 9
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "TongueMI",
                                  "Rest": "Control",
                                 }
-        self.file_path = mne.datasets.fnirs_motor.data_path()
+        self.file_path = rf"L:\LovbeskyttetMapper\CONNECT-ME\Melika\Målinger_kopi\snirf_files_tongue10hz"
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 28
@@ -1234,12 +1232,13 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
             unwanted = self.unwanted)
 
     def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(rf"L:\LovbeskyttetMapper\CONNECT-ME\Melika\Målinger_kopi\snirf_files_tongue\subj-{sub_id}.snirf", verbose=True)
+        file_path = os.path.join(self.file_path, f"subj-{sub_id}.snirf")  # Correct formatting
+        raw_intensity = mne.io.read_raw_snirf(file_path, verbose=True)
         raw_intensity.load_data()
         return raw_intensity
         
     def load_data(self):
-        for i in range(1, self.number_of_participants + 1):
+        for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
             if i == 1 : # When data for the first patient was recorded, the introduction was not added in Satori, so we add it manually
