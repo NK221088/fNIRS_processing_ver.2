@@ -49,67 +49,51 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
     if not isinstance(save, bool):
         raise ValueError("Invalid value for save. Please use True or False.")
     
-    # Function implementation:
+    # Handle bad channels
     if bad_channels_strategy == "delete":
         for i in range(len(epochs)):
             epochs[i].info['bads'] = []
-        epochs = mne.concatenate_epochs(epochs)
         
     elif bad_channels_strategy == "all":
-        bad_channels = []
-        for i in range(len(epochs)):
-            bad_channels.extend(epochs[i].info['bads'])
-        bad_channels = list(set(bad_channels))
-        for i in range(len(epochs)):
-                epochs[i].info['bads'] = bad_channels
-        epochs = mne.concatenate_epochs(epochs)
+        bad_channels = list(set(channel for ep in epochs for channel in ep.info['bads']))
+        for ep in epochs:
+            ep.info['bads'] = bad_channels
+
     elif bad_channels_strategy == "threshold":
-        if threshold == None:
-            raise ValueError(f"When using bad_channels_strategy {bad_channels_strategy}, you must input a threshold value as an int.")
-        else:
-            bad_channels = []
-            for i in range(len(epochs)):
-                bad_channels.extend(epochs[i].info['bads'])
+        if threshold is None:
+            raise ValueError(f"When using bad_channels_strategy '{bad_channels_strategy}', you must input a threshold value as an int.")
+        bad_channels = [channel for ep in epochs for channel in ep.info['bads']]
+        channel_counts = Counter(bad_channels)
+        bad_channels = [ch for ch, count in channel_counts.items() if count > threshold]
+        for ep in epochs:
+            ep.info['bads'] = bad_channels    
 
-            # Count occurrences of each bad channel
-            channel_counts = Counter(bad_channels)
-
-            # Keep only channels that occur more than twice
-            bad_channels = [channel for channel, count in channel_counts.items() if count > 2]
-
-            # Update epochs with filtered bad channels
-            for i in range(len(epochs)):
-                epochs[i].info['bads'] = bad_channels
-            epochs = mne.concatenate_epochs(epochs)
-    
-    
-
-  # Create evoked data dictionary
+    # Create evoked data dictionary for each condition
     evoked_dict = {}
+
     for data_type in data_types:
         for hemoglobin in ("HbO", "HbR"):
-            evoked_dict[f"{data_type}/{hemoglobin}"] = epochs[data_type].average(picks=hemoglobin.lower())
-    
-    # Rename channels until the encoding of frequency in ch_name is fixed
-    for condition in evoked_dict:
-        evoked_dict[condition].rename_channels(lambda x: x[:-4])
+            # Compute evoked responses per subject
+            evoked_list = [sub_ep[data_type].average(picks=hemoglobin.lower()) for sub_ep in epochs]
 
-    color_dict = dict(HbO="#AA3377", HbR="b")
-    styles_dict = dict(Control=dict(linestyle="dashed"))
+            # Rename channels inside each evoked object
+            for evoked in evoked_list:
+                evoked.rename_channels(lambda x: x[:-4])
 
-    
+            # Store list of Evoked objects
+            evoked_dict[f"{data_type}/{hemoglobin}"] = evoked_list  
+
+    color_dict = {"HbO": "#AA3377", "HbR": "b"}
+    styles_dict = {"Control": dict(linestyle="dashed")}
+
+    # Prepare picks
     if picks_ != "all":
-
         picks_ = [s.removesuffix(" hbo").removesuffix(" hbr") for s in picks_]
-        # Plot evoked data
-        plot = mne.viz.plot_compare_evokeds(
-            evoked_dict, combine="mean", ci=True, colors=color_dict, styles=styles_dict, show=False, picks=picks_,
-        )
-    else:
-        # Plot evoked data
-        plot = mne.viz.plot_compare_evokeds(
-            evoked_dict, combine="mean", ci=0.95, colors=color_dict, styles=styles_dict, show=False,
-        )
+
+    # Plot evoked data
+    plot = mne.viz.plot_compare_evokeds(
+        evoked_dict, combine=combine_strategy, ci=0.95, colors=color_dict, styles=styles_dict, show=False, picks=picks_,
+    )
 
     # Save the plot if specified
     if save:
@@ -118,4 +102,5 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
         plot[0].savefig(filename)
         print(f"Plot saved as {filename}")
         plt.close(plot[0])  # Close the figure after saving
+    
     return plot
