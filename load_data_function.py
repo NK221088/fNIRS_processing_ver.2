@@ -1,4 +1,4 @@
-from Data_processesing_class import AudioSpeechNoise_data_load, fNIRS_full_motor_data_load, fNIRS_motor_data_load, fNIRS_Alexandros_DoC_data_load, fNIRS_Alexandros_Healthy_data_load, fNIRS_CUH_patient_data_load, fNIRS_Melika_hand_data_load, fNIRS_Melika_tongue_data_load, fNIRS_Melika_old_data_load
+from Data_processesing_class import AudioSpeechNoise_data_load, fNIRS_full_motor_data_load, fNIRS_motor_data_load, fNIRS_Alexandros_DoC_data_load, fNIRS_Alexandros_Healthy_data_load, fNIRS_CUH_patient_data_load, fNIRS_Melika_tongue_5Hz_data_load, fNIRS_Melika_hand_data_5Hz_load, fNIRS_Melika_old_data_load
 
 data_loaders = {
     "fNIrs_motor": fNIRS_motor_data_load,
@@ -7,8 +7,8 @@ data_loaders = {
     "fNIRS_Alexandros_DoC_data": fNIRS_Alexandros_DoC_data_load,
     "fNIRS_Alexandros_Healthy_data": fNIRS_Alexandros_Healthy_data_load,
     "fNIRS_CUH_patient_data": fNIRS_CUH_patient_data_load,
-    "fNIRS_Melika_hand_data": fNIRS_Melika_hand_data_load,
-    "fNIRS_Melika_tongue_data": fNIRS_Melika_tongue_data_load,
+    "fNIRS_Melika_hand_data_5Hz_load": fNIRS_Melika_hand_data_5Hz_load,
+    "fNIRS_Melika_tongue_5Hz_data_load": fNIRS_Melika_tongue_5Hz_data_load,
     "fNIRS_Melika_old_data": fNIRS_Melika_old_data_load,
 
 }
