@@ -103,7 +103,7 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
         picks_ = [s.removesuffix(" hbo").removesuffix(" hbr") for s in picks_]
         # Plot evoked data
         plot = mne.viz.plot_compare_evokeds(
-            evoked_dict, combine="mean", ci=0.95, colors=color_dict, styles=styles_dict, show=False, picks=picks_,
+            evoked_dict, combine="mean", ci=True, colors=color_dict, styles=styles_dict, show=False, picks=picks_,
         )
     else:
         # Plot evoked data
