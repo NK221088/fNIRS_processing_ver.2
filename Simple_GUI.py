@@ -290,7 +290,6 @@ def run_analysis():
         )]
 
 
-        
     elif settings["plot_type"] == "individual frequency plot":
         selected_individual = Individual_var.get()
         figures = [individual_frequency_plot(all_individuals[int(selected_individual.strip("Participant_"))-1])]
@@ -531,19 +530,13 @@ def update_channels_on_haemo_type_change(*args):
 haemo_type_var.trace_add("write", update_channels_on_haemo_type_change)
 
 def populate_individuals():
+    # Store current selections before clearing
+    current_selections = {name: var.get() for name, var in individual_selection_vars.items()}
+    
     # Clear existing checkboxes
     for widget in individual_container.winfo_children():
         widget.destroy()
-
-    # Reset individual variables
-    individual_selection_vars.clear()
     
-    # Hide individual selection if no individuals loaded or if "All Individuals" is selected
-    if not all_individuals or Individual_var.get() == "All Individuals":
-        individual_selection_label.pack_forget()
-        individual_selection_frame.pack_forget()
-        return  # Exit function early
-
     # Show individual selection
     individual_selection_label.pack(anchor="w")
     individual_selection_frame.pack(fill="x", expand=True)
@@ -551,8 +544,13 @@ def populate_individuals():
     # Create checkboxes for individuals
     for i, individual in enumerate(all_individuals):
         individual_name = getattr(individual, "name", f"Participant {i+1}")
-        # Set default: only first participant is checked, others are unchecked
-        is_checked = (i == 0)  # True only for the first individual
+        
+        # Use existing selection if available, otherwise default to first only
+        if individual_name in current_selections:
+            is_checked = current_selections[individual_name]
+        else:
+            is_checked = (i == 0)  # Default: only first checked
+            
         individual_selection_vars[individual_name] = tk.BooleanVar(value=is_checked)
         cb = tk.Checkbutton(individual_container, text=individual_name, variable=individual_selection_vars[individual_name])
         cb.grid(row=i // 3, column=i % 3, sticky="w")
