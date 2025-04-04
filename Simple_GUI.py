@@ -6,6 +6,7 @@ from epoch_plot import epoch_plot
 from standard_fNIRS_response_plot import standard_fNIRS_response_plot
 from paradigm_plot import paradigm_plot
 from individual_frequency_plot import individual_frequency_plot
+from statistical_analysis import statistical_analysis
 
 # Default settings (add hemoglobin type to settings)
 settings = {
@@ -24,6 +25,7 @@ settings = {
 first_data_load = True
 all_individuals = []
 start_up = True
+
 
 
 # Track previous selections
@@ -65,7 +67,54 @@ def toggle_individual_menu(*args):
     global all_individuals  # Ensure access to the global variable
 
     """Show or hide settings based on plot type."""
-    if plot_type_var.get() in ["paradigm_plot", "individual frequency plot", "Standard fNIRS Response Plot"]:
+    if plot_type_var.get() == "Statistical Analysis":
+        # Show statistical analysis specific settings
+        area_of_interest_label.pack(anchor="w")
+        area_of_interest_menu.pack(pady=5)
+        time_window_label.pack(anchor="w")
+        time_window_frame.pack(pady=5)
+        
+        # Show dataset comparison menus
+        dataset1_label.pack(anchor="w")
+        dataset1_menu.pack(pady=5)
+        dataset2_label.pack(anchor="w")
+        dataset2_menu.pack(pady=5)
+        
+        # Hide other settings
+        individual_label.pack_forget()
+        individuals_menu.pack_forget()
+        individual_selection_label.pack_forget()
+        individual_selection_frame.pack_forget()
+        haemo_type_label.pack_forget()
+        haemo_type_menu.pack_forget()
+        combine_strategy_label.pack_forget()
+        combine_strategy_menu.pack_forget()
+        bad_channels_strategy_label.pack_forget()
+        bad_channels_strategy_menu.pack_forget()
+        epoch_type_label.pack_forget()
+        epoch_type_menu.pack_forget()
+        short_channel_correction_label.pack_forget()
+        short_channel_correction_checkbox.pack_forget()
+        negative_correlation_label.pack_forget()
+        negative_correlation_checkbox.pack_forget()
+        interpolate_bad_channels_label.pack_forget()
+        interpolate_bad_channels_checkbox.pack_forget()
+        threshold_label.pack_forget()
+        threshold_entry.pack_forget()
+        channel_selection_label.pack_forget()
+        channel_frame.pack_forget()
+
+    elif plot_type_var.get() in ["paradigm_plot", "individual frequency plot", "Standard fNIRS Response Plot"]:
+        # Hide statistical analysis settings
+        area_of_interest_label.pack_forget()
+        area_of_interest_menu.pack_forget()
+        time_window_label.pack_forget()
+        time_window_frame.pack_forget()
+        dataset1_label.pack_forget()
+        dataset1_menu.pack_forget()
+        dataset2_label.pack_forget()
+        dataset2_menu.pack_forget()
+        
         # Show individual selection with only specific individuals
         individual_label.pack(anchor="w")
         individuals_menu["values"] = [getattr(ind, "name", f"Participant {i+1}") for i, ind in enumerate(all_individuals)]
@@ -85,6 +134,15 @@ def toggle_individual_menu(*args):
             individual_selection_frame.pack_forget()
             epoch_type_label.pack(anchor="w")
             epoch_type_menu.pack(pady=5)
+
+            area_of_interest_label.pack_forget()
+            area_of_interest_menu.pack_forget()
+            time_window_label.pack_forget()
+            time_window_frame.pack_forget()
+            dataset1_label.pack_forget()
+            dataset1_menu.pack_forget()
+            dataset2_label.pack_forget()
+            dataset2_menu.pack_forget()
         
         elif plot_type_var.get() == "Standard fNIRS Response Plot":
             populate_individuals()  # Show individual selection checkboxes
@@ -95,6 +153,15 @@ def toggle_individual_menu(*args):
             epoch_type_label.pack_forget()
             epoch_type_menu.pack_forget()
 
+            area_of_interest_label.pack_forget()
+            area_of_interest_menu.pack_forget()
+            time_window_label.pack_forget()
+            time_window_frame.pack_forget()
+            dataset1_label.pack_forget()
+            dataset1_menu.pack_forget()
+            dataset2_label.pack_forget()
+            dataset2_menu.pack_forget()
+
         else:
             # Hide hemoglobin type selection for other plot types
             haemo_type_label.pack_forget()
@@ -103,6 +170,15 @@ def toggle_individual_menu(*args):
             individual_selection_frame.pack_forget()
             epoch_type_label.pack(anchor="w")
             epoch_type_menu.pack(pady=5)
+
+            area_of_interest_label.pack_forget()
+            area_of_interest_menu.pack_forget()
+            time_window_label.pack_forget()
+            time_window_frame.pack_forget()
+            dataset1_label.pack_forget()
+            dataset1_menu.pack_forget()
+            dataset2_label.pack_forget()
+            dataset2_menu.pack_forget()
 
         # Hide irrelevant settings
         combine_strategy_label.pack_forget()
@@ -117,7 +193,15 @@ def toggle_individual_menu(*args):
         interpolate_bad_channels_checkbox.pack_forget()
         threshold_label.pack_forget()
         threshold_entry.pack_forget()
-    
+        area_of_interest_label.pack_forget()
+        area_of_interest_menu.pack_forget()
+        time_window_label.pack_forget()
+        time_window_frame.pack_forget()
+        dataset1_label.pack_forget()
+        dataset1_menu.pack_forget()
+        dataset2_label.pack_forget()
+        dataset2_menu.pack_forget()
+
     elif plot_type_var.get() in ["Epoch Plot"]:
         # Show individual selection
         individuals_menu["values"] = ["All Individuals"] + [getattr(ind, "name", f"Participant {i+1}") for i, ind in enumerate(all_individuals)]
@@ -143,6 +227,14 @@ def toggle_individual_menu(*args):
 
         epoch_type_label.pack(anchor="w")
         epoch_type_menu.pack(pady=5)
+        area_of_interest_label.pack_forget()
+        area_of_interest_menu.pack_forget()
+        time_window_label.pack_forget()
+        time_window_frame.pack_forget()
+        dataset1_label.pack_forget()
+        dataset1_menu.pack_forget()
+        dataset2_label.pack_forget()
+        dataset2_menu.pack_forget()
     
     
     elif plot_type_var.get() in ["Standard fNIRS Response Plot"]:
@@ -157,6 +249,14 @@ def toggle_individual_menu(*args):
         # Hide hemoglobin type selection for other plot types
         haemo_type_label.pack_forget()
         haemo_type_menu.pack_forget()
+        area_of_interest_label.pack_forget()
+        area_of_interest_menu.pack_forget()
+        time_window_label.pack_forget()
+        time_window_frame.pack_forget()
+        dataset1_label.pack_forget()
+        dataset1_menu.pack_forget()
+        dataset2_label.pack_forget()
+        dataset2_menu.pack_forget()
     
 
 
@@ -164,6 +264,10 @@ def toggle_individual_menu(*args):
         # Hide individual selection
         individual_label.pack_forget()
         individuals_menu.pack_forget()
+        area_of_interest_label.pack_forget()
+        area_of_interest_menu.pack_forget()
+        time_window_label.pack_forget()
+        time_window_frame.pack_forget()
 
         # Show relevant settings
         combine_strategy_label.pack(anchor="w")
@@ -184,10 +288,19 @@ def toggle_individual_menu(*args):
 
         epoch_type_label.pack(anchor="w")
         epoch_type_menu.pack(pady=5)
+
+        dataset1_label.pack_forget()
+        dataset1_menu.pack_forget()
+        dataset2_label.pack_forget()
+        dataset2_menu.pack_forget()
     
 
 
-# Function to run the selected analysis
+import tkinter as tk
+from tkinter import ttk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+# Updated run_analysis function
 def run_analysis():
     """Run data processing and visualization based on selected plot type."""
 
@@ -219,7 +332,6 @@ def run_analysis():
         )
         previous_epoch_type = settings["epoch_type"]  # Update stored epoch type
         toggle_individual_menu()
-
     
     first_data_load = False
 
@@ -237,83 +349,136 @@ def run_analysis():
     settings["haemo_type"] = haemo_type_var.get()
 
     # Run the selected plot function
-    if settings["plot_type"] == "Epoch Plot":
-        selected_individual = Individual_var.get()
+    if settings["plot_type"] == "Statistical Analysis":
+        # Get statistical analysis parameters
+        area_of_interest = area_of_interest_var.get()
+        start_time = float(start_time_var.get())
+        end_time = float(end_time_var.get())
+        dataset1 = dataset1_var.get()
+        dataset2 = dataset2_var.get()
         
-        if selected_individual == "All Individuals":
-            figures = [epoch_plot(
-                all_epochs, picks=picks, epoch_type=settings["epoch_type"], 
-                combine_strategy=settings["combine_strategy"],
-                save=False, bad_channels_strategy=settings["bad_channels_strategy"],
-                threshold=settings["threshold"], data_set=data_name
-            )]
-        else:
-            individual_index = next((i for i, ind in enumerate(all_individuals) if ind.name == selected_individual), None)
-            if individual_index is not None:
-                individual_data = all_individuals[individual_index]
+        # Run the statistical analysis
+        figures = statistical_analysis(
+            Area_of_interest=area_of_interest,
+            start_time=start_time,
+            end_time=end_time,
+            dataset1=dataset1,
+            dataset2=dataset2
+        )
+            
+        # Create tab control for statistical analysis
+        tab_control = ttk.Notebook(right_frame)
+        tab_control.pack(expand=True, fill="both")
+        
+        # Ensure figures is always a list and flatten if needed
+        if figures:
+            if not isinstance(figures, list):
+                figures = [figures]
+            else:
+                flattened_figures = []
+                for fig in figures:
+                    if isinstance(fig, list):
+                        flattened_figures.extend(fig)  # Unpack nested lists
+                    else:
+                        flattened_figures.append(fig)
+                figures = flattened_figures
+
+            # Create a tab for each figure
+            for i, fig in enumerate(figures):
+                # Create a new tab
+                tab = ttk.Frame(tab_control)
+                tab_control.add(tab, text=f"Plot {i+1}")
+                
+                # Display the figure in the tab
+                canvas = FigureCanvasTkAgg(fig, master=tab)
+                canvas.draw()
+                canvas.get_tk_widget().pack(fill="both", expand=True, pady=5)
+                
+        # If no figures were generated
+        if not figures:
+            # Create a single tab with message
+            tab = ttk.Frame(tab_control)
+            tab_control.add(tab, text="Info")
+            tk.Label(tab, text="No statistical plots to display", font=("Arial", 14)).pack(pady=20)
+            
+    else:
+        # For all other plot types, use the original display format
+        figures = []
+        
+        if settings["plot_type"] == "Epoch Plot":
+            selected_individual = Individual_var.get()
+            
+            if selected_individual == "All Individuals":
                 figures = [epoch_plot(
-                    [individual_data.epochs], picks=picks, epoch_type=settings["epoch_type"], 
+                    all_epochs, picks=picks, epoch_type=settings["epoch_type"], 
                     combine_strategy=settings["combine_strategy"],
                     save=False, bad_channels_strategy=settings["bad_channels_strategy"],
                     threshold=settings["threshold"], data_set=data_name
                 )]
+            else:
+                individual_index = next((i for i, ind in enumerate(all_individuals) if ind.name == selected_individual), None)
+                if individual_index is not None:
+                    individual_data = all_individuals[individual_index]
+                    figures = [epoch_plot(
+                        [individual_data.epochs], picks=picks, epoch_type=settings["epoch_type"], 
+                        combine_strategy=settings["combine_strategy"],
+                        save=False, bad_channels_strategy=settings["bad_channels_strategy"],
+                        threshold=settings["threshold"], data_set=data_name
+                    )]
 
-    elif settings["plot_type"] == "Standard fNIRS Response Plot":
-        selected_individuals = [ind_name for ind_name, var in individual_selection_vars.items() if var.get()]
-        selected_all_epochs = []
-        # Find the actual individual objects from their names and get their epochs
-        for ind_name in selected_individuals:
-            # Find the individual object that matches this name
-            individual = next((ind for ind in all_individuals if ind.name == ind_name), None)
+        elif settings["plot_type"] == "Standard fNIRS Response Plot":
+            selected_individuals = [ind_name for ind_name, var in individual_selection_vars.items() if var.get()]
+            selected_all_epochs = []
+            # Find the actual individual objects from their names and get their epochs
+            for ind_name in selected_individuals:
+                # Find the individual object that matches this name
+                individual = next((ind for ind in all_individuals if ind.name == ind_name), None)
+                
+                # If found, append their epochs to our list
+                if individual is not None:
+                    # Make sure to call the get_epochs method with parentheses
+                    selected_all_epochs.append(individual.epochs)
+            figures = [standard_fNIRS_response_plot(selected_all_epochs, data_types, bad_channels_strategy=settings["bad_channels_strategy"],
+                                                    save=False, combine_strategy=settings["combine_strategy"],
+                                                    threshold=settings["threshold"], data_set=data_name, picks_=picks)]
+
+        elif settings["plot_type"] == "paradigm_plot":
+            selected_individual = Individual_var.get()
             
-            # If found, append their epochs to our list
-            if individual is not None:
-                # Make sure to call the get_epochs method with parentheses
-                selected_all_epochs.append(individual.epochs)
-        figures = [standard_fNIRS_response_plot(selected_all_epochs, data_types, bad_channels_strategy=settings["bad_channels_strategy"],
-                                                save=False, combine_strategy=settings["combine_strategy"],
-                                                threshold=settings["threshold"], data_set=data_name, picks_=picks)]
+            # Use the global all_individuals list
+            individual_index = int(selected_individual.strip("Participant_")) - 1
+            
+            # Pass the hemoglobin type to the paradigm_plot function
+            index = next((i for i, ind in enumerate(all_individuals) if ind.get_name() == selected_individual), -1)
 
-    elif settings["plot_type"] == "paradigm_plot":
-        selected_individual = Individual_var.get()
+            figures = [paradigm_plot(
+                all_individuals[index], 
+                picks_=picks, 
+                haemo_type=settings["haemo_type"]
+            )]
+
+        elif settings["plot_type"] == "individual frequency plot":
+            selected_individual = Individual_var.get()
+            figures = [individual_frequency_plot(all_individuals[int(selected_individual.strip("Participant_"))-1])]
         
-        # Use the global all_individuals list
-        individual_index = int(selected_individual.strip("Participant_")) - 1
-        
-        # Pass the hemoglobin type to the paradigm_plot function
-        index = next((i for i, ind in enumerate(all_individuals) if ind.get_name() == selected_individual), -1)
+        # Ensure figures is always a list
+        if figures:
+            if not isinstance(figures, list):  
+                figures = [figures]  
+            else:
+                flattened_figures = []
+                for fig in figures:
+                    if isinstance(fig, list):
+                        flattened_figures.extend(fig)  # Unpack nested lists
+                    else:
+                        flattened_figures.append(fig)
+                figures = flattened_figures
 
-        figures = [paradigm_plot(
-            all_individuals[index], 
-            picks_=picks, 
-            haemo_type=settings["haemo_type"]
-        )]
-
-
-    elif settings["plot_type"] == "individual frequency plot":
-        selected_individual = Individual_var.get()
-        figures = [individual_frequency_plot(all_individuals[int(selected_individual.strip("Participant_"))-1])]
-    else:
-        figures = []
-
-    # Ensure figures is always a list
-    if figures:
-        if not isinstance(figures, list):  
-            figures = [figures]  
-        else:
-            flattened_figures = []
+            # Display each figure in the right_frame (original method)
             for fig in figures:
-                if isinstance(fig, list):
-                    flattened_figures.extend(fig)  # Unpack nested lists
-                else:
-                    flattened_figures.append(fig)
-            figures = flattened_figures
-
-        # Display each figure in the right_frame
-        for fig in figures:
-            canvas = FigureCanvasTkAgg(fig, master=right_frame)
-            canvas.draw()
-            canvas.get_tk_widget().pack(fill="both", expand=True, pady=5)
+                canvas = FigureCanvasTkAgg(fig, master=right_frame)
+                canvas.draw()
+                canvas.get_tk_widget().pack(fill="both", expand=True, pady=5)
 
 # Create GUI window
 root = tk.Tk()
@@ -362,7 +527,13 @@ epoch_type_menu.pack(pady=5)  # Pack the combobox
 # Plot type selection
 tk.Label(left_frame, text="Select Plot Type:", font=("Arial", 12)).pack(anchor="w")
 plot_type_var = tk.StringVar(value=settings["plot_type"])
-plot_type_menu = ttk.Combobox(left_frame, textvariable=plot_type_var, values=["Epoch Plot", "Standard fNIRS Response Plot", "paradigm_plot", "individual frequency plot"])
+plot_type_menu = ttk.Combobox(left_frame, textvariable=plot_type_var, values=[
+                                                                                "Epoch Plot",
+                                                                                "Standard fNIRS Response Plot",
+                                                                                "paradigm_plot",
+                                                                                "individual frequency plot",
+                                                                                "Statistical Analysis"
+                                                                                ])
 # Call the function that updates the UI based on the selected plot type
 plot_type_menu.pack(pady=5)
 plot_type_var.trace_add("write", toggle_individual_menu)
@@ -602,6 +773,84 @@ populate_channels()
 individual_canvas.pack(side="left", fill="both", expand=True)
 individual_scrollbar.pack(side="right", fill="y")
 individual_scrollbar_horizontal.pack(side="bottom", fill="x")
+
+# Area of Interest selection for Statistical Analysis
+area_of_interest_label = tk.Label(left_frame, text="Area of Interest:", font=("Arial", 12))
+area_of_interest_var = tk.StringVar(value="SMA")
+area_of_interest_menu = ttk.Combobox(left_frame, textvariable=area_of_interest_var, 
+                                     values=["SMA", "Tongue_all", "Tongue_right", "Tongue_left", 
+                                             "Hand_all", "Hand_right", "Hand_left"])
+area_of_interest_label.pack_forget()  # Initially hidden
+area_of_interest_menu.pack_forget()   # Initially hidden
+
+# Time window for Statistical Analysis
+time_window_label = tk.Label(left_frame, text="Time Window (seconds):", font=("Arial", 12))
+time_window_frame = tk.Frame(left_frame)
+start_time_label = tk.Label(time_window_frame, text="Start:")
+start_time_var = tk.StringVar(value="3")
+start_time_entry = tk.Entry(time_window_frame, textvariable=start_time_var, width=5)
+end_time_label = tk.Label(time_window_frame, text="End:")
+end_time_var = tk.StringVar(value="12")
+end_time_entry = tk.Entry(time_window_frame, textvariable=end_time_var, width=5)
+
+start_time_label.pack(side="left", padx=2)
+start_time_entry.pack(side="left", padx=2)
+end_time_label.pack(side="left", padx=2)
+end_time_entry.pack(side="left", padx=2)
+
+time_window_label.pack_forget()  # Initially hidden
+time_window_frame.pack_forget()  # Initially hidden
+
+# Dataset comparison for Statistical Analysis
+dataset1_label = tk.Label(left_frame, text="Dataset 1:", font=("Arial", 12))
+dataset1_var = tk.StringVar(value=settings["data_set"])
+dataset1_menu = ttk.Combobox(left_frame, textvariable=dataset1_var, values=[
+    "fNIrs_motor",
+    "AudioSpeechNoise",
+    "fNirs_motor_full_data",
+    "fNIRS_Alexandros_DoC_data",
+    "fNIRS_Alexandros_Healthy_data",
+    "fNIRS_CUH_patient_data",
+    "fNIRS_Melika_hand_data_5Hz_load",
+    "fNIRS_Melika_tongue_5Hz_data_load",
+    "fNIRS_Melika_old_data",
+    "fNIRS_Melika_hand_data_10Hz_load",
+    "fNIRS_Melika_tongue_10Hz_data_load",
+    "fNIRS_Melika_hand_data_long_load",
+    "fNIRS_Melika_tongue_long_data_load"], width=40)
+dataset1_label.pack_forget()  # Initially hidden
+dataset1_menu.pack_forget()   # Initially hidden
+
+# Apply the same width adjustment function
+def adjust_dataset1_menu_width():
+    dataset1_menu["width"] = max(len(item) for item in dataset1_menu["values"])
+    
+dataset1_menu["postcommand"] = adjust_dataset1_menu_width
+
+dataset2_label = tk.Label(left_frame, text="Dataset 2:", font=("Arial", 12))
+dataset2_var = tk.StringVar(value="fNIrs_motor")
+dataset2_menu = ttk.Combobox(left_frame, textvariable=dataset2_var, values=[
+    "fNIrs_motor",
+    "AudioSpeechNoise",
+    "fNirs_motor_full_data",
+    "fNIRS_Alexandros_DoC_data",
+    "fNIRS_Alexandros_Healthy_data",
+    "fNIRS_CUH_patient_data",
+    "fNIRS_Melika_hand_data_5Hz_load",
+    "fNIRS_Melika_tongue_5Hz_data_load",
+    "fNIRS_Melika_old_data",
+    "fNIRS_Melika_hand_data_10Hz_load",
+    "fNIRS_Melika_tongue_10Hz_data_load",
+    "fNIRS_Melika_hand_data_long_load",
+    "fNIRS_Melika_tongue_long_data_load"], width=40)
+dataset2_label.pack_forget()  # Initially hidden
+dataset2_menu.pack_forget()   # Initially hidden
+
+# Apply the same width adjustment function
+def adjust_dataset2_menu_width():
+    dataset2_menu["width"] = max(len(item) for item in dataset2_menu["values"])
+    
+dataset2_menu["postcommand"] = adjust_dataset2_menu_width
 
 # Run Analysis button
 run_button = tk.Button(left_frame, text="Run Analysis", command=run_analysis, bg="green", fg="white")

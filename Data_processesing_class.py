@@ -652,8 +652,8 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 28
-        self.scalp_coupling_threshold = 0.5  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)
+        self.scalp_coupling_threshold = 0.8  # Change this value if needed
+        self.reject_criteria = dict(hbo=90e-6)  # Change this value if needed
         self.tmin = -5
         self.tmax = 28
         self.baseline = (None, 0)
@@ -836,8 +836,8 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 28
-        self.scalp_coupling_threshold = 0.5  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)
+        self.scalp_coupling_threshold = 0.8  # Change this value if needed
+        self.reject_criteria = dict(hbo=90e-6)  # Change this value if needed
         self.tmin = -5
         self.tmax = 28
         self.baseline = (None, 0)
@@ -1020,8 +1020,8 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 28
-        self.scalp_coupling_threshold = 0.5  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)
+        self.scalp_coupling_threshold = 0.8  # Change this value if needed
+        self.reject_criteria = dict(hbo=90e-6)  # Change this value if needed
         self.tmin = -5
         self.tmax = 28
         self.baseline = (None, 0)
@@ -1201,8 +1201,8 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 28
-        self.scalp_coupling_threshold = 0.5  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)
+        self.scalp_coupling_threshold = 0.8  # Change this value if needed
+        self.reject_criteria = dict(hbo=90e-6)  # Change this value if needed
         self.tmin = -5
         self.tmax = 28
         self.baseline = (None, 0)
@@ -1387,8 +1387,8 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 20
-        self.scalp_coupling_threshold = 0.5  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)
+        self.scalp_coupling_threshold = 0.8  # Change this value if needed
+        self.reject_criteria = dict(hbo=90e-6)  # Change this value if needed
         self.tmin = -5
         self.tmax = 15
         self.baseline = (None, 0)
@@ -1538,8 +1538,8 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 21
-        self.scalp_coupling_threshold = 0.5  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)
+        self.scalp_coupling_threshold = 0.8  # Change this value if needed
+        self.reject_criteria = dict(hbo=90e-6)  # Change this value if needed
         self.tmin = -5
         self.tmax = 21
         self.baseline = (None, 0)
@@ -1724,8 +1724,8 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 21
-        self.scalp_coupling_threshold = 0.5  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)
+        self.scalp_coupling_threshold = 0.8  # Change this value if needed
+        self.reject_criteria = dict(hbo=90e-6)  # Change this value if needed
         self.tmin = -5
         self.tmax = 21
         self.baseline = (None, 0)
