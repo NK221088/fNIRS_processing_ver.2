@@ -1676,6 +1676,8 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
             if id == 5:
                 cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
             if id == 11:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
+            if id == 17:
                 cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 10, "Outro")
             cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
         
@@ -1721,11 +1723,11 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.file_path = rf"L:\LovbeskyttetMapper\CONNECT-ME\Melika\Målinger_kopi\snirf_files_tongue_long"
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
-        self.stimulus_duration = 28
+        self.stimulus_duration = 21
         self.scalp_coupling_threshold = 0.5  # Change this value if needed
         self.reject_criteria = dict(hbo=80e-6)
         self.tmin = -5
-        self.tmax = 28
+        self.tmax = 21
         self.baseline = (None, 0)
         self.data_types = ["TongueMI"]
         self.number_of_data_types = 2
@@ -1762,10 +1764,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
-            if i == 1 : # When data for the first patient was recorded, the introduction was not added in Satori, so we add it manually
-                raw_intensity = self.make_without_intro_annotations(raw_intensity)
-            else: # For all other patients we just add the resting phases
-                raw_intensity = self.make_annotations(raw_intensity)
+            raw_intensity = self.make_annotations(raw_intensity)
 
             raw_intensity.annotations.rename(self.annotation_names)
             unwanted = np.nonzero(raw_intensity.annotations.description == self.unwanted)
@@ -1864,6 +1863,8 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             if id == 5:
                 cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
             if id == 11:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
+            if id == 17:
                 cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 10, "Outro")
             cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
         
