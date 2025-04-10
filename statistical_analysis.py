@@ -69,10 +69,10 @@ def statistical_analysis(Area_of_interest : str = "SMA", start_time = 3, end_tim
 
     # ---------- Helper Functions ----------
     # Process a group of individuals - for individual channel analysis
-    def compute_mean_responses(individuals_group):
+    def compute_mean_responses(individuals_group, epoch_type):
         subject_means = []
         for individual in individuals_group:
-            epochs = individual.get_epochs()
+            epochs = individual.get_epochs()[epoch_type]
             cropped = epochs.copy().crop(tmin=start_time, tmax=end_time)
             data = cropped.get_data()  # shape: (n_epochs, n_channels, n_times)
             mean_over_time = data.mean(axis=2)  # (n_epochs, n_channels)
@@ -81,10 +81,10 @@ def statistical_analysis(Area_of_interest : str = "SMA", start_time = 3, end_tim
         return np.array(subject_means)  # shape: (n_subjects, n_channels)
 
     # Process a group of individuals - for area analysis
-    def compute_area_means(individuals_group, channel_indices):
+    def compute_area_means(individuals_group, channel_indices, epoch_type):
         subject_means = []
         for individual in individuals_group:
-            epochs = individual.get_epochs()
+            epochs = individual.get_epochs()[epoch_type]
             cropped = epochs.copy().crop(tmin=start_time, tmax=end_time)
             data = cropped.get_data()  # shape: (n_epochs, n_channels, n_times)
             mean_over_time = data.mean(axis=2)  # (n_epochs, n_channels)
@@ -107,8 +107,8 @@ def statistical_analysis(Area_of_interest : str = "SMA", start_time = 3, end_tim
 
     # For individual channel analysis
     if analysis_method in ["channel", "both"]:
-        means_1 = compute_mean_responses(all_individuals_1)
-        means_2 = compute_mean_responses(all_individuals_2)
+        means_1 = compute_mean_responses(all_individuals_1, data_types_1[0])
+        means_2 = compute_mean_responses(all_individuals_2, data_types_2[0])
         
         # Ensure same number of subjects
         n_subjects = min(means_1.shape[0], means_2.shape[0])
@@ -118,8 +118,8 @@ def statistical_analysis(Area_of_interest : str = "SMA", start_time = 3, end_tim
     # For area analysis
     if analysis_method in ["area", "both"]:
         # Compute mean response per subject across all channels in the area
-        means_1_area = compute_area_means(all_individuals_1, channel_indices)
-        means_2_area = compute_area_means(all_individuals_2, channel_indices)
+        means_1_area = compute_area_means(all_individuals_1, channel_indices, data_types_1[0])
+        means_2_area = compute_area_means(all_individuals_2, channel_indices, data_types_2[0])
         
         # Ensure same number of subjects
         n_subjects_area = min(len(means_1_area), len(means_2_area))
