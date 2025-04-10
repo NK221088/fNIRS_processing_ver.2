@@ -33,182 +33,130 @@ previous_dataset = settings["data_set"]
 previous_epoch_type = settings["epoch_type"]
 
 def update_epoch_types(*args):
-    global start_up
     """Load data and update epoch type dropdown based on dataset selection."""
-    global previous_dataset, all_individuals
+    global previous_dataset, all_individuals, all_epochs, data_name, all_data, freq, data_types, start_up, first_data_load
 
     dataset = dataset_var.get()
     
-    # Only reload data if dataset is changed or if plot type is not "individual frequency plot"
-    if dataset != previous_dataset or (plot_type_var.get() not in ["paradigm_plot", "individual frequency plot", "Epoch Plot"]) or start_up:
-        all_epochs, data_name, all_data, freq, data_types, all_individuals = load_data(
-            data_set=dataset,
-            short_channel_correction=settings["short_channel_correction"],
-            negative_correlation_enhancement=settings["negative_correlation_enhancement"],
-            interpolate_bad_channels=settings["interpolate_bad_channels"],
-            individuals=settings["individual"]
-        )
+    # Only reload data if dataset is changed or first time
+    if dataset != previous_dataset or start_up:
+        try:
+            all_epochs, data_name, all_data, freq, data_types, all_individuals = load_data(
+                data_set=dataset,
+                short_channel_correction=settings["short_channel_correction"],
+                negative_correlation_enhancement=settings["negative_correlation_enhancement"],
+                interpolate_bad_channels=settings["interpolate_bad_channels"],
+                individuals=settings["individual"]
+            )
 
-        # Update dropdown options
-        epoch_type_menu["values"] = data_types
-        if data_types:
-            epoch_type_var.set(data_types[0])  # Select first available type
+            # Update dropdown options
+            epoch_type_menu["values"] = data_types
+            if data_types:
+                epoch_type_var.set(data_types[0])  # Select first available type
 
-        individuals_menu["values"] = ["All Individuals"] + [individual.name for individual in all_individuals]
-        if all_individuals:
+            # Update individuals dropdown
+            individuals_menu["values"] = ["All Individuals"] + [getattr(ind, "name", f"Participant_{i+1}") 
+                                                           for i, ind in enumerate(all_individuals)]
             Individual_var.set("All Individuals")  # Default to "All Individuals"
 
+            previous_dataset = dataset  # Update stored dataset
+            start_up = False
+            first_data_load = False
+            
+            # Force update of UI elements that depend on data
+            toggle_individual_menu()
+            
+        except Exception as e:
+            print(f"Error loading data: {e}")
 
-        previous_dataset = dataset  # Update stored dataset
-        start_up = False
-
-# Function to show/hide individual selection based on plot type
+# Replace your toggle_individual_menu function with this improved version
 def toggle_individual_menu(*args):
-    global all_individuals  # Ensure access to the global variable
-
     """Show or hide settings based on plot type."""
-    if plot_type_var.get() == "Statistical Analysis":
+    plot_type = plot_type_var.get()
+    
+    # First hide all specialized widgets
+    for widget in [
+        # Individual selection
+        individual_label, individuals_menu,
+        # Individual checkboxes
+        individual_selection_label, individual_selection_frame,
+        # Channel selection
+        channel_selection_label, channel_frame,
+        # Hemoglobin type
+        haemo_type_label, haemo_type_menu,
+        # Statistical analysis
+        area_of_interest_label, area_of_interest_menu, 
+        time_window_label, time_window_frame,
+        dataset1_label, dataset1_menu,
+        dataset2_label, dataset2_menu,
+        # Data processing settings
+        combine_strategy_label, combine_strategy_menu,
+        bad_channels_strategy_label, bad_channels_strategy_menu,
+        short_channel_correction_label, short_channel_correction_checkbox,
+        negative_correlation_label, negative_correlation_checkbox,
+        interpolate_bad_channels_label, interpolate_bad_channels_checkbox,
+        threshold_label, threshold_entry,
+        # Epoch selection
+        epoch_type_label, epoch_type_menu
+    ]:
+        widget.pack_forget()
+    
+    # Then show only what's needed for each plot type
+    if plot_type == "Statistical Analysis":
         # Show statistical analysis specific settings
         area_of_interest_label.pack(anchor="w")
         area_of_interest_menu.pack(pady=5)
         time_window_label.pack(anchor="w")
         time_window_frame.pack(pady=5)
-        
-        # Show dataset comparison menus
         dataset1_label.pack(anchor="w")
         dataset1_menu.pack(pady=5)
         dataset2_label.pack(anchor="w")
         dataset2_menu.pack(pady=5)
         
-        # Hide other settings
-        individual_label.pack_forget()
-        individuals_menu.pack_forget()
-        individual_selection_label.pack_forget()
-        individual_selection_frame.pack_forget()
-        haemo_type_label.pack_forget()
-        haemo_type_menu.pack_forget()
-        combine_strategy_label.pack_forget()
-        combine_strategy_menu.pack_forget()
-        bad_channels_strategy_label.pack_forget()
-        bad_channels_strategy_menu.pack_forget()
-        epoch_type_label.pack_forget()
-        epoch_type_menu.pack_forget()
-        short_channel_correction_label.pack_forget()
-        short_channel_correction_checkbox.pack_forget()
-        negative_correlation_label.pack_forget()
-        negative_correlation_checkbox.pack_forget()
-        interpolate_bad_channels_label.pack_forget()
-        interpolate_bad_channels_checkbox.pack_forget()
-        threshold_label.pack_forget()
-        threshold_entry.pack_forget()
-        channel_selection_label.pack_forget()
-        channel_frame.pack_forget()
-
-    elif plot_type_var.get() in ["paradigm_plot", "individual frequency plot", "Standard fNIRS Response Plot"]:
-        # Hide statistical analysis settings
-        area_of_interest_label.pack_forget()
-        area_of_interest_menu.pack_forget()
-        time_window_label.pack_forget()
-        time_window_frame.pack_forget()
-        dataset1_label.pack_forget()
-        dataset1_menu.pack_forget()
-        dataset2_label.pack_forget()
-        dataset2_menu.pack_forget()
+    elif plot_type == "Standard fNIRS Response Plot":
+        # Show epoch type selection
+        epoch_type_label.pack(anchor="w")
+        epoch_type_menu.pack(pady=5)
+        # Show individual checkboxes
+        individual_selection_label.pack(anchor="w")
+        individual_selection_frame.pack(fill="x", expand=True)
+        # Show channel selection
+        channel_selection_label.pack(anchor="w")
+        channel_frame.pack(fill="x", expand=True)
+        # Populate the individual checkboxes
+        populate_individuals()
+        # Populate channel checkboxes
+        populate_channels()
         
-        # Show individual selection with only specific individuals
-        individual_label.pack(anchor="w")
-        individuals_menu["values"] = [getattr(ind, "name", f"Participant {i+1}") for i, ind in enumerate(all_individuals)]
-        
-        # Set to the first individual if "All Individuals" was previously selected
-        if Individual_var.get() == "All Individuals" and all_individuals:
-            Individual_var.set(individuals_menu["values"][0])
-        
-        individuals_menu.pack(pady=5)
-
-        # Specifically for paradigm_plot
-        if plot_type_var.get() == "paradigm_plot":
-            # Show hemoglobin type selection
-            haemo_type_label.pack(anchor="w")
-            haemo_type_menu.pack(pady=5)
-            individual_selection_label.pack_forget()
-            individual_selection_frame.pack_forget()
-            epoch_type_label.pack(anchor="w")
-            epoch_type_menu.pack(pady=5)
-
-            area_of_interest_label.pack_forget()
-            area_of_interest_menu.pack_forget()
-            time_window_label.pack_forget()
-            time_window_frame.pack_forget()
-            dataset1_label.pack_forget()
-            dataset1_menu.pack_forget()
-            dataset2_label.pack_forget()
-            dataset2_menu.pack_forget()
-        
-        elif plot_type_var.get() == "Standard fNIRS Response Plot":
-            populate_individuals()  # Show individual selection checkboxes
-            # Hide individual selection
-            individual_label.pack_forget()
-            individuals_menu.pack_forget()
-            # Hide epoch selection
-            epoch_type_label.pack_forget()
-            epoch_type_menu.pack_forget()
-
-            area_of_interest_label.pack_forget()
-            area_of_interest_menu.pack_forget()
-            time_window_label.pack_forget()
-            time_window_frame.pack_forget()
-            dataset1_label.pack_forget()
-            dataset1_menu.pack_forget()
-            dataset2_label.pack_forget()
-            dataset2_menu.pack_forget()
-
-        else:
-            # Hide hemoglobin type selection for other plot types
-            haemo_type_label.pack_forget()
-            haemo_type_menu.pack_forget()
-            individual_selection_label.pack_forget()
-            individual_selection_frame.pack_forget()
-            epoch_type_label.pack(anchor="w")
-            epoch_type_menu.pack(pady=5)
-
-            area_of_interest_label.pack_forget()
-            area_of_interest_menu.pack_forget()
-            time_window_label.pack_forget()
-            time_window_frame.pack_forget()
-            dataset1_label.pack_forget()
-            dataset1_menu.pack_forget()
-            dataset2_label.pack_forget()
-            dataset2_menu.pack_forget()
-
-        # Hide irrelevant settings
-        combine_strategy_label.pack_forget()
-        combine_strategy_menu.pack_forget()
-        bad_channels_strategy_label.pack_forget()
-        bad_channels_strategy_menu.pack_forget()
-        short_channel_correction_label.pack_forget()
-        short_channel_correction_checkbox.pack_forget()
-        negative_correlation_label.pack_forget()
-        negative_correlation_checkbox.pack_forget()
-        interpolate_bad_channels_label.pack_forget()
-        interpolate_bad_channels_checkbox.pack_forget()
-        threshold_label.pack_forget()
-        threshold_entry.pack_forget()
-        area_of_interest_label.pack_forget()
-        area_of_interest_menu.pack_forget()
-        time_window_label.pack_forget()
-        time_window_frame.pack_forget()
-        dataset1_label.pack_forget()
-        dataset1_menu.pack_forget()
-        dataset2_label.pack_forget()
-        dataset2_menu.pack_forget()
-
-    elif plot_type_var.get() in ["Epoch Plot"]:
-        # Show individual selection
-        individuals_menu["values"] = ["All Individuals"] + [getattr(ind, "name", f"Participant {i+1}") for i, ind in enumerate(all_individuals)]
-        Individual_var.set("All Individuals")  # Default to "All Individuals"
+    elif plot_type == "individual frequency plot":
+        # Show epoch type selection
+        epoch_type_label.pack(anchor="w")
+        epoch_type_menu.pack(pady=5)
+        # Show individual selection dropdown
         individual_label.pack(anchor="w")
         individuals_menu.pack(pady=5)
-        # Show relevant settings
+        
+    elif plot_type == "paradigm_plot":
+        # Show hemoglobin type selection
+        haemo_type_label.pack(anchor="w")
+        haemo_type_menu.pack(pady=5)
+        # Show individual selection dropdown
+        individual_label.pack(anchor="w")
+        individuals_menu.pack(pady=5)
+        # Show channel selection
+        channel_selection_label.pack(anchor="w")
+        channel_frame.pack(fill="x", expand=True)
+        # Populate the channel checkboxes
+        populate_channels()
+        
+    elif plot_type == "Epoch Plot":
+        # Show epoch type selection
+        epoch_type_label.pack(anchor="w")
+        epoch_type_menu.pack(pady=5)
+        # Show individual selection dropdown
+        individual_label.pack(anchor="w")
+        individuals_menu.pack(pady=5)
+        # Show data processing settings
         combine_strategy_label.pack(anchor="w")
         combine_strategy_menu.pack(pady=5)
         bad_channels_strategy_label.pack(anchor="w")
@@ -221,78 +169,9 @@ def toggle_individual_menu(*args):
         interpolate_bad_channels_checkbox.pack(anchor="w")
         threshold_label.pack(anchor="w")
         threshold_entry.pack(pady=5)
-        # Hide hemoglobin type selection for other plot types
-        haemo_type_label.pack_forget()
-        haemo_type_menu.pack_forget()
-
-        epoch_type_label.pack(anchor="w")
-        epoch_type_menu.pack(pady=5)
-        area_of_interest_label.pack_forget()
-        area_of_interest_menu.pack_forget()
-        time_window_label.pack_forget()
-        time_window_frame.pack_forget()
-        dataset1_label.pack_forget()
-        dataset1_menu.pack_forget()
-        dataset2_label.pack_forget()
-        dataset2_menu.pack_forget()
-    
-    
-    elif plot_type_var.get() in ["Standard fNIRS Response Plot"]:
-        # Show individual selection
-        individuals_menu["values"] = ["All Individuals"] + [getattr(ind, "name", f"Participant {i+1}") for i, ind in enumerate(all_individuals)]
-        Individual_var.set("All Individuals")  # Default to "All Individuals"
-        individual_label.pack(anchor="w")
-        individuals_menu.pack(pady=5)
-
-        interpolate_bad_channels_label.pack_forget()
-        interpolate_bad_channels_checkbox.pack_forget()
-        # Hide hemoglobin type selection for other plot types
-        haemo_type_label.pack_forget()
-        haemo_type_menu.pack_forget()
-        area_of_interest_label.pack_forget()
-        area_of_interest_menu.pack_forget()
-        time_window_label.pack_forget()
-        time_window_frame.pack_forget()
-        dataset1_label.pack_forget()
-        dataset1_menu.pack_forget()
-        dataset2_label.pack_forget()
-        dataset2_menu.pack_forget()
-    
-
-
-    else:
-        # Hide individual selection
-        individual_label.pack_forget()
-        individuals_menu.pack_forget()
-        area_of_interest_label.pack_forget()
-        area_of_interest_menu.pack_forget()
-        time_window_label.pack_forget()
-        time_window_frame.pack_forget()
-
-        # Show relevant settings
-        combine_strategy_label.pack(anchor="w")
-        combine_strategy_menu.pack(pady=5)
-        bad_channels_strategy_label.pack(anchor="w")
-        bad_channels_strategy_menu.pack(pady=5)
-        short_channel_correction_label.pack(anchor="w")
-        short_channel_correction_checkbox.pack(anchor="w")
-        negative_correlation_label.pack(anchor="w")
-        negative_correlation_checkbox.pack(anchor="w")
-        interpolate_bad_channels_label.pack(anchor="w")
-        interpolate_bad_channels_checkbox.pack(anchor="w")
-        threshold_label.pack(anchor="w")
-        threshold_entry.pack(pady=5)
-        # Hide hemoglobin type selection for other plot types
-        haemo_type_label.pack_forget()
-        haemo_type_menu.pack_forget()
-
-        epoch_type_label.pack(anchor="w")
-        epoch_type_menu.pack(pady=5)
-
-        dataset1_label.pack_forget()
-        dataset1_menu.pack_forget()
-        dataset2_label.pack_forget()
-        dataset2_menu.pack_forget()
+        
+    # Force the UI to update
+    root.update_idletasks()
     
 
 
@@ -636,58 +515,62 @@ individual_canvas.configure(yscrollcommand=individual_scrollbar.set, xscrollcomm
 individual_selection_vars = {}
 
 def populate_channels():
+    # Don't show channel selection for certain plot types
+    if plot_type_var.get() not in ["paradigm_plot", "Standard fNIRS Response Plot"]:
+        channel_selection_label.pack_forget()
+        channel_frame.pack_forget()
+        return
+        
     # Clear existing checkboxes
     for widget in channel_container.winfo_children():
         widget.destroy()
 
     # Reset channel variables
     channel_vars.clear()
-
-    # Determine which individual's channels to display
-    selected_individual_name = Individual_var.get()
-
-    # Hide channel selection if "All Individuals" is selected
-    if selected_individual_name == "All Individuals":
-        channel_selection_label.pack_forget()
-        channel_frame.pack_forget()
-        return  # Exit function early
-
-    # Show channel selection if an individual is selected
+    
+    # Show channel selection
     channel_selection_label.pack(anchor="w")
     channel_frame.pack(fill="x", expand=True)
 
+    # Get available channels based on plot type and selections
+    selected_individual_name = Individual_var.get()
+    
     # Find the selected individual
-    selected_individual = next((ind for ind in all_individuals if ind.name == selected_individual_name), None)
+    if not all_individuals:
+        return  # Exit if no data is loaded yet
+        
+    if selected_individual_name == "All Individuals" and all_individuals:
+        # Use the first individual as reference for channels
+        selected_individual = all_individuals[0]
+    else:
+        selected_individual = next((ind for ind in all_individuals if getattr(ind, "name", "") == selected_individual_name), 
+                                  all_individuals[0] if all_individuals else None)
 
     # Populate channel checkboxes if an individual is found
     if selected_individual and hasattr(selected_individual, 'epochs'):
-        # Get channels for the selected epoch type
-        epochs = selected_individual.epochs[epoch_type_var.get()]
-        
-        # If paradigm plot is active, filter channels by hemoglobin type
-        if plot_type_var.get() == "paradigm_plot":
-            # Get the current hemoglobin type
-            current_haemo_type = haemo_type_var.get()
-            
-            # Filter channels to only include those of the selected hemoglobin type
-            channels = [
-                channel for channel in epochs.ch_names 
-                if current_haemo_type in channel.lower()
-            ]
-        else:
-            # For other plot types, use all channels
-            channels = epochs.ch_names
-        
-        if plot_type_var.get() == "Standard fNIRS Response Plot":
-            channels = list(set([s.removesuffix(" hbo").removesuffix(" hbr") for s in channels]))
-        
-        # Create checkboxes for filtered channels
-        for i, channel in enumerate(channels):
-            is_checked = (i == 0)
-
-            channel_vars[channel] = tk.BooleanVar(value=is_checked)
-            cb = tk.Checkbutton(channel_container, text=channel, variable=channel_vars[channel])
-            cb.grid(row=i // 3, column=i % 3, sticky="w")
+        try:
+            # Get channels for the selected epoch type
+            current_epoch_type = epoch_type_var.get()
+            if current_epoch_type in selected_individual.epochs:
+                epochs = selected_individual.epochs[current_epoch_type]
+                
+                # Filter channels based on plot type
+                if plot_type_var.get() == "paradigm_plot":
+                    current_haemo_type = haemo_type_var.get()
+                    channels = [ch for ch in epochs.ch_names if current_haemo_type in ch.lower()]
+                elif plot_type_var.get() == "Standard fNIRS Response Plot":
+                    channels = list(set([s.removesuffix(" hbo").removesuffix(" hbr") for s in epochs.ch_names]))
+                else:
+                    channels = epochs.ch_names
+                    
+                # Create checkboxes for filtered channels
+                for i, channel in enumerate(channels):
+                    is_checked = (i == 0)
+                    channel_vars[channel] = tk.BooleanVar(value=is_checked)
+                    cb = tk.Checkbutton(channel_container, text=channel, variable=channel_vars[channel])
+                    cb.grid(row=i // 3, column=i % 3, sticky="w")
+        except Exception as e:
+            print(f"Error populating channels: {e}")
 
     # Update scroll region
     channel_container.update_idletasks()
@@ -864,6 +747,27 @@ right_frame.pack(side="right", padx=20, pady=20, expand=True, fill="both")
 Individual_var.trace_add("write", lambda *args: populate_individuals())
 # Initial population of individuals
 populate_individuals()
+
+# Replace your combined_update function and update_traces approach with this:
+def setup_ui_callbacks():
+    # Clear any existing traces
+    for trace_name in ['write']:
+        try:
+            dataset_var.trace_remove(trace_name, None)
+            plot_type_var.trace_remove(trace_name, None)
+            Individual_var.trace_remove(trace_name, None)
+            haemo_type_var.trace_remove(trace_name, None)
+        except:
+            pass
+    
+    # Set up the main callbacks in the correct order
+    dataset_var.trace_add("write", update_epoch_types)
+    plot_type_var.trace_add("write", toggle_individual_menu)
+    Individual_var.trace_add("write", populate_channels)
+    haemo_type_var.trace_add("write", populate_channels)
+
+# Call this function at the end of your initialization code
+setup_ui_callbacks()
 
 # Initialize GUI
 update_epoch_types()

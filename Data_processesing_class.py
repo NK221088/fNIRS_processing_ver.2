@@ -1691,7 +1691,8 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         cropped_raw_data.annotations.description[0] = "I"
         cropped_raw_data.annotations.set_durations({"I" : 80})
         cropped_raw_data.annotations.rename({"I": "Introduction"})
-        cropped_raw_data.annotations.rename({"0": "End"})
+        if "0" in cropped_raw_data.annotations.description:
+            cropped_raw_data.annotations.rename({"0": "End"})
 
         
         for id,event in enumerate(events):
@@ -1878,7 +1879,8 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         cropped_raw_data.annotations.description[0] = "I"
         cropped_raw_data.annotations.set_durations({"I" : 80})
         cropped_raw_data.annotations.rename({"I": "Introduction"})
-        cropped_raw_data.annotations.rename({"0": "End"})
+        if "0" in cropped_raw_data.annotations.description:
+            cropped_raw_data.annotations.rename({"0": "End"})
 
         
         for id,event in enumerate(events):
