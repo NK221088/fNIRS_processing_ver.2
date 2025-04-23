@@ -29,6 +29,9 @@ start_up = True
 # Track previous selections
 previous_dataset = settings["data_set"]
 previous_epoch_type = settings["epoch_type"]
+previous_short_channel_correction = settings["short_channel_correction"]
+previous_negative_correlation_enhancement = settings["negative_correlation_enhancement"]
+previous_interpolate_bad_channels = settings["interpolate_bad_channels"]
 
 def update_epoch_types(*args):
     """Load data and update epoch type dropdown based on dataset selection."""
@@ -128,20 +131,18 @@ def toggle_individual_menu(*args):
         
     elif plot_type == "paradigm_plot":
         # Show data processing settings
-        combine_strategy_label.pack(anchor="w")
-        combine_strategy_menu.pack(pady=5)
-        bad_channels_strategy_label.pack(anchor="w")
-        bad_channels_strategy_menu.pack(pady=5)
         short_channel_correction_label.pack(anchor="w")
         short_channel_correction_checkbox.pack(anchor="w")
         negative_correlation_label.pack(anchor="w")
         negative_correlation_checkbox.pack(anchor="w")
         interpolate_bad_channels_label.pack(anchor="w")
         interpolate_bad_channels_checkbox.pack(anchor="w")
-        threshold_label.pack(anchor="w")
-        threshold_entry.pack(pady=5)
         # Show individual selection dropdown
-        individual_label.pack(anchor="w")
+        individual_label.pack(anchor="w") 
+        individuals_menu.pack(pady=5)
+        # Show hemoglobin type selection for paradigm_plot
+        haemo_type_label.pack(anchor="w")
+        haemo_type_menu.pack(pady=5)
         
         # Update to show only individual participants for paradigm_plot
         individuals_menu["values"] = [getattr(ind, "name", f"Participant_{i+1}") 
@@ -149,11 +150,8 @@ def toggle_individual_menu(*args):
         # If "All Individuals" was previously selected, change to first individual
         if Individual_var.get() == "All Individuals" and individuals_menu["values"]:
             Individual_var.set(individuals_menu["values"][0])
-            
-        individuals_menu.pack(pady=5)
-        # Show hemoglobin type selection for paradigm_plot
-        haemo_type_label.pack(anchor="w")
-        haemo_type_menu.pack(pady=5)
+        
+        
         # Show channel selection
         channel_selection_label.pack(anchor="w")
         channel_frame.pack(fill="x", expand=True)
@@ -189,7 +187,7 @@ def toggle_individual_menu(*args):
 # Updated run_analysis function
 def run_analysis():
     """Run data processing and visualization based on selected plot type."""
-    global previous_epoch_type, all_epochs, data_name, all_data, freq, data_types, all_individuals, first_data_load
+    global previous_epoch_type, all_epochs, data_name, all_data, freq, data_types, all_individuals, first_data_load, previous_short_channel_correction, previous_negative_correlation_enhancement, previous_interpolate_bad_channels
     settings["data_set"] = dataset_var.get()
     settings["epoch_type"] = epoch_type_var.get()
     settings["combine_strategy"] = combine_strategy_var.get()
@@ -201,8 +199,12 @@ def run_analysis():
     settings["plot_type"] = plot_type_var.get()
     # Determine if data needs to be reloaded
     reload_data = (
-        (settings["plot_type"] not in ["individual frequency plot", "paradigm_plot", "Epoch Plot", "Standard fNIRS Response Plot"])
-        or settings["epoch_type"] != previous_epoch_type or first_data_load == True # Reload only if epoch type changed
+        (settings["plot_type"] not in ["individual frequency plot","paradigm_plot", "Epoch Plot", "Standard fNIRS Response Plot"])
+        or settings["epoch_type"] != previous_epoch_type # Reload only if epoch type changed
+        or first_data_load == True
+        or settings["short_channel_correction"] != previous_short_channel_correction
+        or settings["negative_correlation_enhancement"] != previous_negative_correlation_enhancement
+        or settings["interpolate_bad_channels"] != previous_interpolate_bad_channels
     )
     if reload_data:
         all_epochs, data_name, all_data, freq, data_types, all_individuals = load_data(
@@ -213,6 +215,9 @@ def run_analysis():
             individuals=settings["individual"]
         )
         previous_epoch_type = settings["epoch_type"]  # Update stored epoch type
+        previous_short_channel_correction = settings["short_channel_correction"] # Update chosen short_channel_correction_setting
+        previous_negative_correlation_enhancement = settings["negative_correlation_enhancement"]
+        previous_interpolate_bad_channels = settings["interpolate_bad_channels"]
         toggle_individual_menu()
     
     first_data_load = False
