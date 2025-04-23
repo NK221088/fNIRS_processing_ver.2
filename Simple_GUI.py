@@ -111,8 +111,22 @@ def toggle_individual_menu(*args):
         dataset2_menu.pack(pady=5)
         
     elif plot_type == "Standard fNIRS Response Plot":
+        # Show data processing settings
+        combine_strategy_label.pack(anchor="w")
+        combine_strategy_menu.pack(pady=5)
+        bad_channels_strategy_label.pack(anchor="w")
+        bad_channels_strategy_menu.pack(pady=5)
+        short_channel_correction_label.pack(anchor="w")
+        short_channel_correction_checkbox.pack(anchor="w")
+        negative_correlation_label.pack(anchor="w")
+        negative_correlation_checkbox.pack(anchor="w")
+        interpolate_bad_channels_label.pack(anchor="w")
+        interpolate_bad_channels_checkbox.pack(anchor="w")
+        threshold_label.pack(anchor="w")
+        threshold_entry.pack(pady=5)
+        # Show individual selection
         individual_selection_label.pack(anchor="w")
-        individual_selection_frame.pack(fill="x", expand=True)
+        individual_selection_frame.pack(fill="x", expand=False)
         # Show channel selection
         channel_selection_label.pack(anchor="w")
         channel_frame.pack(fill="x", expand=True)
@@ -128,6 +142,12 @@ def toggle_individual_menu(*args):
         # Show individual selection dropdown
         individual_label.pack(anchor="w")
         individuals_menu.pack(pady=5)
+        # Update to show only individual participants for paradigm_plot
+        individuals_menu["values"] = [getattr(ind, "name", f"Participant_{i+1}") 
+                                     for i, ind in enumerate(all_individuals)]
+        # If "All Individuals" was previously selected, change to first individual
+        if Individual_var.get() == "All Individuals" and individuals_menu["values"]:
+            Individual_var.set(individuals_menu["values"][0])
         
     elif plot_type == "paradigm_plot":
         # Show data processing settings
@@ -153,8 +173,9 @@ def toggle_individual_menu(*args):
         
         
         # Show channel selection
-        channel_selection_label.pack(anchor="w")
-        channel_frame.pack(fill="x", expand=True)
+        channel_selection_label.pack(anchor="w", pady=(10, 2))
+        channel_frame.pack(fill="both", expand=False, pady=(0, 10))
+
         # Populate the channel checkboxes
         populate_channels()
         
@@ -387,14 +408,19 @@ root = tk.Tk()
 root.title("fNIRS Data Analysis")
 root.geometry("800x600")
 
-# Left panel for settings
-left_frame = tk.Frame(root)
-left_frame.pack(side="left", padx=20, pady=20, fill="y")
+left_container = tk.Frame(root)
+left_container.pack(side="left", padx=20, pady=20, fill="y")
+
+top_left_frame = tk.Frame(left_container)
+top_left_frame.pack(side="top", fill="y", expand=True)
+
+bottom_left_frame = tk.Frame(left_container)
+bottom_left_frame.pack(side="bottom", fill="x")
 
 # Dataset selection
-tk.Label(left_frame, text="Select Dataset:", font=("Arial", 12)).pack(anchor="w")
+tk.Label(top_left_frame, text="Select Dataset:", font=("Arial", 12)).pack(anchor="w")
 dataset_var = tk.StringVar(value=settings["data_set"])
-dataset_menu = ttk.Combobox(left_frame, textvariable=dataset_var, values=[
+dataset_menu = ttk.Combobox(top_left_frame, textvariable=dataset_var, values=[
     "fNIrs_motor",
     "AudioSpeechNoise",
     "fNirs_motor_full_data",
@@ -417,16 +443,16 @@ dataset_menu["postcommand"] = adjust_menu_width
 dataset_menu.pack(pady=5)
 
 # Epoch type selection
-epoch_type_label = tk.Label(left_frame, text="Epoch Type:", font=("Arial", 12))  # Define the label as a variable
+epoch_type_label = tk.Label(top_left_frame, text="Epoch Type:", font=("Arial", 12))  # Define the label as a variable
 epoch_type_label.pack(anchor="w")  # Pack the label
 epoch_type_var = tk.StringVar()  # Define the StringVar for epoch type
-epoch_type_menu = ttk.Combobox(left_frame, textvariable=epoch_type_var)  # Create the combobox for epoch type
+epoch_type_menu = ttk.Combobox(top_left_frame, textvariable=epoch_type_var)  # Create the combobox for epoch type
 epoch_type_menu.pack(pady=5)  # Pack the combobox
 
 # Plot type selection
-tk.Label(left_frame, text="Select Plot Type:", font=("Arial", 12)).pack(anchor="w")
+tk.Label(top_left_frame, text="Select Plot Type:", font=("Arial", 12)).pack(anchor="w")
 plot_type_var = tk.StringVar(value=settings["plot_type"])
-plot_type_menu = ttk.Combobox(left_frame, textvariable=plot_type_var, values=[
+plot_type_menu = ttk.Combobox(top_left_frame, textvariable=plot_type_var, values=[
                                                                               "Epoch Plot",
                                                                               "Standard fNIRS Response Plot",
                                                                               "paradigm_plot",
@@ -437,69 +463,69 @@ plot_type_menu = ttk.Combobox(left_frame, textvariable=plot_type_var, values=[
 plot_type_menu.pack(pady=5)
 
 # Add hemoglobin type selection (similar to other dropdowns)
-haemo_type_label = tk.Label(left_frame, text="Hemoglobin Type:", font=("Arial", 12))
+haemo_type_label = tk.Label(top_left_frame, text="Hemoglobin Type:", font=("Arial", 12))
 haemo_type_var = tk.StringVar(value=settings["haemo_type"])
-haemo_type_menu = ttk.Combobox(left_frame, textvariable=haemo_type_var, values=["hbo", "hbr"])
+haemo_type_menu = ttk.Combobox(top_left_frame, textvariable=haemo_type_var, values=["hbo", "hbr"])
 haemo_type_label.pack_forget()
 haemo_type_menu.pack_forget()
 
 # Individual selection (Initially hidden)
-individual_label = tk.Label(left_frame, text="Select Individual:", font=("Arial", 12))
+individual_label = tk.Label(top_left_frame, text="Select Individual:", font=("Arial", 12))
 Individual_var = tk.StringVar()
-individuals_menu = ttk.Combobox(left_frame, textvariable=Individual_var)
+individuals_menu = ttk.Combobox(top_left_frame, textvariable=Individual_var)
 individual_label.pack_forget()
 individuals_menu.pack_forget()
 
 # Combine strategy selection
-combine_strategy_label = tk.Label(left_frame, text="Combine Strategy:", font=("Arial", 12))
+combine_strategy_label = tk.Label(top_left_frame, text="Combine Strategy:", font=("Arial", 12))
 combine_strategy_label.pack(anchor="w")
 combine_strategy_var = tk.StringVar(value=settings["combine_strategy"])
-combine_strategy_menu = ttk.Combobox(left_frame, textvariable=combine_strategy_var, values=["mean", "median", "std", "gfp"])
+combine_strategy_menu = ttk.Combobox(top_left_frame, textvariable=combine_strategy_var, values=["mean", "median", "std", "gfp"])
 combine_strategy_menu.pack(pady=5)
 
 # Bad Channels Strategy
-bad_channels_strategy_label = tk.Label(left_frame, text="Bad Channels Strategy:", font=("Arial", 12))
+bad_channels_strategy_label = tk.Label(top_left_frame, text="Bad Channels Strategy:", font=("Arial", 12))
 bad_channels_strategy_label.pack(anchor="w")
 bad_channels_strategy_var = tk.StringVar(value=settings["bad_channels_strategy"])
-bad_channels_strategy_menu = ttk.Combobox(left_frame, textvariable=bad_channels_strategy_var, values=["all", "delete", "threshold"])
+bad_channels_strategy_menu = ttk.Combobox(top_left_frame, textvariable=bad_channels_strategy_var, values=["all", "delete", "threshold"])
 bad_channels_strategy_menu.pack(pady=5)
 
 # Short channel correction
-short_channel_correction_label = tk.Label(left_frame, text="Short Channel Correction:", font=("Arial", 12))
+short_channel_correction_label = tk.Label(top_left_frame, text="Short Channel Correction:", font=("Arial", 12))
 short_channel_correction_label.pack(anchor="w")
 short_channel_correction_var = tk.BooleanVar(value=settings["short_channel_correction"])
-short_channel_correction_checkbox = tk.Checkbutton(left_frame, text="Enable", variable=short_channel_correction_var)
+short_channel_correction_checkbox = tk.Checkbutton(top_left_frame, text="Enable", variable=short_channel_correction_var)
 short_channel_correction_checkbox.pack(anchor="w")
 
 # Negative correlation enhancement
-negative_correlation_label = tk.Label(left_frame, text="Negative Correlation Enhancement:", font=("Arial", 12))
+negative_correlation_label = tk.Label(top_left_frame, text="Negative Correlation Enhancement:", font=("Arial", 12))
 negative_correlation_label.pack(anchor="w")
 negative_correlation_enhancement_var = tk.BooleanVar(value=settings["negative_correlation_enhancement"])
-negative_correlation_checkbox = tk.Checkbutton(left_frame, text="Enable", variable=negative_correlation_enhancement_var)
+negative_correlation_checkbox = tk.Checkbutton(top_left_frame, text="Enable", variable=negative_correlation_enhancement_var)
 negative_correlation_checkbox.pack(anchor="w")
 
 # Interpolate bad channels
-interpolate_bad_channels_label = tk.Label(left_frame, text="Interpolate Bad Channels:", font=("Arial", 12))
+interpolate_bad_channels_label = tk.Label(top_left_frame, text="Interpolate Bad Channels:", font=("Arial", 12))
 interpolate_bad_channels_label.pack(anchor="w")
 interpolate_bad_channels_var = tk.BooleanVar(value=settings["interpolate_bad_channels"])
-interpolate_bad_channels_checkbox = tk.Checkbutton(left_frame, text="Enable", variable=interpolate_bad_channels_var)
+interpolate_bad_channels_checkbox = tk.Checkbutton(top_left_frame, text="Enable", variable=interpolate_bad_channels_var)
 interpolate_bad_channels_checkbox.pack(anchor="w")
 
 # Threshold selection
-threshold_label = tk.Label(left_frame, text="Threshold:", font=("Arial", 12))
+threshold_label = tk.Label(top_left_frame, text="Threshold:", font=("Arial", 12))
 threshold_label.pack(anchor="w")
 threshold_var = tk.StringVar(value=str(settings["threshold"]))
-threshold_entry = tk.Entry(left_frame, textvariable=threshold_var)
+threshold_entry = tk.Entry(top_left_frame, textvariable=threshold_var)
 threshold_entry.pack(pady=5)
 
 # Channel selection
-channel_selection_label = tk.Label(left_frame, text="Select Channels:", font=("Arial", 12))
+channel_selection_label = tk.Label(top_left_frame, text="Select Channels:", font=("Arial", 12))
 channel_selection_label.pack(anchor="w")
 
 # Create a frame to hold the channel checkboxes with a scrollbar
-channel_frame = tk.Frame(left_frame)
-channel_frame.pack(fill="x", expand=True)
-channel_canvas = tk.Canvas(channel_frame)
+channel_frame = tk.Frame(top_left_frame)
+channel_frame.pack(fill="both", expand=False)
+channel_canvas = tk.Canvas(channel_frame, height=150)  # Set as needed
 channel_scrollbar = tk.Scrollbar(channel_frame, orient="vertical", command=channel_canvas.yview)
 channel_scrollbar_horizontal = tk.Scrollbar(channel_frame, orient="horizontal", command=channel_canvas.xview)
 channel_container = tk.Frame(channel_canvas)
@@ -510,13 +536,13 @@ channel_canvas.configure(yscrollcommand=channel_scrollbar.set, xscrollcommand=ch
 channel_vars = {}
 
 # Individual selection checkboxes
-individual_selection_label = tk.Label(left_frame, text="Select Individuals:", font=("Arial", 12))
+individual_selection_label = tk.Label(top_left_frame, text="Select Individuals:", font=("Arial", 12))
 individual_selection_label.pack(anchor="w")
 
 # Create a frame to hold the individual checkboxes with a scrollbar
-individual_selection_frame = tk.Frame(left_frame)
-individual_selection_frame.pack(fill="x", expand=True)
-individual_canvas = tk.Canvas(individual_selection_frame)
+individual_selection_frame = tk.Frame(top_left_frame)
+individual_selection_frame.pack(fill="x", expand=False)
+individual_canvas = tk.Canvas(individual_selection_frame, height=100)
 individual_scrollbar = tk.Scrollbar(individual_selection_frame, orient="vertical", command=individual_canvas.yview)
 individual_scrollbar_horizontal = tk.Scrollbar(individual_selection_frame, orient="horizontal", command=individual_canvas.xview)
 individual_container = tk.Frame(individual_canvas)
@@ -587,6 +613,37 @@ def populate_channels():
                     cb.grid(row=i // 3, column=i % 3, sticky="w")
             except Exception as e:
                 print(f"Error accessing channels for {selected_individual_name}: {e}")
+    elif current_plot_type == "Standard fNIRS Response Plot":
+        # Show channel selection
+        channel_selection_label.pack(anchor="w")
+        channel_frame.pack(fill="x", expand=False)
+
+        # Clear previous checkboxes
+        for widget in channel_container.winfo_children():
+            widget.destroy()
+        channel_vars.clear()
+
+        # Get selected individuals
+        selected_names = [name for name, var in individual_selection_vars.items() if var.get()]
+        selected_channels = set()
+
+        for name in selected_names:
+            individual = next((ind for ind in all_individuals if getattr(ind, "name", "") == name), None)
+            if individual and hasattr(individual, "epochs"):
+                selected_channels.update(individual.epochs.ch_names)  # Includes bads
+
+        # Populate checkboxes for all found channels
+        for i, ch in enumerate(sorted(selected_channels)):
+            is_checked = (i == 0)  # Optional: first channel pre-checked
+            channel_vars[ch] = tk.BooleanVar(value=is_checked)
+            cb = tk.Checkbutton(channel_container, text=ch, variable=channel_vars[ch])
+            cb.grid(row=i // 3, column=i % 3, sticky="w")
+    
+    channel_container.update_idletasks()
+    channel_canvas.config(scrollregion=channel_canvas.bbox("all"))
+
+
+
 
 def update_channels_on_haemo_type_change(*args):
     """Update channel selections when hemoglobin type changes."""
@@ -670,14 +727,14 @@ individual_scrollbar.pack(side="right", fill="y")
 individual_scrollbar_horizontal.pack(side="bottom", fill="x")
 
 # Area of Interest selection for Statistical Analysis
-area_of_interest_label = tk.Label(left_frame, text="Area of Interest:", font=("Arial", 12))
+area_of_interest_label = tk.Label(top_left_frame, text="Area of Interest:", font=("Arial", 12))
 area_of_interest_var = tk.StringVar(value="SMA")
-area_of_interest_menu = ttk.Combobox(left_frame, textvariable=area_of_interest_var, 
+area_of_interest_menu = ttk.Combobox(top_left_frame, textvariable=area_of_interest_var, 
                                      values=["SMA", "Tongue_all", "Tongue_right", "Tongue_left", 
                                              "Hand_all", "Hand_right", "Hand_left"])
 # Time window for Statistical Analysis
-time_window_label = tk.Label(left_frame, text="Time Window (seconds):", font=("Arial", 12))
-time_window_frame = tk.Frame(left_frame)
+time_window_label = tk.Label(top_left_frame, text="Time Window (seconds):", font=("Arial", 12))
+time_window_frame = tk.Frame(top_left_frame)
 start_time_label = tk.Label(time_window_frame, text="Start:")
 start_time_var = tk.StringVar(value="3")
 start_time_entry = tk.Entry(time_window_frame, textvariable=start_time_var, width=5)
@@ -694,9 +751,9 @@ time_window_label.pack_forget()  # Initially hidden
 time_window_frame.pack_forget()  # Initially hidden
 
 # Dataset comparison for Statistical Analysis
-dataset1_label = tk.Label(left_frame, text="Dataset 1:", font=("Arial", 12))
+dataset1_label = tk.Label(top_left_frame, text="Dataset 1:", font=("Arial", 12))
 dataset1_var = tk.StringVar(value=settings["data_set"])
-dataset1_menu = ttk.Combobox(left_frame, textvariable=dataset1_var, values=[
+dataset1_menu = ttk.Combobox(top_left_frame, textvariable=dataset1_var, values=[
     "fNIrs_motor",
     "AudioSpeechNoise",
     "fNirs_motor_full_data",
@@ -719,9 +776,9 @@ def adjust_dataset1_menu_width():
     
 dataset1_menu["postcommand"] = adjust_dataset1_menu_width
 
-dataset2_label = tk.Label(left_frame, text="Dataset 2:", font=("Arial", 12))
+dataset2_label = tk.Label(top_left_frame, text="Dataset 2:", font=("Arial", 12))
 dataset2_var = tk.StringVar(value="fNIrs_motor")
-dataset2_menu = ttk.Combobox(left_frame, textvariable=dataset2_var, values=[
+dataset2_menu = ttk.Combobox(top_left_frame, textvariable=dataset2_var, values=[
     "fNIrs_motor",
     "AudioSpeechNoise",
     "fNirs_motor_full_data",
@@ -742,16 +799,17 @@ dataset2_menu.pack_forget()   # Initially hidden
 def adjust_dataset2_menu_width():
     dataset2_menu["width"] = max(len(item) for item in dataset2_menu["values"])
     
+def _on_mousewheel(event):
+    channel_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+channel_canvas.bind_all("<MouseWheel>", _on_mousewheel)  # For Windows and Mac
+
 dataset2_menu["postcommand"] = adjust_dataset2_menu_width
 
-# Run Analysis button
-spacer_frame = tk.Frame(left_frame)
-spacer_frame.pack(fill="both", expand=True)
+run_button = tk.Button(bottom_left_frame, text="Run Analysis", command=run_analysis, bg="green", fg="white", 
+                       font=("Arial", 12, "bold"), padx=20, pady=10)
+run_button.pack(pady=20, padx=10, fill="x")
 
-# Create the run button after the spacer
-run_button = tk.Button(left_frame, text="Run Analysis", command=run_analysis, bg="green", fg="white", 
-                      font=("Arial", 12, "bold"), padx=20, pady=10)
-run_button.pack(pady=20, padx=10, side="bottom", fill="x")
 
 # Right panel for displaying the plot
 right_frame = tk.Frame(root)
