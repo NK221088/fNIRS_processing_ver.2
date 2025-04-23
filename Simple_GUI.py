@@ -22,12 +22,10 @@ settings = {
     "individual": True,
     "haemo_type": "hbo"  # New setting for hemoglobin type
 }
+
 first_data_load = True
 all_individuals = []
 start_up = True
-
-
-
 # Track previous selections
 previous_dataset = settings["data_set"]
 previous_epoch_type = settings["epoch_type"]
@@ -35,7 +33,6 @@ previous_epoch_type = settings["epoch_type"]
 def update_epoch_types(*args):
     """Load data and update epoch type dropdown based on dataset selection."""
     global previous_dataset, all_individuals, all_epochs, data_name, all_data, freq, data_types, start_up, first_data_load
-
     dataset = dataset_var.get()
     
     # Only reload data if dataset is changed or first time
@@ -48,17 +45,14 @@ def update_epoch_types(*args):
                 interpolate_bad_channels=settings["interpolate_bad_channels"],
                 individuals=settings["individual"]
             )
-
             # Update dropdown options
             epoch_type_menu["values"] = data_types
             if data_types:
                 epoch_type_var.set(data_types[0])  # Select first available type
-
             # Update individuals dropdown
             individuals_menu["values"] = ["All Individuals"] + [getattr(ind, "name", f"Participant_{i+1}") 
                                                            for i, ind in enumerate(all_individuals)]
             Individual_var.set("All Individuals")  # Default to "All Individuals"
-
             previous_dataset = dataset  # Update stored dataset
             start_up = False
             first_data_load = False
@@ -114,10 +108,6 @@ def toggle_individual_menu(*args):
         dataset2_menu.pack(pady=5)
         
     elif plot_type == "Standard fNIRS Response Plot":
-        # Show epoch type selection
-        epoch_type_label.pack(anchor="w")
-        epoch_type_menu.pack(pady=5)
-        # Show individual checkboxes
         individual_selection_label.pack(anchor="w")
         individual_selection_frame.pack(fill="x", expand=True)
         # Show channel selection
@@ -172,19 +162,11 @@ def toggle_individual_menu(*args):
         
     # Force the UI to update
     root.update_idletasks()
-    
-
-
-import tkinter as tk
-from tkinter import ttk
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # Updated run_analysis function
 def run_analysis():
     """Run data processing and visualization based on selected plot type."""
-
     global previous_epoch_type, all_epochs, data_name, all_data, freq, data_types, all_individuals, first_data_load
-
     settings["data_set"] = dataset_var.get()
     settings["epoch_type"] = epoch_type_var.get()
     settings["combine_strategy"] = combine_strategy_var.get()
@@ -194,13 +176,11 @@ def run_analysis():
     settings["bad_channels_strategy"] = bad_channels_strategy_var.get()
     settings["threshold"] = int(threshold_var.get())
     settings["plot_type"] = plot_type_var.get()
-
     # Determine if data needs to be reloaded
     reload_data = (
         (settings["plot_type"] not in ["individual frequency plot", "paradigm_plot", "Epoch Plot", "Standard fNIRS Response Plot"])
-        or settings["epoch_type"] != previous_epoch_type  or first_data_load == True # Reload only if epoch type changed
+        or settings["epoch_type"] != previous_epoch_type or first_data_load == True # Reload only if epoch type changed
     )
-
     if reload_data:
         all_epochs, data_name, all_data, freq, data_types, all_individuals = load_data(
             data_set=settings["data_set"],
@@ -213,20 +193,16 @@ def run_analysis():
         toggle_individual_menu()
     
     first_data_load = False
-
     # Clear previous plots
     for widget in right_frame.winfo_children():
         widget.destroy()
-
     # Modify channel selection for plotting
     selected_channels = [channel for channel, var in channel_vars.items() if var.get()]
     
     # If ALL channels are selected, set picks to None to let MNE handle channel types
     picks = selected_channels if len(selected_channels) < len(channel_vars) else "all"
-
     # Add hemoglobin type to settings
     settings["haemo_type"] = haemo_type_var.get()
-
     # Run the selected plot function
     if settings["plot_type"] == "Statistical Analysis":
         # Get statistical analysis parameters
@@ -261,7 +237,6 @@ def run_analysis():
                     else:
                         flattened_figures.append(fig)
                 figures = flattened_figures
-
             # Create a tab for each figure
             for i, fig in enumerate(figures):
                 # Create a new tab
@@ -304,7 +279,6 @@ def run_analysis():
                         save=False, bad_channels_strategy=settings["bad_channels_strategy"],
                         threshold=settings["threshold"], data_set=data_name
                     )]
-
         elif settings["plot_type"] == "Standard fNIRS Response Plot":
             selected_individuals = [ind_name for ind_name, var in individual_selection_vars.items() if var.get()]
             selected_all_epochs = []
@@ -320,25 +294,23 @@ def run_analysis():
             figures = [standard_fNIRS_response_plot(selected_all_epochs, data_types, bad_channels_strategy=settings["bad_channels_strategy"],
                                                     save=False, combine_strategy=settings["combine_strategy"],
                                                     threshold=settings["threshold"], data_set=data_name, picks_=picks)]
-
         elif settings["plot_type"] == "paradigm_plot":
             selected_individual = Individual_var.get()
             
-            # Use the global all_individuals list
-            individual_index = int(selected_individual.strip("Participant_")) - 1
-            
-            # Pass the hemoglobin type to the paradigm_plot function
-            index = next((i for i, ind in enumerate(all_individuals) if ind.get_name() == selected_individual), -1)
-
-            figures = [paradigm_plot(
-                all_individuals[index], 
-                picks_=picks, 
-                haemo_type=settings["haemo_type"]
-            )]
-
+            # Find the individual by name
+            index = next((i for i, ind in enumerate(all_individuals) if getattr(ind, "name", f"Participant_{i+1}") == selected_individual), -1)
+            if index >= 0:
+                figures = [paradigm_plot(
+                    all_individuals[index], 
+                    picks_=picks, 
+                    haemo_type=settings["haemo_type"]
+                )]
         elif settings["plot_type"] == "individual frequency plot":
             selected_individual = Individual_var.get()
-            figures = [individual_frequency_plot(all_individuals[int(selected_individual.strip("Participant_"))-1])]
+            # Find the individual by name
+            index = next((i for i, ind in enumerate(all_individuals) if getattr(ind, "name", f"Participant_{i+1}") == selected_individual), -1)
+            if index >= 0:
+                figures = [individual_frequency_plot(all_individuals[index])]
         
         # Ensure figures is always a list
         if figures:
@@ -352,12 +324,16 @@ def run_analysis():
                     else:
                         flattened_figures.append(fig)
                 figures = flattened_figures
-
             # Display each figure in the right_frame (original method)
             for fig in figures:
                 canvas = FigureCanvasTkAgg(fig, master=right_frame)
                 canvas.draw()
                 canvas.get_tk_widget().pack(fill="both", expand=True, pady=5)
+
+# Function to update both channels and individual checkboxes
+def update_ui_elements(*args):
+    populate_channels()
+    populate_individuals()
 
 # Create GUI window
 root = tk.Tk()
@@ -391,10 +367,7 @@ def adjust_menu_width():
     dataset_menu["width"] = max(len(item) for item in dataset_menu["values"])  # Adjust as needed
     
 dataset_menu["postcommand"] = adjust_menu_width
-
-
 dataset_menu.pack(pady=5)
-dataset_var.trace_add("write", lambda *args: (update_epoch_types(), toggle_individual_menu()))# dataset_var.trace_add("write", lambda *args: (update_epoch_types(), toggle_individual_menu()))
 
 # Epoch type selection
 epoch_type_label = tk.Label(left_frame, text="Epoch Type:", font=("Arial", 12))  # Define the label as a variable
@@ -407,15 +380,14 @@ epoch_type_menu.pack(pady=5)  # Pack the combobox
 tk.Label(left_frame, text="Select Plot Type:", font=("Arial", 12)).pack(anchor="w")
 plot_type_var = tk.StringVar(value=settings["plot_type"])
 plot_type_menu = ttk.Combobox(left_frame, textvariable=plot_type_var, values=[
-                                                                                "Epoch Plot",
-                                                                                "Standard fNIRS Response Plot",
-                                                                                "paradigm_plot",
-                                                                                "individual frequency plot",
-                                                                                "Statistical Analysis"
-                                                                                ])
+                                                                              "Epoch Plot",
+                                                                              "Standard fNIRS Response Plot",
+                                                                              "paradigm_plot",
+                                                                              "individual frequency plot",
+                                                                              "Statistical Analysis"
+                                                                              ])
 # Call the function that updates the UI based on the selected plot type
 plot_type_menu.pack(pady=5)
-plot_type_var.trace_add("write", toggle_individual_menu)
 
 # Add hemoglobin type selection (similar to other dropdowns)
 haemo_type_label = tk.Label(left_frame, text="Hemoglobin Type:", font=("Arial", 12))
@@ -480,16 +452,12 @@ channel_selection_label.pack(anchor="w")
 # Create a frame to hold the channel checkboxes with a scrollbar
 channel_frame = tk.Frame(left_frame)
 channel_frame.pack(fill="x", expand=True)
-
 channel_canvas = tk.Canvas(channel_frame)
 channel_scrollbar = tk.Scrollbar(channel_frame, orient="vertical", command=channel_canvas.yview)
 channel_scrollbar_horizontal = tk.Scrollbar(channel_frame, orient="horizontal", command=channel_canvas.xview)
-
 channel_container = tk.Frame(channel_canvas)
-
 channel_canvas.create_window((0, 0), window=channel_container, anchor="nw")
 channel_canvas.configure(yscrollcommand=channel_scrollbar.set, xscrollcommand=channel_scrollbar_horizontal.set)
-
 
 # Variable to track channel selections
 channel_vars = {}
@@ -501,13 +469,10 @@ individual_selection_label.pack(anchor="w")
 # Create a frame to hold the individual checkboxes with a scrollbar
 individual_selection_frame = tk.Frame(left_frame)
 individual_selection_frame.pack(fill="x", expand=True)
-
 individual_canvas = tk.Canvas(individual_selection_frame)
 individual_scrollbar = tk.Scrollbar(individual_selection_frame, orient="vertical", command=individual_canvas.yview)
 individual_scrollbar_horizontal = tk.Scrollbar(individual_selection_frame, orient="horizontal", command=individual_canvas.xview)
-
 individual_container = tk.Frame(individual_canvas)
-
 individual_canvas.create_window((0, 0), window=individual_container, anchor="nw")
 individual_canvas.configure(yscrollcommand=individual_scrollbar.set, xscrollcommand=individual_scrollbar_horizontal.set)
 
@@ -515,75 +480,76 @@ individual_canvas.configure(yscrollcommand=individual_scrollbar.set, xscrollcomm
 individual_selection_vars = {}
 
 def populate_channels():
-    # Don't show channel selection for certain plot types
-    if plot_type_var.get() not in ["paradigm_plot", "Standard fNIRS Response Plot"]:
-        channel_selection_label.pack_forget()
-        channel_frame.pack_forget()
-        return
-        
     # Clear existing checkboxes
     for widget in channel_container.winfo_children():
         widget.destroy()
 
     # Reset channel variables
     channel_vars.clear()
-    
-    # Show channel selection
+
+    # Determine which individual's channels to display
+    selected_individual_name = Individual_var.get()
+
+    # Determine if any individual checkboxes are selected
+    any_checked = any(var.get() for var in individual_selection_vars.values())
+
+    # Hide channel selection only if "All Individuals" is selected AND no checkboxes are selected
+    if selected_individual_name == "All Individuals" and not any_checked:
+        channel_selection_label.pack_forget()
+        channel_frame.pack_forget()
+        return
+
+
+    # Show channel selection if an individual is selected
     channel_selection_label.pack(anchor="w")
     channel_frame.pack(fill="x", expand=True)
 
-    # Get available channels based on plot type and selections
-    selected_individual_name = Individual_var.get()
-    
     # Find the selected individual
-    if not all_individuals:
-        return  # Exit if no data is loaded yet
-        
-    if selected_individual_name == "All Individuals" and all_individuals:
-        # Use the first individual as reference for channels
-        selected_individual = all_individuals[0]
-    else:
-        selected_individual = next((ind for ind in all_individuals if getattr(ind, "name", "") == selected_individual_name), 
-                                  all_individuals[0] if all_individuals else None)
+    selected_individual = next((ind for ind in all_individuals if ind.name == selected_individual_name), None)
 
     # Populate channel checkboxes if an individual is found
     if selected_individual and hasattr(selected_individual, 'epochs'):
-        try:
-            # Get channels for the selected epoch type
-            current_epoch_type = epoch_type_var.get()
-            if current_epoch_type in selected_individual.epochs:
-                epochs = selected_individual.epochs[current_epoch_type]
-                
-                # Filter channels based on plot type
-                if plot_type_var.get() == "paradigm_plot":
-                    current_haemo_type = haemo_type_var.get()
-                    channels = [ch for ch in epochs.ch_names if current_haemo_type in ch.lower()]
-                elif plot_type_var.get() == "Standard fNIRS Response Plot":
-                    channels = list(set([s.removesuffix(" hbo").removesuffix(" hbr") for s in epochs.ch_names]))
-                else:
-                    channels = epochs.ch_names
-                    
-                # Create checkboxes for filtered channels
-                for i, channel in enumerate(channels):
-                    is_checked = (i == 0)
-                    channel_vars[channel] = tk.BooleanVar(value=is_checked)
-                    cb = tk.Checkbutton(channel_container, text=channel, variable=channel_vars[channel])
-                    cb.grid(row=i // 3, column=i % 3, sticky="w")
-        except Exception as e:
-            print(f"Error populating channels: {e}")
+        # Get channels for the selected epoch type
+        epochs = selected_individual.epochs[epoch_type_var.get()]
+        
+        # If paradigm plot is active, filter channels by hemoglobin type
+        if plot_type_var.get() == "paradigm_plot":
+            # Get the current hemoglobin type
+            current_haemo_type = haemo_type_var.get()
+            
+            # Filter channels to only include those of the selected hemoglobin type
+            channels = [
+                channel for channel in epochs.ch_names 
+                if current_haemo_type in channel.lower()
+            ]
+        else:
+            # For other plot types, use all channels
+            channels = epochs.ch_names
 
-    # Update scroll region
-    channel_container.update_idletasks()
-    channel_canvas.config(scrollregion=channel_canvas.bbox("all"))
+        
+        if plot_type_var.get() == "Standard fNIRS Response Plot":
+            channels = list(set([s.removesuffix(" hbo").removesuffix(" hbr") for s in channels]))
+        
+        # Create checkboxes for filtered channels
+        for i, channel in enumerate(channels):
+            is_checked = (i == 0)
+
+            channel_vars[channel] = tk.BooleanVar(value=is_checked)
+            cb = tk.Checkbutton(channel_container, text=channel, variable=channel_vars[channel])
+            cb.grid(row=i // 3, column=i % 3, sticky="w")
 
 # Add a trace to hemoglobin type to update channels when it changes
 def update_channels_on_haemo_type_change(*args):
     if plot_type_var.get() == "paradigm_plot":
         populate_channels()
-
 haemo_type_var.trace_add("write", update_channels_on_haemo_type_change)
 
+def attach_checkbox_callbacks():
+    for var in individual_selection_vars.values():
+        var.trace_add("write", lambda *args: populate_channels())
+        
 def populate_individuals():
+    """Populate the individual selection checkboxes regardless of dropdown selection."""
     # Store current selections before clearing
     current_selections = {name: var.get() for name, var in individual_selection_vars.items()}
     
@@ -591,48 +557,43 @@ def populate_individuals():
     for widget in individual_container.winfo_children():
         widget.destroy()
     
-    # Show individual selection
-    individual_selection_label.pack(anchor="w")
-    individual_selection_frame.pack(fill="x", expand=True)
-
-    # Create checkboxes for individuals
-    for i, individual in enumerate(all_individuals):
-        individual_name = getattr(individual, "name", f"Participant {i+1}")
-        
-        # Use existing selection if available, otherwise default to first only
-        if individual_name in current_selections:
-            is_checked = current_selections[individual_name]
-        else:
-            is_checked = (i == 0)  # Default: only first checked
+    # Add checkboxes for each individual
+    if all_individuals:
+        for i, individual in enumerate(all_individuals):
+            individual_name = getattr(individual, "name", f"Participant_{i+1}")
             
-        individual_selection_vars[individual_name] = tk.BooleanVar(value=is_checked)
-        cb = tk.Checkbutton(individual_container, text=individual_name, variable=individual_selection_vars[individual_name])
-        cb.grid(row=i // 3, column=i % 3, sticky="w")
-
+            # Use existing selection if available, otherwise default to first only
+            if individual_name in current_selections:
+                is_checked = current_selections[individual_name]
+            else:
+                is_checked = (i == 0)  # Default: only first checked
+                
+            individual_selection_vars[individual_name] = tk.BooleanVar(value=is_checked)
+            cb = tk.Checkbutton(individual_container, text=individual_name, variable=individual_selection_vars[individual_name])
+            cb.grid(row=i // 3, column=i % 3, sticky="w")
     # Update scroll region
     individual_container.update_idletasks()
     individual_canvas.config(scrollregion=individual_canvas.bbox("all"))
-
-# Modify the existing traces to prevent multiple updates
-def combined_update(*args):
-    # Remove existing traces to prevent multiple calls
-    Individual_var.trace_remove("write", update_traces[0])
     
-    # Perform updates
-    update_epoch_types()
-    toggle_individual_menu()
-    populate_channels()
+    attach_checkbox_callbacks()
 
-    # Add hemoglobin type visibility check
-    if plot_type_var.get() != "paradigm_plot":
-        # Hide hemoglobin type selection
-        haemo_type_label.pack_forget()
-        haemo_type_menu.pack_forget()
-
-# Store the trace ID to allow removal
-update_traces = []
-trace_id = Individual_var.trace_add("write", combined_update)
-update_traces.append(trace_id)
+# Define setup_ui_callbacks function
+def setup_ui_callbacks():
+    # Clear any existing traces
+    for trace_name in ['write']:
+        try:
+            dataset_var.trace_remove(trace_name, None)
+            plot_type_var.trace_remove(trace_name, None)
+            Individual_var.trace_remove(trace_name, None)
+            haemo_type_var.trace_remove(trace_name, None)
+        except:
+            pass
+    
+    # Set up the main callbacks in the correct order
+    dataset_var.trace_add("write", lambda *args: (update_epoch_types(), toggle_individual_menu()))
+    plot_type_var.trace_add("write",  lambda *args: (toggle_individual_menu(), populate_channels()))
+    Individual_var.trace_add("write", populate_channels)  # Only update channels based on selection
+    haemo_type_var.trace_add("write", populate_channels)
 
 # Add trace to Individual_var to update channels when individual changes
 Individual_var.trace_add("write", lambda *args: populate_channels())
@@ -641,16 +602,6 @@ Individual_var.trace_add("write", lambda *args: populate_channels())
 channel_canvas.pack(side="left", fill="both", expand=True)
 channel_scrollbar.pack(side="right", fill="y")
 channel_scrollbar_horizontal.pack(side="bottom", fill="x")
-
-# Add this to update channels when dataset changes
-def update_channel_selection(*args):
-    populate_channels()
-
-# Trace the dataset variable to update channel selection
-dataset_var.trace_add("write", update_channel_selection)
-
-# Initial population
-populate_channels()
 
 # Pack the individual scrollable frame
 individual_canvas.pack(side="left", fill="both", expand=True)
@@ -663,9 +614,6 @@ area_of_interest_var = tk.StringVar(value="SMA")
 area_of_interest_menu = ttk.Combobox(left_frame, textvariable=area_of_interest_var, 
                                      values=["SMA", "Tongue_all", "Tongue_right", "Tongue_left", 
                                              "Hand_all", "Hand_right", "Hand_left"])
-area_of_interest_label.pack_forget()  # Initially hidden
-area_of_interest_menu.pack_forget()   # Initially hidden
-
 # Time window for Statistical Analysis
 time_window_label = tk.Label(left_frame, text="Time Window (seconds):", font=("Arial", 12))
 time_window_frame = tk.Frame(left_frame)
@@ -747,24 +695,6 @@ right_frame.pack(side="right", padx=20, pady=20, expand=True, fill="both")
 Individual_var.trace_add("write", lambda *args: populate_individuals())
 # Initial population of individuals
 populate_individuals()
-
-# Replace your combined_update function and update_traces approach with this:
-def setup_ui_callbacks():
-    # Clear any existing traces
-    for trace_name in ['write']:
-        try:
-            dataset_var.trace_remove(trace_name, None)
-            plot_type_var.trace_remove(trace_name, None)
-            Individual_var.trace_remove(trace_name, None)
-            haemo_type_var.trace_remove(trace_name, None)
-        except:
-            pass
-    
-    # Set up the main callbacks in the correct order
-    dataset_var.trace_add("write", update_epoch_types)
-    plot_type_var.trace_add("write", toggle_individual_menu)
-    Individual_var.trace_add("write", populate_channels)
-    haemo_type_var.trace_add("write", populate_channels)
 
 # Call this function at the end of your initialization code
 setup_ui_callbacks()
