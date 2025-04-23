@@ -50,6 +50,7 @@ def update_epoch_types(*args):
             if data_types:
                 epoch_type_var.set(data_types[0])  # Select first available type
             # Update individuals dropdown
+            # This is where we'll modify for paradigm_plot
             individuals_menu["values"] = ["All Individuals"] + [getattr(ind, "name", f"Participant_{i+1}") 
                                                            for i, ind in enumerate(all_individuals)]
             Individual_var.set("All Individuals")  # Default to "All Individuals"
@@ -63,7 +64,6 @@ def update_epoch_types(*args):
         except Exception as e:
             print(f"Error loading data: {e}")
 
-# Replace your toggle_individual_menu function with this improved version
 def toggle_individual_menu(*args):
     """Show or hide settings based on plot type."""
     plot_type = plot_type_var.get()
@@ -127,12 +127,33 @@ def toggle_individual_menu(*args):
         individuals_menu.pack(pady=5)
         
     elif plot_type == "paradigm_plot":
-        # Show hemoglobin type selection
-        haemo_type_label.pack(anchor="w")
-        haemo_type_menu.pack(pady=5)
+        # Show data processing settings
+        combine_strategy_label.pack(anchor="w")
+        combine_strategy_menu.pack(pady=5)
+        bad_channels_strategy_label.pack(anchor="w")
+        bad_channels_strategy_menu.pack(pady=5)
+        short_channel_correction_label.pack(anchor="w")
+        short_channel_correction_checkbox.pack(anchor="w")
+        negative_correlation_label.pack(anchor="w")
+        negative_correlation_checkbox.pack(anchor="w")
+        interpolate_bad_channels_label.pack(anchor="w")
+        interpolate_bad_channels_checkbox.pack(anchor="w")
+        threshold_label.pack(anchor="w")
+        threshold_entry.pack(pady=5)
         # Show individual selection dropdown
         individual_label.pack(anchor="w")
+        
+        # Update to show only individual participants for paradigm_plot
+        individuals_menu["values"] = [getattr(ind, "name", f"Participant_{i+1}") 
+                                     for i, ind in enumerate(all_individuals)]
+        # If "All Individuals" was previously selected, change to first individual
+        if Individual_var.get() == "All Individuals" and individuals_menu["values"]:
+            Individual_var.set(individuals_menu["values"][0])
+            
         individuals_menu.pack(pady=5)
+        # Show hemoglobin type selection for paradigm_plot
+        haemo_type_label.pack(anchor="w")
+        haemo_type_menu.pack(pady=5)
         # Show channel selection
         channel_selection_label.pack(anchor="w")
         channel_frame.pack(fill="x", expand=True)
@@ -143,8 +164,10 @@ def toggle_individual_menu(*args):
         # Show epoch type selection
         epoch_type_label.pack(anchor="w")
         epoch_type_menu.pack(pady=5)
-        # Show individual selection dropdown
+        # Show individual selection dropdown with "All Individuals" option
         individual_label.pack(anchor="w")
+        individuals_menu["values"] = ["All Individuals"] + [getattr(ind, "name", f"Participant_{i+1}") 
+                                                       for i, ind in enumerate(all_individuals)]
         individuals_menu.pack(pady=5)
         # Show data processing settings
         combine_strategy_label.pack(anchor="w")
@@ -196,11 +219,22 @@ def run_analysis():
     # Clear previous plots
     for widget in right_frame.winfo_children():
         widget.destroy()
-    # Modify channel selection for plotting
-    selected_channels = [channel for channel, var in channel_vars.items() if var.get()]
     
-    # If ALL channels are selected, set picks to None to let MNE handle channel types
-    picks = selected_channels if len(selected_channels) < len(channel_vars) else "all"
+    # If paradigm_plot, we need to handle picks differently
+    if settings["plot_type"] == "paradigm_plot":
+        # For paradigm_plot, we need to select channels with appropriate suffix based on haemo_type
+        selected_channels = [channel for channel, var in channel_vars.items() if var.get()]
+        selected_haemo_type = settings["haemo_type"]
+        
+        # For paradigm_plot, add hemoglobin type suffix to channel names
+        # Make sure the base channel names don't already have a hemoglobin type suffix
+        picks = [f"{channel} {selected_haemo_type}" for channel in selected_channels]
+    else:
+        # Modify channel selection for plotting (original logic for other plot types)
+        selected_channels = [channel for channel, var in channel_vars.items() if var.get()]
+        # If ALL channels are selected, set picks to None to let MNE handle channel types
+        picks = selected_channels if len(selected_channels) < len(channel_vars) else "all"
+    
     # Add hemoglobin type to settings
     settings["haemo_type"] = haemo_type_var.get()
     # Run the selected plot function
@@ -297,13 +331,21 @@ def run_analysis():
         elif settings["plot_type"] == "paradigm_plot":
             selected_individual = Individual_var.get()
             
+            # For paradigm_plot, we need to select channels with appropriate suffix based on haemo_type
+            selected_channels = [channel for channel, var in channel_vars.items() if var.get()]
+            selected_haemo_type = haemo_type_var.get()  # Get the current hemoglobin type
+            
+            # Create picks with the correct hemoglobin type suffix
+            picks = [f"{channel} {selected_haemo_type}" for channel in selected_channels]
+            
             # Find the individual by name
-            index = next((i for i, ind in enumerate(all_individuals) if getattr(ind, "name", f"Participant_{i+1}") == selected_individual), -1)
+            index = next((i for i, ind in enumerate(all_individuals) 
+                        if getattr(ind, "name", f"Participant_{i+1}") == selected_individual), -1)
             if index >= 0:
                 figures = [paradigm_plot(
                     all_individuals[index], 
                     picks_=picks, 
-                    haemo_type=settings["haemo_type"]
+                    haemo_type=selected_haemo_type
                 )]
         elif settings["plot_type"] == "individual frequency plot":
             selected_individual = Individual_var.get()
@@ -483,65 +525,79 @@ def populate_channels():
     # Clear existing checkboxes
     for widget in channel_container.winfo_children():
         widget.destroy()
-
     # Reset channel variables
     channel_vars.clear()
-
-    # Determine which individual's channels to display
-    selected_individual_name = Individual_var.get()
-
-    # Determine if any individual checkboxes are selected
-    any_checked = any(var.get() for var in individual_selection_vars.values())
-
-    # Hide channel selection only if "All Individuals" is selected AND no checkboxes are selected
-    if selected_individual_name == "All Individuals" and not any_checked:
-        channel_selection_label.pack_forget()
-        channel_frame.pack_forget()
-        return
-
-
-    # Show channel selection if an individual is selected
-    channel_selection_label.pack(anchor="w")
-    channel_frame.pack(fill="x", expand=True)
-
-    # Find the selected individual
-    selected_individual = next((ind for ind in all_individuals if ind.name == selected_individual_name), None)
-
-    # Populate channel checkboxes if an individual is found
-    if selected_individual and hasattr(selected_individual, 'epochs'):
-        # Get channels for the selected epoch type
-        epochs = selected_individual.epochs[epoch_type_var.get()]
+    # Get the plot type
+    current_plot_type = plot_type_var.get()
+    
+    # For paradigm_plot, use selected individual from dropdown
+    if current_plot_type == "paradigm_plot":
+        # Get selected individual from dropdown
+        selected_individual_name = Individual_var.get()
         
-        # If paradigm plot is active, filter channels by hemoglobin type
-        if plot_type_var.get() == "paradigm_plot":
-            # Get the current hemoglobin type
+        # Skip if "All Individuals" is selected
+        if selected_individual_name == "All Individuals":
+            channel_selection_label.pack_forget()
+            channel_frame.pack_forget()
+            return
+        
+        # Show channel selection
+        channel_selection_label.pack(anchor="w")
+        channel_frame.pack(fill="x", expand=True)
+        
+        # Find the selected individual object by name
+        selected_individual = None
+        for ind_index, ind in enumerate(all_individuals):
+            if getattr(ind, "name", f"Participant_{ind_index+1}") == selected_individual_name:
+                selected_individual = ind
+                break
+        
+        if selected_individual and hasattr(selected_individual, 'epochs'):
+            # Get channels for this individual
             current_haemo_type = haemo_type_var.get()
             
-            # Filter channels to only include those of the selected hemoglobin type
-            channels = [
-                channel for channel in epochs.ch_names 
-                if current_haemo_type in channel.lower()
-            ]
-        else:
-            # For other plot types, use all channels
-            channels = epochs.ch_names
+            try:
+                # Get bad channels for this individual
+                bad_channels = selected_individual.epochs.info.get("bads", [])
+                
+                # Filter channels by hemoglobin type and exclude bad channels
+                filtered_channels = [
+                    channel for channel in selected_individual.epochs.ch_names 
+                    if current_haemo_type in channel.lower() and channel not in bad_channels
+                ]
+                
+                # Create a list of unique channel names without the hemoglobin type suffix
+                unique_channels = []
+                for channel in filtered_channels:
+                    # Remove the hemoglobin type suffix (" hbo" or " hbr")
+                    base_channel = channel.rsplit(' ', 1)[0] if ' ' in channel else channel
+                    if base_channel not in unique_channels:
+                        unique_channels.append(base_channel)
+                
+                # Create checkboxes for unique channels
+                for i, channel in enumerate(unique_channels):
+                    is_checked = (i == 0)  # Default: first one checked
+                    channel_vars[channel] = tk.BooleanVar(value=is_checked)
+                    cb = tk.Checkbutton(channel_container, text=channel, variable=channel_vars[channel])
+                    cb.grid(row=i // 3, column=i % 3, sticky="w")
+            except Exception as e:
+                print(f"Error accessing channels for {selected_individual_name}: {e}")
 
-        
-        if plot_type_var.get() == "Standard fNIRS Response Plot":
-            channels = list(set([s.removesuffix(" hbo").removesuffix(" hbr") for s in channels]))
-        
-        # Create checkboxes for filtered channels
-        for i, channel in enumerate(channels):
-            is_checked = (i == 0)
-
-            channel_vars[channel] = tk.BooleanVar(value=is_checked)
-            cb = tk.Checkbutton(channel_container, text=channel, variable=channel_vars[channel])
-            cb.grid(row=i // 3, column=i % 3, sticky="w")
-
-# Add a trace to hemoglobin type to update channels when it changes
 def update_channels_on_haemo_type_change(*args):
+    """Update channel selections when hemoglobin type changes."""
     if plot_type_var.get() == "paradigm_plot":
+        # Store the current selected base channel names (without hemoglobin type)
+        current_selected = [ch for ch, var in channel_vars.items() if var.get()]
+        
+        # Clear and repopulate the channels
         populate_channels()
+        
+        # Try to reselect the previously selected channels if they exist in the new list
+        for channel, var in channel_vars.items():
+            if channel in current_selected:
+                var.set(True)
+
+# Replace the existing trace for haemo_type_var with this improved version
 haemo_type_var.trace_add("write", update_channels_on_haemo_type_change)
 
 def attach_checkbox_callbacks():
@@ -593,7 +649,7 @@ def setup_ui_callbacks():
     dataset_var.trace_add("write", lambda *args: (update_epoch_types(), toggle_individual_menu()))
     plot_type_var.trace_add("write",  lambda *args: (toggle_individual_menu(), populate_channels()))
     Individual_var.trace_add("write", populate_channels)  # Only update channels based on selection
-    haemo_type_var.trace_add("write", populate_channels)
+    haemo_type_var.trace_add("write", update_channels_on_haemo_type_change)
 
 # Add trace to Individual_var to update channels when individual changes
 Individual_var.trace_add("write", lambda *args: populate_channels())
@@ -684,8 +740,13 @@ def adjust_dataset2_menu_width():
 dataset2_menu["postcommand"] = adjust_dataset2_menu_width
 
 # Run Analysis button
-run_button = tk.Button(left_frame, text="Run Analysis", command=run_analysis, bg="green", fg="white")
-run_button.pack(pady=10)
+spacer_frame = tk.Frame(left_frame)
+spacer_frame.pack(fill="both", expand=True)
+
+# Create the run button after the spacer
+run_button = tk.Button(left_frame, text="Run Analysis", command=run_analysis, bg="green", fg="white", 
+                      font=("Arial", 12, "bold"), padx=20, pady=10)
+run_button.pack(pady=20, padx=10, side="bottom", fill="x")
 
 # Right panel for displaying the plot
 right_frame = tk.Frame(root)
