@@ -278,7 +278,7 @@ def run_analysis():
             start_time=start_time,
             end_time=end_time,
             dataset1=dataset1,
-            dataset2=dataset2
+            dataset2=dataset2,
         )
             
         # Create tab control for statistical analysis

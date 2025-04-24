@@ -21,6 +21,125 @@ def cohens_d(sample_1, sample_2):
     cohen_d = mean_diff / std_diff
     return cohen_d
 
+def cross_area_comparison(start_time=3, end_time=12, dataset1="fNIRS_Melika_hand_data_10Hz_load", 
+                         dataset2="fNIRS_Melika_tongue_10Hz_data_load"):
+    """
+    Compare hand channels from hand dataset with tongue channels from tongue dataset.
+    This analysis shows whether individuals with strong hand responses also have strong tongue responses.
+    Includes standard deviation error bars for each individual.
+    """
+    
+    # Define channels for each area
+    hand_channels = ['S12_D10 hbo', 'S12_D12 hbo', 'S12_D13 hbo', 'S12_D14 hbo', 
+                    'S4_D3 hbo', 'S4_D5 hbo', 'S4_D6 hbo', 'S4_D7 hbo']
+    
+    tongue_channels = ['S13_D11 hbo', 'S13_D13 hbo', 'S13_D15 hbo', 
+                      'S5_D4 hbo', 'S5_D6 hbo', 'S5_D8 hbo']
+    
+    # Load data
+    all_epochs_hand, data_name_hand, all_data_hand, freq_hand, data_types_hand, all_individuals_hand = load_data(
+        data_set=dataset1, 
+        short_channel_correction=short_channel_correction, 
+        negative_correlation_enhancement=negative_correlation_enhancement, 
+        individuals=individuals, 
+        interpolate_bad_channels=interpolate_bad_channels
+    )
+    
+    all_epochs_tongue, data_name_tongue, all_data_tongue, freq_tongue, data_types_tongue, all_individuals_tongue = load_data(
+        data_set=dataset2, 
+        short_channel_correction=short_channel_correction, 
+        negative_correlation_enhancement=negative_correlation_enhancement, 
+        individuals=individuals, 
+        interpolate_bad_channels=interpolate_bad_channels
+    )
+    
+    # Match channel indices
+    reference_epochs_hand = all_individuals_hand[0].get_epochs()
+    hand_channel_indices = [reference_epochs_hand.ch_names.index(ch) for ch in hand_channels]
+    
+    reference_epochs_tongue = all_individuals_tongue[0].get_epochs()
+    tongue_channel_indices = [reference_epochs_tongue.ch_names.index(ch) for ch in tongue_channels]
+    
+    # Making sure we have the same participants in both datasets
+    name_intersection = list(set([individual.get_name() for individual in all_individuals_hand]) & 
+                           set([individual.get_name() for individual in all_individuals_tongue]))
+    all_individuals_hand = [ind for ind in all_individuals_hand if ind.get_name() in name_intersection]
+    all_individuals_tongue = [ind for ind in all_individuals_tongue if ind.get_name() in name_intersection]
+    
+    # Sort individuals by name to ensure they match up correctly
+    all_individuals_hand.sort(key=lambda x: x.get_name())
+    all_individuals_tongue.sort(key=lambda x: x.get_name())
+    
+    # Compute mean and std response per subject across hand channels from hand dataset
+    hand_means = []
+    hand_stds = []
+    for individual in all_individuals_hand:
+        epochs = individual.get_epochs()[data_types_hand[0]]
+        cropped = epochs.copy().crop(tmin=start_time, tmax=end_time)
+        data = cropped.get_data()  # shape: (n_epochs, n_channels, n_times)
+        mean_over_time = data.mean(axis=2)  # (n_epochs, n_channels)
+        
+        # Average across hand channels per epoch
+        hand_data = mean_over_time[:, hand_channel_indices].mean(axis=1)  # (n_epochs,)
+        subject_mean = hand_data.mean()  # scalar value per subject
+        subject_std = hand_data.std()    # standard deviation across epochs
+        hand_means.append(subject_mean)
+        hand_stds.append(subject_std)
+    
+    # Compute mean and std response per subject across tongue channels from tongue dataset
+    tongue_means = []
+    tongue_stds = []
+    for individual in all_individuals_tongue:
+        epochs = individual.get_epochs()[data_types_tongue[0]]
+        cropped = epochs.copy().crop(tmin=start_time, tmax=end_time)
+        data = cropped.get_data() 
+        mean_over_time = data.mean(axis=2)
+        
+        # Average across tongue channels per epoch
+        tongue_data = mean_over_time[:, tongue_channel_indices].mean(axis=1)
+        subject_mean = tongue_data.mean()
+        subject_std = tongue_data.std()
+        tongue_means.append(subject_mean)
+        tongue_stds.append(subject_std)
+    
+    hand_means = np.array(hand_means)
+    hand_stds = np.array(hand_stds)
+    tongue_means = np.array(tongue_means)
+    tongue_stds = np.array(tongue_stds)
+    
+    # Create visualization
+    fig, ax = plt.subplots(figsize=(8, 6))
+    
+    # Plot points with error bars for both x and y directions
+    ax.errorbar(hand_means, tongue_means, 
+                xerr=hand_stds, yerr=tongue_stds,
+                fmt='o', ecolor='gray', capsize=3, alpha=0.7)
+    
+    # Add labels for each participant
+    for j in range(len(hand_means)):
+        ax.annotate(f'P{j+1}', (hand_means[j], tongue_means[j]),
+                    textcoords="offset points", xytext=(5, 5), ha='left', fontsize=8)
+    
+    # Calculate correlation
+    corr, p_corr = stats.pearsonr(hand_means, tongue_means)
+    
+    ax.set_xlabel(f"Hand Channels (from {dataset1}) ± SD")
+    ax.set_ylabel(f"Tongue Channels (from {dataset2}) ± SD")
+    ax.set_title("Cross-Area Comparison: Hand vs. Tongue Motor Responses")
+    
+    # Calculate t-test to see if responses differ
+    t_res = stats.ttest_rel(hand_means, tongue_means)
+    d_val = cohens_d(np.array(hand_means), np.array(tongue_means))
+    
+    ax.legend(title=f"Correlation: r = {corr:.3f}, p = {p_corr:.3f}\n"
+                   f"Difference: p = {t_res.pvalue:.3f}, d = {d_val:.3f}")
+    ax.grid(True)
+    
+    plt.tight_layout()
+    fig.savefig("Cross_area_comparison_hand_vs_tongue.pdf")
+    
+    return fig
+
 # ---------- Parameters ----------
 
 # Datasets
@@ -40,7 +159,7 @@ analysis_method = "both"  # Options: "area", "channel", "both"
 start_time = 3
 end_time = 12
 
-def statistical_analysis(Area_of_interest : str = "SMA", start_time = 3, end_time = 12, dataset1: str = "fNIRS_Melika_hand_data_10Hz_load", dataset2="fNIRS_Melika_tongue_10Hz_data_load"):
+def statistical_analysis(Area_of_interest : str = "SMA", start_time = 3, end_time = 12, dataset1: str = "fNIRS_Melika_hand_data_10Hz_load", dataset2="fNIRS_Melika_tongue_10Hz_data_load", cross_comparison=True):
     if Area_of_interest not in ["SMA", "Tongue_all", "Tongue_right", "Tongue_left", "Hand_all", "Hand_right","Hand_left"]:
         raise ValueError("Area of interest needs to be one of: SMA, Tongue_all, Tongue_right, Tongue_left, Hand_all, Hand_right, Hand_left")
     
@@ -211,5 +330,9 @@ def statistical_analysis(Area_of_interest : str = "SMA", start_time = 3, end_tim
         plt.tight_layout()
         fig_area.savefig(f"Area_comparison_{Area_of_interest}.pdf")
         figures.append(fig_area)
+    
+    if cross_comparison:
+        fig_cross = cross_area_comparison(start_time, end_time, dataset1, dataset2)
+        figures.append(fig_cross)
     
     return figures
