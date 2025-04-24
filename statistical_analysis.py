@@ -30,8 +30,7 @@ def cross_area_comparison(start_time=3, end_time=12, dataset1="fNIRS_Melika_hand
     """
     
     # Define channels for each area
-    hand_channels = ['S12_D10 hbo', 'S12_D12 hbo', 'S12_D13 hbo', 'S12_D14 hbo', 
-                    'S4_D3 hbo', 'S4_D5 hbo', 'S4_D6 hbo', 'S4_D7 hbo']
+    hand_channels = ['S4_D3 hbo', 'S4_D5 hbo', 'S4_D6 hbo', 'S4_D7 hbo'] # We're only using the left side hand channels, as the participants are only using their right hand
     
     tongue_channels = ['S13_D11 hbo', 'S13_D13 hbo', 'S13_D15 hbo', 
                       'S5_D4 hbo', 'S5_D6 hbo', 'S5_D8 hbo']
@@ -123,6 +122,11 @@ def cross_area_comparison(start_time=3, end_time=12, dataset1="fNIRS_Melika_hand
     # Calculate correlation
     corr, p_corr = stats.pearsonr(hand_means, tongue_means)
     
+    # Add x=y line that spans from lowest point (mean-std) to highest point (mean+std)
+    min_val = min(min(hand_means - hand_stds), min(tongue_means - tongue_stds))
+    max_val = max(max(hand_means + hand_stds), max(tongue_means + tongue_stds))
+    ax.plot([min_val, max_val], [min_val, max_val], 'k--', label="y = x")
+    
     ax.set_xlabel(f"Hand Channels (from {dataset1}) ± SD")
     ax.set_ylabel(f"Tongue Channels (from {dataset2}) ± SD")
     ax.set_title("Cross-Area Comparison: Hand vs. Tongue Motor Responses")
@@ -131,6 +135,7 @@ def cross_area_comparison(start_time=3, end_time=12, dataset1="fNIRS_Melika_hand
     t_res = stats.ttest_rel(hand_means, tongue_means)
     d_val = cohens_d(np.array(hand_means), np.array(tongue_means))
     
+    # Update legend to include the y = x line
     ax.legend(title=f"Correlation: r = {corr:.3f}, p = {p_corr:.3f}\n"
                    f"Difference: p = {t_res.pvalue:.3f}, d = {d_val:.3f}")
     ax.grid(True)
