@@ -1,4 +1,4 @@
-from Data_processesing_class import AudioSpeechNoise_data_load, fNIRS_full_motor_data_load, fNIRS_motor_data_load, fNIRS_Alexandros_DoC_data_load, fNIRS_Alexandros_Healthy_data_load, fNIRS_CUH_patient_data_load, fNIRS_Melika_tongue_5Hz_data_load, fNIRS_Melika_hand_data_5Hz_load, fNIRS_Melika_old_data_load, fNIRS_Melika_hand_data_10Hz_load, fNIRS_Melika_tongue_10Hz_data_load, fNIRS_Melika_hand_data_long_load, fNIRS_Melika_tongue_long_data_load
+from Data_processesing_class import AudioSpeechNoise_data_load, fNIRS_full_motor_data_load, fNIRS_motor_data_load, fNIRS_Alexandros_DoC_data_load, fNIRS_Alexandros_Healthy_data_load, fNIRS_CUH_patient_data_load, fNIRS_Melika_tongue_5Hz_data_load, fNIRS_Melika_hand_data_5Hz_load, fNIRS_Melika_old_data_load, fNIRS_Melika_hand_data_10Hz_load, fNIRS_Melika_tongue_10Hz_data_load, fNIRS_Melika_hand_data_long_load, fNIRS_Melika_tongue_long_data_load, fNIRS_Pardis_DOC_data_load
 
 data_loaders = {
     "fNIrs_motor": fNIRS_motor_data_load,
@@ -14,6 +14,7 @@ data_loaders = {
     "fNIRS_Melika_tongue_10Hz_data_load": fNIRS_Melika_tongue_10Hz_data_load,
     "fNIRS_Melika_hand_data_long_load": fNIRS_Melika_hand_data_long_load,
     "fNIRS_Melika_tongue_long_data_load": fNIRS_Melika_tongue_long_data_load,
+    "fNIRS_Pardis_DOC_data": fNIRS_Pardis_DOC_data_load,
 
 }
 

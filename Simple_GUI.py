@@ -433,7 +433,8 @@ dataset_menu = ttk.Combobox(top_left_frame, textvariable=dataset_var, values=[
     "fNIRS_Melika_hand_data_10Hz_load",
     "fNIRS_Melika_tongue_10Hz_data_load",
     "fNIRS_Melika_hand_data_long_load",
-    "fNIRS_Melika_tongue_long_data_load"], width=40)
+    "fNIRS_Melika_tongue_long_data_load",
+    "fNIRS_Pardis_DOC_data"], width=40)
 
 # Dynamically adjust dropdown width
 def adjust_menu_width():
