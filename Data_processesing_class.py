@@ -1727,9 +1727,9 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.stimulus_duration = 21
         self.scalp_coupling_threshold = 0.8  # Change this value if needed
         self.reject_criteria = dict(hbo=90e-6)  # Change this value if needed
-        self.tmin = -5
+        self.tmin = 0
         self.tmax = 21
-        self.baseline = (None, 0)
+        self.baseline = (0, 0)
         self.data_types = ["TongueMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
