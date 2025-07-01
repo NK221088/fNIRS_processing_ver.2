@@ -3,11 +3,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import mne
 import mne_nirs
-import mne_bids
 import os
 from Participant_class import individual_participant_class
-import os
 import glob
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class fNIRS_data_load:
     def __init__(self, file_path, number_of_participants=1, annotation_names=None, stimulus_duration=5,
@@ -492,7 +494,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
         self.annotation_names = {"1": "Imagery",
                                  "Rest": "Control"
                                 }
-        self.file_path = mne.datasets.fnirs_motor.data_path()
+        self.file_path = Path(os.getenv('Alexandros_CUH_patient_data'))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 15
@@ -528,9 +530,9 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
 
     def define_raw_intensity(self, sub_id):
             if sub_id == 9:
-                raw_intensity = mne.io.read_raw_snirf(f"L:\LovbeskyttetMapper\CONNECT-ME\DTU\Alex_Data\DoC\data_initial\P{sub_id}_2_2.snirf", verbose=True)
+                raw_intensity = mne.io.read_raw_snirf(f"{self.file_path / f'P{sub_id}_2_2.snirf'}", verbose=True)
             else:            
-                raw_intensity = mne.io.read_raw_snirf(f"L:\LovbeskyttetMapper\CONNECT-ME\DTU\Alex_Data\DoC\data_initial\P{sub_id}_1.snirf", verbose=True)
+                raw_intensity = mne.io.read_raw_snirf(f"{self.file_path / f'P{sub_id}_1.snirf'}", verbose=True)
             raw_intensity.load_data()
             return raw_intensity
         
@@ -649,7 +651,8 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
         self.annotation_names = {"1": "HandMI",
                                  "Rest": "Control"
                                 }
-        self.file_path = mne.datasets.fnirs_motor.data_path()
+        self.file_path = Path(os.getenv('Melika_hand_data_5Hz'))
+        self.short_channel_correction = short_channel_correction
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 28
@@ -684,8 +687,8 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
             unwanted = self.unwanted)
 
     def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(rf"L:\LovbeskyttetMapper\CONNECT-ME\Melika\Målinger_kopi\snirf_hand_5hz\subj-{sub_id}.snirf", verbose=True)
-        
+        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
+            
         raw_intensity.load_data()
         return raw_intensity
         
@@ -856,7 +859,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         self.annotation_names = {"1": "TongueMI",
                                  "Rest": "Control",
                                 }
-        self.file_path = mne.datasets.fnirs_motor.data_path()
+        self.file_path = Path(os.getenv('Melika_tongue_5Hz'))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 28
@@ -891,7 +894,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
             unwanted = self.unwanted)
 
     def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(rf"L:\LovbeskyttetMapper\CONNECT-ME\Melika\Målinger_kopi\snirf_tongue_5hz\subj-{sub_id}.snirf", verbose=True)
+        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
         raw_intensity.load_data()
         return raw_intensity
         
@@ -1063,7 +1066,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
         self.annotation_names = {"1": "HandMI",
                                  "Rest": "Control"
                                 }
-        self.file_path = rf"L:\LovbeskyttetMapper\CONNECT-ME\Melika\Målinger_kopi\snirf_files_hand_10hz"
+        self.file_path = Path(os.getenv('Melika_hand_data_10Hz'))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 28
@@ -1098,8 +1101,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
             unwanted = self.unwanted)
 
     def define_raw_intensity(self, sub_id):
-        file_path = os.path.join(self.file_path, f"subj-{sub_id}.snirf")  # Correct formatting
-        raw_intensity = mne.io.read_raw_snirf(file_path, verbose=True)
+        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
         raw_intensity.load_data()
         return raw_intensity
         
@@ -1267,7 +1269,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
         self.annotation_names = {"1": "TongueMI",
                                  "Rest": "Control",
                                 }
-        self.file_path = rf"L:\LovbeskyttetMapper\CONNECT-ME\Melika\Målinger_kopi\snirf_files_tongue10hz"
+        self.file_path = Path(os.getenv('Melika_tongue_10Hz'))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 28
@@ -1302,8 +1304,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
             unwanted = self.unwanted)
 
     def define_raw_intensity(self, sub_id):
-        file_path = os.path.join(self.file_path, f"subj-{sub_id}.snirf")  # Correct formatting
-        raw_intensity = mne.io.read_raw_snirf(file_path, verbose=True)
+        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
         raw_intensity.load_data()
         return raw_intensity
         
@@ -1453,7 +1454,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
                                  "2": "TongueMI",
                                  "Rest": "Control"
                                 }
-        self.file_path = mne.datasets.fnirs_motor.data_path()
+        self.file_path = Path(os.getenv('Melika_old_data'))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 20
@@ -1488,7 +1489,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
             unwanted = self.unwanted)
 
     def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(rf"L:\LovbeskyttetMapper\CONNECT-ME\Melika\Målinger_kopi\snirf_files_old\subj-{sub_id}.snirf", verbose=True)
+        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
         raw_intensity.load_data()
         return raw_intensity
         
@@ -1526,12 +1527,12 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
 
             events, event_dict = mne.events_from_annotations(raw_haemo)
 
-            resting_state_sample = events[events[:, 2] == event_dict["Resting state"], 0][0]  # Get the sample number
+            resting_state_sample = events[events[:, 2] == event_dict["Control"], 0][0]  # Get the sample number
             resting_state_time = resting_state_sample / raw_haemo.info['sfreq']  # Convert to seconds
 
             # Extract resting state data separately for baseline calculation
             resting_state_start = resting_state_time
-            resting_state_end = resting_state_time + 30
+            resting_state_end = resting_state_time + self.stimulus_duration
 
             # Get the mean signal during resting state (per channel)
             resting_data = raw_haemo.copy().crop(resting_state_start, resting_state_end)
@@ -1622,7 +1623,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         self.annotation_names = {"1": "HandMI",
                                  "Rest": "Control"
                                 }
-        self.file_path = rf"L:\LovbeskyttetMapper\CONNECT-ME\Melika\Målinger_kopi\snirf_files_hand_long"
+        self.file_path = Path(os.getenv('Melika_hand_data_long'))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 21
@@ -1657,8 +1658,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
             unwanted = self.unwanted)
 
     def define_raw_intensity(self, sub_id):
-        file_path = os.path.join(self.file_path, f"subj-{sub_id}.snirf")  # Correct formatting
-        raw_intensity = mne.io.read_raw_snirf(file_path, verbose=True)
+        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
         raw_intensity.load_data()
         return raw_intensity
         
@@ -1832,7 +1832,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.annotation_names = {"1": "TongueMI",
                                  "Rest": "Control",
                                 }
-        self.file_path = rf"L:\LovbeskyttetMapper\CONNECT-ME\Melika\Målinger_kopi\snirf_files_tongue_long"
+        self.file_path = Path(os.getenv('Melika_tongue_long_data'))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 21
@@ -1867,8 +1867,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             unwanted = self.unwanted)
 
     def define_raw_intensity(self, sub_id):
-        file_path = os.path.join(self.file_path, f"subj-{sub_id}.snirf")  # Correct formatting
-        raw_intensity = mne.io.read_raw_snirf(file_path, verbose=True)
+        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
         raw_intensity.load_data()
         return raw_intensity
         
@@ -2044,7 +2043,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
         self.annotation_names = {"1": "TongueMI",
                                  "Rest": "Control",
                                 }
-        self.file_path = rf"L:\LovbeskyttetMapper\CONNECT-ME\Pardis\DoC_TongueMI\Patient Recordings"
+        self.file_path = Path(os.getenv('Pardis_DOC_data'))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 15
@@ -2052,7 +2051,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
         self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
         self.tmin = 0
         self.tmax = 21
-        self.baseline = (None, 0)
+        self.baseline = (0, 0)
         self.data_types = ["TongueMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Pardis_DOC_data"
@@ -2230,15 +2229,15 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                                  "2": "Control",
                                  "3": "TongueIM"
                                 }
-        self.file_path = rf"L:\LovbeskyttetMapper\CONNECT-ME\Pardis\HC_ICU_TongueMI\Data\HC\Follow-up"
+        self.file_path = Path(os.getenv('Pardis_HC_data'))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 15
         self.scalp_coupling_threshold = 0.8  # Change this value if needed
         self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
-        self.tmin = -5
+        self.tmin = 0
         self.tmax = 20
-        self.baseline = (None, 0)
+        self.baseline = (0, 0)
         self.data_types = ["TonguePhysical", "TongueIM"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Pardis_HC"

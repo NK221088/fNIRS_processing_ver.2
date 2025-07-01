@@ -14,7 +14,7 @@ settings = {
     "epoch_type": "Tapping",
     "combine_strategy": "mean",
     "short_channel_correction": True,
-    "negative_correlation_enhancement": True,
+    "negative_correlation_enhancement": False,
     "interpolate_bad_channels": False,
     "bad_channels_strategy": "all",
     "threshold": 3,
