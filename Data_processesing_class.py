@@ -1480,6 +1480,17 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
 
             events, event_dict = mne.events_from_annotations(raw_haemo)
 
+            resting_state_sample = events[events[:, 2] == event_dict["Resting state"], 0][0]  # Get the sample number
+            resting_state_time = resting_state_sample / raw_haemo.info['sfreq']  # Convert to seconds
+
+            # Extract resting state data separately for baseline calculation
+            resting_state_start = resting_state_time
+            resting_state_end = resting_state_time + 30
+
+            # Get the mean signal during resting state (per channel)
+            resting_data = raw_haemo.copy().crop(resting_state_start, resting_state_end)
+            resting_baseline = resting_data.get_data().mean(axis=1)  # Mean across time for each channel
+
             epochs = mne.Epochs(
                 raw_haemo,
                 events,
@@ -1494,6 +1505,18 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
                 detrend=None,
                 verbose=True,
             )
+
+            # Apply baseline correction per channel with error handling for removed channels
+            for epoch_idx in range(len(epochs)):
+                for ch_name in epochs.ch_names:
+                    try:
+                        epochs_ch_idx = epochs.ch_names.index(ch_name)
+                        raw_ch_idx = raw_haemo.ch_names.index(ch_name)
+                        epochs._data[epoch_idx, epochs_ch_idx, :] -= resting_baseline[raw_ch_idx]
+                    except ValueError:
+                        # Channel was removed during preprocessing - skip it
+                        print(f"Skipping channel {ch_name}: not found in baseline data")
+                        continue
 
             if len(epochs) != 0:
                 self.all_epochs.append(epochs)
