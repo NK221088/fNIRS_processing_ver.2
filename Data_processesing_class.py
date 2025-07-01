@@ -1090,6 +1090,17 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
 
             events, event_dict = mne.events_from_annotations(raw_haemo)
 
+            resting_state_sample = events[events[:, 2] == event_dict["Resting state"], 0][0]  # Get the sample number
+            resting_state_time = resting_state_sample / raw_haemo.info['sfreq']  # Convert to seconds
+
+            # Extract resting state data separately for baseline calculation
+            resting_state_start = resting_state_time
+            resting_state_end = resting_state_time + 30
+
+            # Get the mean signal during resting state (per channel)
+            resting_data = raw_haemo.copy().crop(resting_state_start, resting_state_end)
+            resting_baseline = resting_data.get_data().mean(axis=1)  # Mean across time for each channel
+
             epochs = mne.Epochs(
                 raw_haemo,
                 events,
@@ -1104,6 +1115,18 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
                 detrend=None,
                 verbose=True,
             )
+
+            # Apply baseline correction per channel with error handling for removed channels
+            for epoch_idx in range(len(epochs)):
+                for ch_name in epochs.ch_names:
+                    try:
+                        epochs_ch_idx = epochs.ch_names.index(ch_name)
+                        raw_ch_idx = raw_haemo.ch_names.index(ch_name)
+                        epochs._data[epoch_idx, epochs_ch_idx, :] -= resting_baseline[raw_ch_idx]
+                    except ValueError:
+                        # Channel was removed during preprocessing - skip it
+                        print(f"Skipping channel {ch_name}: not found in baseline data")
+                        continue
 
             if len(epochs) != 0:
                 self.all_epochs.append(epochs)
@@ -1390,15 +1413,15 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
         self.stimulus_duration = 20
         self.scalp_coupling_threshold = 0.8  # Change this value if needed
         self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
-        self.tmin = -5
+        self.tmin = 0
         self.tmax = 15
-        self.baseline = (None, 0)
+        self.baseline = (0, 0)
         self.data_types = ["HandMI", "TongueMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
         self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = "Pause"
+        self.unwanted = "0"
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -1466,7 +1489,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
                 reject=self.reject_criteria,
                 reject_by_annotation=True,
                 proj=True,
-                baseline=self.baseline,
+                baseline=None,
                 preload=True,
                 detrend=None,
                 verbose=True,
@@ -1513,16 +1536,11 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
 
     
     def make_annotations(self, raw_intensity):
-        sampling_frequency = raw_intensity.info["sfreq"]
         events, event_dict = mne.events_from_annotations(raw_intensity)
         cropped_raw_data = raw_intensity.copy()
         cropped_raw_data.annotations.set_durations(self.stimulus_duration)
         for id,event in enumerate(events):
             cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
-        # cropped_raw_data.plot(n_channels=len(cropped_raw_data.ch_names), duration=600, show_scrollbars=True)
-        # plt.show()
-        # events, event_dict = mne.events_from_annotations(cropped_raw_data)
-        # print(events)
         return cropped_raw_data
 
 ###############################################################################################################################################################################################
