@@ -1023,9 +1023,9 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
         self.stimulus_duration = 28
         self.scalp_coupling_threshold = 0.8  # Change this value if needed
         self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
-        self.tmin = -5
+        self.tmin = 0
         self.tmax = 28
-        self.baseline = (None, 0)
+        self.baseline = (0, 0)
         self.data_types = ["HandMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
@@ -1099,7 +1099,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
                 reject=self.reject_criteria,
                 reject_by_annotation=True,
                 proj=True,
-                baseline=self.baseline,
+                baseline=None,
                 preload=True,
                 detrend=None,
                 verbose=True,
@@ -1212,7 +1212,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
         self.data_name = "fNIRS_Melika_data"
         self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = ""
+        self.unwanted = "2"
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -1242,10 +1242,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
         for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
-            if i == 1 : # When data for the first patient was recorded, the introduction was not added in Satori, so we add it manually
-                raw_intensity = self.make_without_intro_annotations(raw_intensity)
-            else: # For all other patients we just add the resting phases
-                raw_intensity = self.make_annotations(raw_intensity)
+            raw_intensity = self.make_annotations(raw_intensity)
 
             raw_intensity.annotations.rename(self.annotation_names)
             unwanted = np.nonzero(raw_intensity.annotations.description == self.unwanted)
@@ -1275,16 +1272,16 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
 
             events, event_dict = mne.events_from_annotations(raw_haemo)
 
-            # resting_state_sample = events[events[:, 2] == event_dict["Resting state"], 0][0]  # Get the sample number
-            # resting_state_time = resting_state_sample / raw_haemo.info['sfreq']  # Convert to seconds
+            resting_state_sample = events[events[:, 2] == event_dict["Resting state"], 0][0]  # Get the sample number
+            resting_state_time = resting_state_sample / raw_haemo.info['sfreq']  # Convert to seconds
 
-            # # Extract resting state data separately for baseline calculation
-            # resting_state_start = resting_state_time
-            # resting_state_end = resting_state_time + 30
+            # Extract resting state data separately for baseline calculation
+            resting_state_start = resting_state_time
+            resting_state_end = resting_state_time + 30
 
-            # # Get the mean signal during resting state (per channel)
-            # resting_data = raw_haemo.copy().crop(resting_state_start, resting_state_end)
-            # resting_baseline = resting_data.get_data().mean(axis=1)  # Mean across time for each channel
+            # Get the mean signal during resting state (per channel)
+            resting_data = raw_haemo.copy().crop(resting_state_start, resting_state_end)
+            resting_baseline = resting_data.get_data().mean(axis=1)  # Mean across time for each channel
 
             epochs = mne.Epochs(
                 raw_haemo,
@@ -1301,17 +1298,17 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
                 verbose=True,
             )
 
-            # # Apply baseline correction per channel with error handling for removed channels
-            # for epoch_idx in range(len(epochs)):
-            #     for ch_name in epochs.ch_names:
-            #         try:
-            #             epochs_ch_idx = epochs.ch_names.index(ch_name)
-            #             raw_ch_idx = raw_haemo.ch_names.index(ch_name)
-            #             epochs._data[epoch_idx, epochs_ch_idx, :] -= resting_baseline[raw_ch_idx]
-            #         except ValueError:
-            #             # Channel was removed during preprocessing - skip it
-            #             print(f"Skipping channel {ch_name}: not found in baseline data")
-            #             continue
+            # Apply baseline correction per channel with error handling for removed channels
+            for epoch_idx in range(len(epochs)):
+                for ch_name in epochs.ch_names:
+                    try:
+                        epochs_ch_idx = epochs.ch_names.index(ch_name)
+                        raw_ch_idx = raw_haemo.ch_names.index(ch_name)
+                        epochs._data[epoch_idx, epochs_ch_idx, :] -= resting_baseline[raw_ch_idx]
+                    except ValueError:
+                        # Channel was removed during preprocessing - skip it
+                        print(f"Skipping channel {ch_name}: not found in baseline data")
+                        continue
 
             if len(epochs) != 0:
                 self.all_epochs.append(epochs)
@@ -1351,26 +1348,6 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
         return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants if self.individuals else None
-
-    
-    def make_without_intro_annotations(self, raw_intensity):
-        sampling_frequency = raw_intensity.info["sfreq"]
-        events, event_dict = mne.events_from_annotations(raw_intensity)
-        cropped_raw_data = raw_intensity.copy()
-        cropped_raw_data.annotations.set_durations(self.stimulus_duration)
-        cropped_raw_data.annotations.rename({"0": "End"})
-
-        for id,event in enumerate(events):
-            if id == 0:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] - 30, 30, "Resting state") # Adding resting state in the beginning
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] - 110, 80, "Introduction")
-            if id == 5:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
-            if id == 11:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 10, "Outro")
-            cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
-        
-        return cropped_raw_data
 
     def make_annotations(self, raw_intensity):
         sampling_frequency = raw_intensity.info["sfreq"]
