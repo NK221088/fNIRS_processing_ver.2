@@ -362,7 +362,7 @@ def run_analysis():
             # Find the actual individual objects from their names and get their epochs
             for ind_name in selected_individuals:
                 # Find the individual object that matches this name FROM THE FILTERED LIST
-                individual = next((ind for ind in valid_individuals if getattr(ind, "name", f"Participant_{i+1}") == ind_name for i, _ in enumerate(valid_individuals)), None)
+                individual = next((ind for i, ind in enumerate(valid_individuals) if getattr(ind, "name", f"Participant_{i+1}") == ind_name), None)
                 
                 # If found, append their epochs to our list
                 if individual is not None:
@@ -499,7 +499,7 @@ individuals_menu.pack_forget()
 combine_strategy_label = tk.Label(top_left_frame, text="Combine Strategy:", font=("Arial", 12))
 combine_strategy_label.pack(anchor="w")
 combine_strategy_var = tk.StringVar(value=settings["combine_strategy"])
-combine_strategy_menu = ttk.Combobox(top_left_frame, textvariable=combine_strategy_var, values=["mean", "median", "std", "gfp"])
+combine_strategy_menu = ttk.Combobox(top_left_frame, textvariable=combine_strategy_var, values=["mean", "median", "gfp"])
 combine_strategy_menu.pack(pady=5)
 
 # Bad Channels Strategy
