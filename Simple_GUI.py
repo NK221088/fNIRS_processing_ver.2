@@ -342,15 +342,32 @@ def run_analysis():
         elif settings["plot_type"] == "Standard fNIRS Response Plot":
             selected_individuals = [ind_name for ind_name, var in individual_selection_vars.items() if var.get()]
             selected_all_epochs = []
+            
+            # Create the same filtered list as in populate_individuals()
+            valid_individuals = []
+            for individual in all_individuals:
+                if hasattr(individual, 'epochs'):
+                    # Get the actual counts from the epochs object
+                    has_all_data_types = True
+                    for data_type in data_types:
+                        # Count how many epochs of this type exist
+                        epoch_count = sum(1 for event in individual.epochs.events if individual.epochs.event_id.get(data_type) == event[2])
+                        if epoch_count == 0:
+                            has_all_data_types = False
+                            break
+                    
+                    if has_all_data_types:
+                        valid_individuals.append(individual)
+            
             # Find the actual individual objects from their names and get their epochs
             for ind_name in selected_individuals:
-                # Find the individual object that matches this name
-                individual = next((ind for ind in all_individuals if ind.name == ind_name), None)
+                # Find the individual object that matches this name FROM THE FILTERED LIST
+                individual = next((ind for ind in valid_individuals if getattr(ind, "name", f"Participant_{i+1}") == ind_name for i, _ in enumerate(valid_individuals)), None)
                 
                 # If found, append their epochs to our list
                 if individual is not None:
-                    # Make sure to call the get_epochs method with parentheses
                     selected_all_epochs.append(individual.epochs)
+            
             figures = [standard_fNIRS_response_plot(selected_all_epochs, data_types, bad_channels_strategy=settings["bad_channels_strategy"],
                                                     save=False, combine_strategy=settings["combine_strategy"],
                                                     threshold=settings["threshold"], data_set=data_name, picks_=picks)]
@@ -690,9 +707,37 @@ def populate_individuals():
     for widget in individual_container.winfo_children():
         widget.destroy()
     
-    # Add checkboxes for each individual
-    if all_individuals:
-        for i, individual in enumerate(all_individuals):
+    # Get the current plot type to determine filtering logic
+    current_plot_type = plot_type_var.get()
+    
+    # Filter individuals based on plot type
+    if current_plot_type == "Standard fNIRS Response Plot":
+        # Only include individuals who have all data types (epoch types) with non-zero counts
+        valid_individuals = []
+        for individual in all_individuals:
+            if hasattr(individual, 'epochs'):
+                # Get the actual counts from the epochs object
+                # The counts are shown in the epochs representation and can be extracted
+                has_all_data_types = True
+                for data_type in data_types:
+                    # Count how many epochs of this type exist
+                    epoch_count = sum(1 for event in individual.epochs.events if individual.epochs.event_id.get(data_type) == event[2])
+                    if epoch_count == 0:
+                        has_all_data_types = False
+                        break
+                
+                if has_all_data_types:
+                    valid_individuals.append(individual)
+            
+        # Use filtered list for Standard fNIRS Response Plot
+        individuals_to_display = valid_individuals
+    else:
+        # For all other plot types, use all individuals
+        individuals_to_display = all_individuals
+    
+    # Add checkboxes for each valid individual
+    if individuals_to_display:
+        for i, individual in enumerate(individuals_to_display):
             individual_name = getattr(individual, "name", f"Participant_{i+1}")
             
             # Use existing selection if available, otherwise default to first only
@@ -704,6 +749,7 @@ def populate_individuals():
             individual_selection_vars[individual_name] = tk.BooleanVar(value=is_checked)
             cb = tk.Checkbutton(individual_container, text=individual_name, variable=individual_selection_vars[individual_name])
             cb.grid(row=i // 3, column=i % 3, sticky="w")
+    
     # Update scroll region
     individual_container.update_idletasks()
     individual_canvas.config(scrollregion=individual_canvas.bbox("all"))
