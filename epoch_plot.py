@@ -67,7 +67,7 @@ def epoch_plot(epochs, picks: list, epoch_type: str, bad_channels_strategy: str,
             epochs = mne.concatenate_epochs(epochs)
     
     # Separate channel types if picks is provided
-    if picks is not "all":
+    if picks != "all":
         # Identify the channel types in the picks
         channel_types = set(ch.split('_')[-1].lower() for ch in picks)
         

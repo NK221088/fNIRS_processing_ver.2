@@ -627,25 +627,38 @@ def populate_channels():
 
         # Get selected individuals
         selected_names = [name for name, var in individual_selection_vars.items() if var.get()]
-        selected_channels = set()
-
-        for name in selected_names:
-            individual = next((ind for ind in all_individuals if getattr(ind, "name", "") == name), None)
-            if individual and hasattr(individual, "epochs"):
-                selected_channels.update(individual.epochs.ch_names)  # Includes bads
-
-        # Populate checkboxes for all found channels
-        for i, ch in enumerate(sorted(selected_channels)):
-            is_checked = (i == 0)  # Optional: first channel pre-checked
-            channel_vars[ch] = tk.BooleanVar(value=is_checked)
-            cb = tk.Checkbutton(channel_container, text=ch, variable=channel_vars[ch])
-            cb.grid(row=i // 3, column=i % 3, sticky="w")
-    
-    channel_container.update_idletasks()
-    channel_canvas.config(scrollregion=channel_canvas.bbox("all"))
-
-
-
+        
+        if selected_names:
+            # Get channels that are common to ALL selected individuals
+            common_channels = None
+            
+            for name in selected_names:
+                individual = next((ind for ind in all_individuals if getattr(ind, "name", "") == name), None)
+                if individual and hasattr(individual, "epochs"):
+                    individual_channels = set(individual.epochs.ch_names)
+                    if common_channels is None:
+                        common_channels = individual_channels
+                    else:
+                        common_channels = common_channels.intersection(individual_channels)
+            
+            # If we found common channels, create checkboxes
+            if common_channels:
+                # Force update the container to ensure all widgets are destroyed
+                channel_container.update_idletasks()
+                
+                for i, ch in enumerate(sorted(common_channels)):
+                    is_checked = (i == 0)  # Optional: first channel pre-checked
+                    channel_vars[ch] = tk.BooleanVar(value=is_checked)
+                    cb = tk.Checkbutton(channel_container, text=ch, variable=channel_vars[ch])
+                    cb.grid(row=i // 3, column=i % 3, sticky="w")
+                
+                # Update the canvas scroll region after adding new widgets
+                channel_container.update_idletasks()
+                channel_canvas.config(scrollregion=channel_canvas.bbox("all"))
+            else:
+                # If no common channels, ensure container is empty
+                channel_container.update_idletasks()
+                channel_canvas.config(scrollregion=channel_canvas.bbox("all"))
 
 def update_channels_on_haemo_type_change(*args):
     """Update channel selections when hemoglobin type changes."""
