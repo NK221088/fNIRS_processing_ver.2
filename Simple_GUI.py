@@ -712,11 +712,8 @@ def setup_ui_callbacks():
     # Set up the main callbacks in the correct order
     dataset_var.trace_add("write", lambda *args: (update_epoch_types(), toggle_individual_menu()))
     plot_type_var.trace_add("write",  lambda *args: (toggle_individual_menu(), populate_channels()))
-    Individual_var.trace_add("write", populate_channels)  # Only update channels based on selection
+    Individual_var.trace_add("write", lambda *args: populate_channels())  # Only update channels based on selection
     haemo_type_var.trace_add("write", update_channels_on_haemo_type_change)
-
-# Add trace to Individual_var to update channels when individual changes
-Individual_var.trace_add("write", lambda *args: populate_channels())
 
 # Pack the scrollable frame
 channel_canvas.pack(side="left", fill="both", expand=True)
