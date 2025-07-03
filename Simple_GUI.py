@@ -7,6 +7,8 @@ from standard_fNIRS_response_plot import standard_fNIRS_response_plot
 from paradigm_plot import paradigm_plot
 from individual_frequency_plot import individual_frequency_plot
 from statistical_analysis import statistical_analysis
+from dataset_info_dialog import show_dataset_info
+import tkinter.messagebox
 
 dataSetList = list(data_loaders.keys())
 plotTypesList = ["Epoch Plot",
@@ -18,7 +20,7 @@ plotTypesList = ["Epoch Plot",
 
 # Default settings (add hemoglobin type to settings)
 settings = {
-    "data_set": dataSetList[0],  # Default to first dataset
+    "data_set": dataSetList[11],  # Default to first dataset
     "epoch_type": "Tapping",
     "combine_strategy": "mean",
     "short_channel_correction": True,
@@ -213,6 +215,25 @@ def toggle_individual_menu(*args):
     # Force the UI to update
     root.update_idletasks()
 
+def show_dataset_info_dialog():
+    """Show the dataset information dialog."""
+    try:
+        # Check if data is loaded
+        if 'all_epochs' in globals() and all_epochs:
+            show_dataset_info(
+                parent=root,
+                all_epochs=all_epochs,
+                data_name=data_name,
+                all_data=all_data,
+                freq=freq,
+                data_types=data_types,
+                all_individuals=all_individuals
+            )
+        else:
+            tk.messagebox.showwarning("No Data", "Please load a dataset first by selecting one from the dropdown.")
+    except Exception as e:
+        tk.messagebox.showerror("Error", f"Failed to show dataset info: {str(e)}")
+        
 # Updated run_analysis function
 def run_analysis():
     """Run data processing and visualization based on selected plot type."""
@@ -442,8 +463,6 @@ top_left_frame.pack(side="top", fill="y", expand=True)
 bottom_left_frame = tk.Frame(left_container)
 bottom_left_frame.pack(side="bottom", fill="x")
 
-# Dataset selection
-
 # Helper function to create labels
 def create_label(parent, text, pack_immediately=True):
     label = tk.Label(parent, text=text, font=("Arial", 12))
@@ -464,9 +483,28 @@ def adjust_combobox_width(combobox):
     combobox["width"] = max(len(item) for item in combobox["values"])
 
 # Dataset selection
-dataset_label, dataset_var, dataset_menu = create_combobox_with_label(
-    top_left_frame, "Select Dataset:", dataSetList, settings["data_set"], 40)
+# dataset_label, dataset_var, dataset_menu = create_combobox_with_label(
+#     top_left_frame, "Select Dataset:", dataSetList, settings["data_set"], 40)
+# dataset_menu["postcommand"] = lambda: adjust_combobox_width(dataset_menu)
+# Dataset selection with info button
+dataset_frame = tk.Frame(top_left_frame)
+dataset_frame.pack(fill="x", pady=5)
+
+dataset_label = tk.Label(dataset_frame, text="Select Dataset:", font=("Arial", 12))
+dataset_label.pack(anchor="w")
+
+dataset_selection_frame = tk.Frame(dataset_frame)
+dataset_selection_frame.pack(fill="x", pady=5)
+
+dataset_var = tk.StringVar(value=settings["data_set"])
+dataset_menu = ttk.Combobox(dataset_selection_frame, textvariable=dataset_var, values=dataSetList, width=35)
+dataset_menu.pack(side="left", padx=(0, 5))
 dataset_menu["postcommand"] = lambda: adjust_combobox_width(dataset_menu)
+
+# Dataset info button
+info_button = tk.Button(dataset_selection_frame, text="Info", command=show_dataset_info_dialog, 
+                       bg="lightblue", fg="black", font=("Arial", 10), padx=10, pady=2)
+info_button.pack(side="left")
 
 # Epoch type selection
 epoch_type_label, epoch_type_var, epoch_type_menu = create_combobox_with_label(

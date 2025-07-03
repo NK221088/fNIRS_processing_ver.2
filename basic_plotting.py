@@ -61,3 +61,11 @@ if plot_paradigms:
 if plot_individual_frequency_plot:
     plots = individual_frequency_plot(all_individuals[0])
     print("hej")
+    
+times = np.arange(0, 21, 3.0)
+topomap_args = dict(extrapolate="local")
+all_individuals[0].epochs["HandMI"].average(picks="hbo").plot_joint(
+    times=times, topomap_args=topomap_args
+)
+all_individuals[0].epochs["HandMI"].average(picks="hbo").plot_topomap(times=times, **topomap_args)
+all_individuals[0].raw_intensity.plot_sensors(kind="topomap", show_names=True)
