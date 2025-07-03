@@ -3,7 +3,6 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Dict, List, Any, Optional, Callable
 from abc import ABC, abstractmethod
-
 from plot_config import WidgetConfig, WidgetType, get_widget_config
 
 
@@ -224,6 +223,7 @@ class ChannelSelectorWidget(BaseWidget):
     """Channel selection widget with scrollable checkboxes"""
     
     def _setup_widget(self):
+        """Initialize the channel selector widget"""
         frame = tk.Frame(self.parent)
         self.widget = frame
         
@@ -232,18 +232,25 @@ class ChannelSelectorWidget(BaseWidget):
         label.pack(anchor="w")
         
         # Create scrollable frame
-        canvas = tk.Canvas(frame, height=150)
+        canvas = tk.Canvas(frame, height=150, bg="white")
         scrollbar = tk.Scrollbar(frame, orient="vertical", command=canvas.yview)
         self.container = tk.Frame(canvas)
         
+        # Configure scrolling
         canvas.create_window((0, 0), window=self.container, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
         
+        # Pack canvas and scrollbar
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         
-        self.channel_vars = {}
+        # Store references for later use
         self.canvas = canvas
+        self.scrollbar = scrollbar
+        self.channel_vars = {}
+        
+        # Add mouse wheel support
+        self._setup_mouse_wheel()
         
         # Help text
         if self.config.help_text:
@@ -251,28 +258,158 @@ class ChannelSelectorWidget(BaseWidget):
                                 font=("Arial", 8), fg="gray")
             help_label.pack(anchor="w")
     
-    def get_value(self):
+    def _setup_mouse_wheel(self):
+        """Setup mouse wheel scrolling support"""
+        def _on_mousewheel(event):
+            """Handle mouse wheel scrolling"""
+            self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        # Bind mouse wheel to canvas
+        self.canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
+        # For Linux systems
+        def _on_mouse_button(event):
+            self.canvas.yview_scroll(-1, "units")
+        
+        def _on_mouse_button_down(event):
+            self.canvas.yview_scroll(1, "units")
+        
+        self.canvas.bind_all("<Button-4>", _on_mouse_button)
+        self.canvas.bind_all("<Button-5>", _on_mouse_button_down)
+    
+    def get_value(self) -> List[str]:
         """Get selected channels"""
         return [channel for channel, var in self.channel_vars.items() if var.get()]
     
-    def populate_channels(self, channels: List[str]):
-        """Populate channel checkboxes"""
-        # Clear existing
+    def set_value(self, selected_channels: List[str]):
+        """Set selected channels"""
+        for channel, var in self.channel_vars.items():
+            var.set(channel in selected_channels)
+    
+    def populate_channels(self, channels: List[str], haemo_type: Optional[str] = None, 
+                         bad_channels: Optional[List[str]] = None):
+        """Populate channel checkboxes with optional filtering"""
+        # Clear existing widgets
         for widget in self.container.winfo_children():
             widget.destroy()
         self.channel_vars.clear()
+        
+        if bad_channels is None:
+            bad_channels = []
+        
+        # Filter channels if needed
+        if haemo_type:
+            filtered_channels = [
+                channel for channel in channels 
+                if haemo_type.lower() in channel.lower() and channel not in bad_channels
+            ]
+            # Remove duplicate channel names (keep unique base names)
+            unique_channels = []
+            seen = set()
+            for channel in filtered_channels:
+                # Extract base name by removing hemoglobin type suffix
+                base_name = channel.rsplit(' ', 1)[0] if ' ' in channel else channel
+                if base_name not in seen:
+                    unique_channels.append(base_name)
+                    seen.add(base_name)
+            channels = unique_channels
+        else:
+            channels = [ch for ch in channels if ch not in bad_channels]
+        
+        # Sort channels for consistent ordering
+        channels = sorted(channels)
         
         # Add new checkboxes
         for i, channel in enumerate(channels):
             is_checked = (i == 0)  # Default: first one checked
             self.channel_vars[channel] = tk.BooleanVar(value=is_checked)
-            cb = tk.Checkbutton(self.container, text=channel, 
-                              variable=self.channel_vars[channel])
-            cb.grid(row=i // 3, column=i % 3, sticky="w")
+            
+            # Create checkbox with improved styling
+            cb = tk.Checkbutton(
+                self.container, 
+                text=channel, 
+                variable=self.channel_vars[channel],
+                anchor="w",
+                justify="left"
+            )
+            cb.grid(row=i // 3, column=i % 3, sticky="w", padx=5, pady=2)
         
         # Update scroll region
         self.container.update_idletasks()
         self.canvas.config(scrollregion=self.canvas.bbox("all"))
+    
+    def clear_channels(self):
+        """Clear all channel checkboxes"""
+        for widget in self.container.winfo_children():
+            widget.destroy()
+        self.channel_vars.clear()
+        self.canvas.config(scrollregion=self.canvas.bbox("all"))
+    
+    def select_all(self):
+        """Select all available channels"""
+        for var in self.channel_vars.values():
+            var.set(True)
+    
+    def deselect_all(self):
+        """Deselect all channels"""
+        for var in self.channel_vars.values():
+            var.set(False)
+    
+    def get_channel_count(self) -> int:
+        """Get total number of available channels"""
+        return len(self.channel_vars)
+    
+    def get_selected_count(self) -> int:
+        """Get number of selected channels"""
+        return len(self.get_value())
+    
+    def has_channels(self) -> bool:
+        """Check if any channels are available"""
+        return len(self.channel_vars) > 0
+    
+    def bind_callback(self, callback):
+        """Bind callback to channel selection changes"""
+        self.callback = callback
+        # Bind to all existing checkboxes
+        for var in self.channel_vars.values():
+            var.trace_add("write", callback)
+    
+    def _update_callback_bindings(self):
+        """Update callback bindings for newly created checkboxes"""
+        if hasattr(self, 'callback'):
+            for var in self.channel_vars.values():
+                # Remove any existing traces first
+                for trace_id in var.trace_info():
+                    var.trace_remove(trace_id[0], trace_id[1])
+                # Add new trace
+                var.trace_add("write", self.callback)
+    
+    def show(self):
+        """Show the widget"""
+        if hasattr(self, 'widget') and self.widget:
+            self.widget.pack(fill="x", padx=10, pady=5)
+    
+    def hide(self):
+        """Hide the widget"""
+        if hasattr(self, 'widget') and self.widget:
+            self.widget.pack_forget()
+    
+    def is_visible(self) -> bool:
+        """Check if widget is currently visible"""
+        return hasattr(self, 'widget') and self.widget and bool(self.widget.winfo_viewable())
+    
+    def destroy(self):
+        """Clean up the widget"""
+        if hasattr(self, 'canvas'):
+            # Unbind mouse wheel events
+            self.canvas.unbind_all("<MouseWheel>")
+            self.canvas.unbind_all("<Button-4>")
+            self.canvas.unbind_all("<Button-5>")
+        
+        if hasattr(self, 'widget') and self.widget:
+            self.widget.destroy()
+        
+        self.channel_vars.clear()
 
 
 class IndividualSelectorWidget(BaseWidget):

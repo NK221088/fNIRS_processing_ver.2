@@ -1,6 +1,6 @@
 # main_gui_refactored.py
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 
@@ -57,6 +57,7 @@ class DataManager:
         self.freq = None
         self.data_types = []
         self.all_individuals = []
+        self.bad_channels = []  # Add bad channels storage
         self._cache = {}
         self._previous_settings = {}
     
@@ -85,6 +86,16 @@ class DataManager:
                 interpolate_bad_channels=settings.interpolate_bad_channels,
                 individuals=settings.individual
             )
+            
+            # Extract bad channels if available
+            if self.all_individuals and hasattr(self.all_individuals[0], 'epochs'):
+                # Get bad channels from first individual's epochs
+                epochs = self.all_individuals[0].epochs
+                if hasattr(epochs, 'info') and hasattr(epochs.info, 'bads'):
+                    self.bad_channels = epochs.info.bads
+                else:
+                    self.bad_channels = []
+            
             return True
         except Exception as e:
             print(f"Error loading data: {e}")
@@ -367,6 +378,29 @@ class fNIRSGUI:
         self.current_plot_type = self._get_plot_type_from_name(plot_type_name)
         self._update_widgets_for_plot_type()
     
+    def _on_individual_change(self, *args):
+        """Handle individual selection change"""
+        self._update_channels()
+    
+    def _on_haemo_type_change(self, *args):
+        """Handle hemoglobin type change"""
+        if self.current_plot_type == PlotType.PARADIGM_PLOT:
+            # Preserve current channel selections
+            current_selected = []
+            if 'channels' in self.widgets:
+                current_selected = self.widgets['channels'].get_value()
+            
+            # Update channels
+            self._update_channels()
+            
+            # Restore selections if possible
+            if current_selected and 'channels' in self.widgets:
+                self.widgets['channels'].set_value(current_selected)
+    
+    def _on_individual_selection_change(self, *args):
+        """Handle individual selection change for multi-select"""
+        self._update_channels()
+    
     def _get_plot_type_from_name(self, name: str) -> PlotType:
         """Convert plot type name to enum"""
         for plot_type, config in PLOT_CONFIGS.items():
@@ -391,14 +425,19 @@ class fNIRSGUI:
             if widget_name not in self.widgets:
                 try:
                     self.widgets[widget_name] = WidgetFactory.create_widget(self.controls_frame, widget_name)
-                    # Setup callbacks for specific widgets
-                    if widget_name == 'individual':
-                        self.widgets[widget_name].bind_callback(self._on_individual_change)
                 except Exception as e:
                     print(f"Error creating widget {widget_name}: {e}")
                     continue
             
             if widget_name in self.widgets:
+                # Setup callbacks for specific widgets
+                if widget_name == 'individual':
+                    self.widgets[widget_name].bind_callback(self._on_individual_change)
+                elif widget_name == 'haemo_type':
+                    self.widgets[widget_name].bind_callback(self._on_haemo_type_change)
+                elif widget_name == 'individual_selection':
+                    self.widgets[widget_name].bind_callback(self._on_individual_selection_change)
+                
                 self.widgets[widget_name].show()
         
         # Update dynamic content
@@ -431,39 +470,70 @@ class fNIRSGUI:
         # Update channels
         self._update_channels()
     
-    def _on_individual_change(self, *args):
-        """Handle individual selection change"""
-        self._update_channels()
-    
     def _update_channels(self):
         """Update channel options based on current selection"""
         if 'channels' not in self.widgets or not self.data_manager.all_individuals:
             return
         
         plot_config = get_plot_config(self.current_plot_type)
-        if not plot_config or not plot_config.requires_channel_selection:
+        if not plot_config or not hasattr(plot_config, 'requires_channel_selection') or not plot_config.requires_channel_selection:
             return
         
-        selected_individual = self.widgets.get('individual', {}).get_value() if 'individual' in self.widgets else None
+        # Get current selections
+        selected_individual = None
+        if 'individual' in self.widgets:
+            selected_individual = self.widgets['individual'].get_value()
         
-        if plot_config.requires_hemoglobin_type and selected_individual != "All Individuals":
-            # Get channels for specific individual and hemoglobin type
-            individual_index = self.plot_generator._find_individual_index(selected_individual)
-            if individual_index is not None:
-                individual = self.data_manager.all_individuals[individual_index]
-                if hasattr(individual, 'epochs'):
-                    channels = individual.epochs.ch_names
-                    haemo_type = self.widgets.get('haemo_type', {}).get_value() if 'haemo_type' in self.widgets else 'hbo'
-                    # Filter by hemoglobin type if needed
-                    filtered_channels = [ch for ch in channels if haemo_type in ch.lower()]
-                    # Remove hemoglobin type suffix for display
-                    display_channels = [ch.rsplit(' ', 1)[0] for ch in filtered_channels]
-                    self.widgets['channels'].populate_channels(list(set(display_channels)))
-        elif self.data_manager.all_individuals:
-            # Use first individual's channels as default
+        selected_individuals = []
+        if 'individual_selection' in self.widgets:
+            selected_individuals = self.widgets['individual_selection'].get_value()
+        
+        # Get bad channels
+        bad_channels = getattr(self.data_manager, 'bad_channels', [])
+        
+        if self.current_plot_type == PlotType.PARADIGM_PLOT:
+            # For paradigm plot, use individual selection
+            if selected_individual and selected_individual != "All Individuals":
+                individual_index = self.plot_generator._find_individual_index(selected_individual)
+                if individual_index is not None:
+                    individual = self.data_manager.all_individuals[individual_index]
+                    if hasattr(individual, 'epochs'):
+                        channels = individual.epochs.ch_names
+                        haemo_type = self.widgets.get('haemo_type', {}).get_value() if 'haemo_type' in self.widgets else 'hbo'
+                        if hasattr(self.widgets['channels'], 'populate_channels'):
+                            self.widgets['channels'].populate_channels(channels, haemo_type, bad_channels)
+            else:
+                # Hide channels for "All Individuals"
+                self.widgets['channels'].hide()
+                return
+        
+        elif self.current_plot_type == PlotType.STANDARD_RESPONSE:
+            # For standard response plot, find common channels across selected individuals
+            if selected_individuals:
+                common_channels = None
+                for name in selected_individuals:
+                    individual = next((ind for ind in self.data_manager.all_individuals 
+                                     if getattr(ind, "name", "") == name), None)
+                    if individual and hasattr(individual, 'epochs'):
+                        individual_channels = set(individual.epochs.ch_names)
+                        if common_channels is None:
+                            common_channels = individual_channels
+                        else:
+                            common_channels = common_channels.intersection(individual_channels)
+                
+                if common_channels and hasattr(self.widgets['channels'], 'populate_channels'):
+                    self.widgets['channels'].populate_channels(sorted(common_channels), None, bad_channels)
+                elif hasattr(self.widgets['channels'], 'populate_channels'):
+                    self.widgets['channels'].populate_channels([], None, bad_channels)
+            elif hasattr(self.widgets['channels'], 'populate_channels'):
+                self.widgets['channels'].populate_channels([], None, bad_channels)
+        
+        else:
+            # For other plot types, use first individual's channels
             if hasattr(self.data_manager.all_individuals[0], 'epochs'):
                 channels = self.data_manager.all_individuals[0].epochs.ch_names
-                self.widgets['channels'].populate_channels(channels)
+                if hasattr(self.widgets['channels'], 'populate_channels'):
+                    self.widgets['channels'].populate_channels(channels, None, bad_channels)
     
     def _load_initial_data(self):
         """Load initial data"""
@@ -490,7 +560,7 @@ class fNIRSGUI:
         validation_errors = validate_plot_configuration(self.current_plot_type, widget_values)
         if validation_errors:
             error_msg = "\n".join(validation_errors)
-            tk.messagebox.showerror("Validation Error", error_msg)
+            messagebox.showerror("Validation Error", error_msg)
             return
         
         # Update settings from widgets
@@ -499,7 +569,7 @@ class fNIRSGUI:
         # Reload data if needed
         if self.data_manager.needs_reload(self.settings):
             if not self.data_manager.load_data(self.settings):
-                tk.messagebox.showerror("Error", "Failed to load data")
+                messagebox.showerror("Error", "Failed to load data")
                 return
         
         # Generate plots

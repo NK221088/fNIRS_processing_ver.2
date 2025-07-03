@@ -53,7 +53,7 @@ PLOT_CONFIGS = {
     PlotType.EPOCH_PLOT: PlotTypeConfig(
         name="Epoch Plot",
         plot_type=PlotType.EPOCH_PLOT,
-        required_widgets=["dataset", "epoch_type", "individual"],
+        required_widgets=["dataset", "epoch_type", "individual", "channels"],
         optional_widgets=["combine_strategy", "bad_channels_strategy", "short_channel", 
                          "negative_corr", "interpolate", "threshold"],
         supports_multiple_individuals=False,
@@ -67,7 +67,7 @@ PLOT_CONFIGS = {
     PlotType.STANDARD_RESPONSE: PlotTypeConfig(
         name="Standard fNIRS Response Plot",
         plot_type=PlotType.STANDARD_RESPONSE,
-        required_widgets=["dataset", "individual_selection"],
+        required_widgets=["dataset", "individual_selection", "channels"],
         optional_widgets=["combine_strategy", "bad_channels_strategy", "short_channel",
                          "negative_corr", "interpolate", "threshold"],
         supports_multiple_individuals=True,
@@ -81,7 +81,7 @@ PLOT_CONFIGS = {
     PlotType.PARADIGM_PLOT: PlotTypeConfig(
         name="Paradigm Plot",
         plot_type=PlotType.PARADIGM_PLOT,
-        required_widgets=["dataset", "individual", "haemo_type"],
+        required_widgets=["dataset", "individual", "haemo_type", "channels"],
         optional_widgets=["short_channel", "negative_corr", "interpolate"],
         supports_multiple_individuals=False,
         supports_all_individuals=False,
@@ -95,7 +95,7 @@ PLOT_CONFIGS = {
         name="Individual Frequency Plot",
         plot_type=PlotType.FREQUENCY_PLOT,
         required_widgets=["dataset", "individual"],
-        optional_widgets=[],
+        optional_widgets=["channels"],
         supports_multiple_individuals=False,
         supports_all_individuals=False,
         requires_channel_selection=False,
@@ -108,7 +108,7 @@ PLOT_CONFIGS = {
         name="Statistical Analysis",
         plot_type=PlotType.STATISTICAL_ANALYSIS,
         required_widgets=["area_of_interest", "time_window_start", "time_window_end", "dataset1", "dataset2"],
-        optional_widgets=[],
+        optional_widgets=["channels"],
         supports_multiple_individuals=False,
         supports_all_individuals=False,
         requires_channel_selection=False,
@@ -168,7 +168,7 @@ WIDGET_CONFIGS = {
         widget_type=WidgetType.CHANNEL_SELECTOR,
         label="Select Channels:",
         required=False,
-        help_text="Choose channels to include in the analysis"
+        help_text="Select the channels to include in the analysis"
     ),
     
     "combine_strategy": WidgetConfig(
