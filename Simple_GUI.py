@@ -443,23 +443,34 @@ bottom_left_frame = tk.Frame(left_container)
 bottom_left_frame.pack(side="bottom", fill="x")
 
 # Dataset selection
-tk.Label(top_left_frame, text="Select Dataset:", font=("Arial", 12)).pack(anchor="w")
-dataset_var = tk.StringVar(value=settings["data_set"])
-dataset_menu = ttk.Combobox(top_left_frame, textvariable=dataset_var, values=dataSetList, width=40)
 
-# Dynamically adjust dropdown width
+# Helper function to create labels
+def create_label(parent, text, pack_immediately=True):
+    label = tk.Label(parent, text=text, font=("Arial", 12))
+    if pack_immediately:
+        label.pack(anchor="w")
+    return label
+
+# Helper function to create a combobox with a label
+def create_combobox_with_label(parent, label_text, values=None, default_value="", width=None):
+    label = create_label(parent, label_text)
+    var = tk.StringVar(value=default_value)
+    combo = ttk.Combobox(parent, textvariable=var, values=values or [], width=width)
+    combo.pack(pady=5)
+    return label, var, combo
+
+# Helper function to adjust combobox width
 def adjust_combobox_width(combobox):
     combobox["width"] = max(len(item) for item in combobox["values"])
-    
+
+# Dataset selection
+dataset_label, dataset_var, dataset_menu = create_combobox_with_label(
+    top_left_frame, "Select Dataset:", dataSetList, settings["data_set"], 40)
 dataset_menu["postcommand"] = lambda: adjust_combobox_width(dataset_menu)
-dataset_menu.pack(pady=5)
 
 # Epoch type selection
-epoch_type_label = tk.Label(top_left_frame, text="Epoch Type:", font=("Arial", 12))  # Define the label as a variable
-epoch_type_label.pack(anchor="w")  # Pack the label
-epoch_type_var = tk.StringVar()  # Define the StringVar for epoch type
-epoch_type_menu = ttk.Combobox(top_left_frame, textvariable=epoch_type_var)  # Create the combobox for epoch type
-epoch_type_menu.pack(pady=5)  # Pack the combobox
+epoch_type_label, epoch_type_var, epoch_type_menu = create_combobox_with_label(
+    top_left_frame, "Epoch Type:")
 
 # Plot type selection
 tk.Label(top_left_frame, text="Select Plot Type:", font=("Arial", 12)).pack(anchor="w")
@@ -468,58 +479,52 @@ plot_type_menu = ttk.Combobox(top_left_frame, textvariable=plot_type_var, values
 # Call the function that updates the UI based on the selected plot type
 plot_type_menu.pack(pady=5)
 
-# Add hemoglobin type selection (similar to other dropdowns)
-haemo_type_label = tk.Label(top_left_frame, text="Hemoglobin Type:", font=("Arial", 12))
-haemo_type_var = tk.StringVar(value=settings["haemo_type"])
-haemo_type_menu = ttk.Combobox(top_left_frame, textvariable=haemo_type_var, values=["hbo", "hbr"])
-haemo_type_label.pack_forget()
-haemo_type_menu.pack_forget()
+# Helper function to create checkbox with label
+def create_checkbox_with_label(parent, label_text, default_value):
+    label = create_label(parent, label_text)
+    var = tk.BooleanVar(value=default_value)
+    checkbox = tk.Checkbutton(parent, text="Enable", variable=var)
+    checkbox.pack(anchor="w")
+    return label, var, checkbox
 
-# Individual selection (Initially hidden)
-individual_label = tk.Label(top_left_frame, text="Select Individual:", font=("Arial", 12))
-Individual_var = tk.StringVar()
-individuals_menu = ttk.Combobox(top_left_frame, textvariable=Individual_var)
-individual_label.pack_forget()
-individuals_menu.pack_forget()
+# Helper function to toggle widget visibility
+def toggle_widgets(show, *widgets):
+    for widget in widgets:
+        if show:
+            widget.pack(anchor="w")
+        else:
+            widget.pack_forget()
+
+# Hemoglobin type selection (initially hidden)
+haemo_type_label, haemo_type_var, haemo_type_menu = create_combobox_with_label(
+    top_left_frame, "Hemoglobin Type:", ["hbo", "hbr"], settings["haemo_type"])
+toggle_widgets(False, haemo_type_label, haemo_type_menu)
+
+# Individual selection (initially hidden)
+individual_label, Individual_var, individuals_menu = create_combobox_with_label(
+    top_left_frame, "Select Individual:")
+toggle_widgets(False, individual_label, individuals_menu)
 
 # Combine strategy selection
-combine_strategy_label = tk.Label(top_left_frame, text="Combine Strategy:", font=("Arial", 12))
-combine_strategy_label.pack(anchor="w")
-combine_strategy_var = tk.StringVar(value=settings["combine_strategy"])
-combine_strategy_menu = ttk.Combobox(top_left_frame, textvariable=combine_strategy_var, values=["mean", "median", "gfp"])
-combine_strategy_menu.pack(pady=5)
+combine_strategy_label, combine_strategy_var, combine_strategy_menu = create_combobox_with_label(
+    top_left_frame, "Combine Strategy:", ["mean", "median", "gfp"], settings["combine_strategy"])
 
 # Bad Channels Strategy
-bad_channels_strategy_label = tk.Label(top_left_frame, text="Bad Channels Strategy:", font=("Arial", 12))
-bad_channels_strategy_label.pack(anchor="w")
-bad_channels_strategy_var = tk.StringVar(value=settings["bad_channels_strategy"])
-bad_channels_strategy_menu = ttk.Combobox(top_left_frame, textvariable=bad_channels_strategy_var, values=["all", "delete", "threshold"])
-bad_channels_strategy_menu.pack(pady=5)
+bad_channels_strategy_label, bad_channels_strategy_var, bad_channels_strategy_menu = create_combobox_with_label(
+    top_left_frame, "Bad Channels Strategy:", ["all", "delete", "threshold"], settings["bad_channels_strategy"])
 
-# Short channel correction
-short_channel_correction_label = tk.Label(top_left_frame, text="Short Channel Correction:", font=("Arial", 12))
-short_channel_correction_label.pack(anchor="w")
-short_channel_correction_var = tk.BooleanVar(value=settings["short_channel_correction"])
-short_channel_correction_checkbox = tk.Checkbutton(top_left_frame, text="Enable", variable=short_channel_correction_var)
-short_channel_correction_checkbox.pack(anchor="w")
+# Checkboxes
+short_channel_correction_label, short_channel_correction_var, short_channel_correction_checkbox = create_checkbox_with_label(
+    top_left_frame, "Short Channel Correction:", settings["short_channel_correction"])
 
-# Negative correlation enhancement
-negative_correlation_label = tk.Label(top_left_frame, text="Negative Correlation Enhancement:", font=("Arial", 12))
-negative_correlation_label.pack(anchor="w")
-negative_correlation_enhancement_var = tk.BooleanVar(value=settings["negative_correlation_enhancement"])
-negative_correlation_checkbox = tk.Checkbutton(top_left_frame, text="Enable", variable=negative_correlation_enhancement_var)
-negative_correlation_checkbox.pack(anchor="w")
+negative_correlation_label, negative_correlation_enhancement_var, negative_correlation_checkbox = create_checkbox_with_label(
+    top_left_frame, "Negative Correlation Enhancement:", settings["negative_correlation_enhancement"])
 
-# Interpolate bad channels
-interpolate_bad_channels_label = tk.Label(top_left_frame, text="Interpolate Bad Channels:", font=("Arial", 12))
-interpolate_bad_channels_label.pack(anchor="w")
-interpolate_bad_channels_var = tk.BooleanVar(value=settings["interpolate_bad_channels"])
-interpolate_bad_channels_checkbox = tk.Checkbutton(top_left_frame, text="Enable", variable=interpolate_bad_channels_var)
-interpolate_bad_channels_checkbox.pack(anchor="w")
+interpolate_bad_channels_label, interpolate_bad_channels_var, interpolate_bad_channels_checkbox = create_checkbox_with_label(
+    top_left_frame, "Interpolate Bad Channels:", settings["interpolate_bad_channels"])
 
 # Threshold selection
-threshold_label = tk.Label(top_left_frame, text="Threshold:", font=("Arial", 12))
-threshold_label.pack(anchor="w")
+threshold_label = create_label(top_left_frame, "Threshold:")
 threshold_var = tk.StringVar(value=str(settings["threshold"]))
 threshold_entry = tk.Entry(top_left_frame, textvariable=threshold_var)
 threshold_entry.pack(pady=5)
@@ -762,14 +767,13 @@ def setup_ui_callbacks():
     haemo_type_var.trace_add("write", update_channels_on_haemo_type_change)
 
 # Pack the scrollable frame
-channel_canvas.pack(side="left", fill="both", expand=True)
-channel_scrollbar.pack(side="right", fill="y")
-channel_scrollbar_horizontal.pack(side="bottom", fill="x")
+def setup_scrollable_frame(canvas, v_scrollbar, h_scrollbar):
+    canvas.pack(side="left", fill="both", expand=True)
+    v_scrollbar.pack(side="right", fill="y")
+    h_scrollbar.pack(side="bottom", fill="x")
 
-# Pack the individual scrollable frame
-individual_canvas.pack(side="left", fill="both", expand=True)
-individual_scrollbar.pack(side="right", fill="y")
-individual_scrollbar_horizontal.pack(side="bottom", fill="x")
+setup_scrollable_frame(channel_canvas, channel_scrollbar, channel_scrollbar_horizontal)
+setup_scrollable_frame(individual_canvas, individual_scrollbar, individual_scrollbar_horizontal)
 
 # Area of Interest selection for Statistical Analysis
 area_of_interest_label = tk.Label(top_left_frame, text="Area of Interest:", font=("Arial", 12))
