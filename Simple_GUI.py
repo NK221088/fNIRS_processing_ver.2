@@ -1,16 +1,24 @@
 import tkinter as tk
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from load_data_function import load_data
+from load_data_function import data_loaders, load_data
 from epoch_plot import epoch_plot
 from standard_fNIRS_response_plot import standard_fNIRS_response_plot
 from paradigm_plot import paradigm_plot
 from individual_frequency_plot import individual_frequency_plot
 from statistical_analysis import statistical_analysis
 
+dataSetList = list(data_loaders.keys())
+plotTypesList = ["Epoch Plot",
+                "Standard fNIRS Response Plot",
+                "paradigm_plot",
+                "individual frequency plot",
+                "Statistical Analysis",
+                ]
+
 # Default settings (add hemoglobin type to settings)
 settings = {
-    "data_set": "fNIrs_motor",
+    "data_set": dataSetList[0],  # Default to first dataset
     "epoch_type": "Tapping",
     "combine_strategy": "mean",
     "short_channel_correction": True,
@@ -437,28 +445,13 @@ bottom_left_frame.pack(side="bottom", fill="x")
 # Dataset selection
 tk.Label(top_left_frame, text="Select Dataset:", font=("Arial", 12)).pack(anchor="w")
 dataset_var = tk.StringVar(value=settings["data_set"])
-dataset_menu = ttk.Combobox(top_left_frame, textvariable=dataset_var, values=[
-    "fNIrs_motor",
-    "AudioSpeechNoise",
-    "fNirs_motor_full_data",
-    "fNIRS_Alexandros_DoC_data",
-    "fNIRS_Alexandros_Healthy_data",
-    "fNIRS_CUH_patient_data",
-    "fNIRS_Melika_hand_data_5Hz_load",
-    "fNIRS_Melika_tongue_5Hz_data_load",
-    "fNIRS_Melika_old_data",
-    "fNIRS_Melika_hand_data_10Hz_load",
-    "fNIRS_Melika_tongue_10Hz_data_load",
-    "fNIRS_Melika_hand_data_long_load",
-    "fNIRS_Melika_tongue_long_data_load",
-    "fNIRS_Pardis_DOC_data",
-    "fNIRS_Pardis_HC_data",], width=40)
+dataset_menu = ttk.Combobox(top_left_frame, textvariable=dataset_var, values=dataSetList, width=40)
 
 # Dynamically adjust dropdown width
-def adjust_menu_width():
-    dataset_menu["width"] = max(len(item) for item in dataset_menu["values"])  # Adjust as needed
+def adjust_combobox_width(combobox):
+    combobox["width"] = max(len(item) for item in combobox["values"])
     
-dataset_menu["postcommand"] = adjust_menu_width
+dataset_menu["postcommand"] = lambda: adjust_combobox_width(dataset_menu)
 dataset_menu.pack(pady=5)
 
 # Epoch type selection
@@ -471,13 +464,7 @@ epoch_type_menu.pack(pady=5)  # Pack the combobox
 # Plot type selection
 tk.Label(top_left_frame, text="Select Plot Type:", font=("Arial", 12)).pack(anchor="w")
 plot_type_var = tk.StringVar(value=settings["plot_type"])
-plot_type_menu = ttk.Combobox(top_left_frame, textvariable=plot_type_var, values=[
-                                                                              "Epoch Plot",
-                                                                              "Standard fNIRS Response Plot",
-                                                                              "paradigm_plot",
-                                                                              "individual frequency plot",
-                                                                              "Statistical Analysis"
-                                                                              ])
+plot_type_menu = ttk.Combobox(top_left_frame, textvariable=plot_type_var, values=plotTypesList)
 # Call the function that updates the UI based on the selected plot type
 plot_type_menu.pack(pady=5)
 
@@ -811,58 +798,23 @@ time_window_frame.pack_forget()  # Initially hidden
 # Dataset comparison for Statistical Analysis
 dataset1_label = tk.Label(top_left_frame, text="Dataset 1:", font=("Arial", 12))
 dataset1_var = tk.StringVar(value=settings["data_set"])
-dataset1_menu = ttk.Combobox(top_left_frame, textvariable=dataset1_var, values=[
-    "fNIrs_motor",
-    "AudioSpeechNoise",
-    "fNirs_motor_full_data",
-    "fNIRS_Alexandros_DoC_data",
-    "fNIRS_Alexandros_Healthy_data",
-    "fNIRS_CUH_patient_data",
-    "fNIRS_Melika_hand_data_5Hz_load",
-    "fNIRS_Melika_tongue_5Hz_data_load",
-    "fNIRS_Melika_old_data",
-    "fNIRS_Melika_hand_data_10Hz_load",
-    "fNIRS_Melika_tongue_10Hz_data_load",
-    "fNIRS_Melika_hand_data_long_load",
-    "fNIRS_Melika_tongue_long_data_load"], width=40)
+dataset1_menu = ttk.Combobox(top_left_frame, textvariable=dataset1_var, values=dataSetList, width=40)
 dataset1_label.pack_forget()  # Initially hidden
 dataset1_menu.pack_forget()   # Initially hidden
-
-# Apply the same width adjustment function
-def adjust_dataset1_menu_width():
-    dataset1_menu["width"] = max(len(item) for item in dataset1_menu["values"])
-    
-dataset1_menu["postcommand"] = adjust_dataset1_menu_width
+dataset1_menu["postcommand"] = lambda: adjust_combobox_width(dataset1_menu)
 
 dataset2_label = tk.Label(top_left_frame, text="Dataset 2:", font=("Arial", 12))
 dataset2_var = tk.StringVar(value="fNIrs_motor")
-dataset2_menu = ttk.Combobox(top_left_frame, textvariable=dataset2_var, values=[
-    "fNIrs_motor",
-    "AudioSpeechNoise",
-    "fNirs_motor_full_data",
-    "fNIRS_Alexandros_DoC_data",
-    "fNIRS_Alexandros_Healthy_data",
-    "fNIRS_CUH_patient_data",
-    "fNIRS_Melika_hand_data_5Hz_load",
-    "fNIRS_Melika_tongue_5Hz_data_load",
-    "fNIRS_Melika_old_data",
-    "fNIRS_Melika_hand_data_10Hz_load",
-    "fNIRS_Melika_tongue_10Hz_data_load",
-    "fNIRS_Melika_hand_data_long_load",
-    "fNIRS_Melika_tongue_long_data_load"], width=40)
+dataset2_menu = ttk.Combobox(top_left_frame, textvariable=dataset2_var, values=dataSetList, width=40)
 dataset2_label.pack_forget()  # Initially hidden
 dataset2_menu.pack_forget()   # Initially hidden
-
-# Apply the same width adjustment function
-def adjust_dataset2_menu_width():
-    dataset2_menu["width"] = max(len(item) for item in dataset2_menu["values"])
     
 def _on_mousewheel(event):
     channel_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
 
 channel_canvas.bind_all("<MouseWheel>", _on_mousewheel)  # For Windows and Mac
 
-dataset2_menu["postcommand"] = adjust_dataset2_menu_width
+dataset2_menu["postcommand"] = lambda: adjust_combobox_width(dataset2_menu)
 
 run_button = tk.Button(bottom_left_frame, text="Run Analysis", command=run_analysis, bg="green", fg="white", 
                        font=("Arial", 12, "bold"), padx=20, pady=10)

@@ -1826,7 +1826,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
 
 class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False):
-        self.number_of_participants = 9
+        self.number_of_participants = 6
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "TongueMI",
