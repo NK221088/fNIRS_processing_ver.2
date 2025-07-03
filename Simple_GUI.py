@@ -563,10 +563,19 @@ individual_canvas.configure(yscrollcommand=individual_scrollbar.set, xscrollcomm
 # Variable to track individual selections
 individual_selection_vars = {}
 
+# Helper function to clear container widgets
+def clear_container(container):
+    for widget in container.winfo_children():
+        widget.destroy()
+
+# Helper function to update the scroll region of the canvas
+def update_canvas_scroll(container, canvas):
+    container.update_idletasks()
+    canvas.config(scrollregion=canvas.bbox("all"))
+
 def populate_channels():
     # Clear existing checkboxes
-    for widget in channel_container.winfo_children():
-        widget.destroy()
+    clear_container(channel_container)
     # Reset channel variables
     channel_vars.clear()
     # Get the plot type
@@ -630,8 +639,7 @@ def populate_channels():
         channel_frame.pack(fill="x", expand=False)
 
         # Clear previous checkboxes
-        for widget in channel_container.winfo_children():
-            widget.destroy()
+        clear_container(channel_container)
         channel_vars.clear()
 
         # Get selected individuals
@@ -662,12 +670,10 @@ def populate_channels():
                     cb.grid(row=i // 3, column=i % 3, sticky="w")
                 
                 # Update the canvas scroll region after adding new widgets
-                channel_container.update_idletasks()
-                channel_canvas.config(scrollregion=channel_canvas.bbox("all"))
+                update_canvas_scroll(channel_container, channel_canvas)
             else:
                 # If no common channels, ensure container is empty
-                channel_container.update_idletasks()
-                channel_canvas.config(scrollregion=channel_canvas.bbox("all"))
+                update_canvas_scroll(channel_container, channel_canvas)
 
 def update_channels_on_haemo_type_change(*args):
     """Update channel selections when hemoglobin type changes."""
@@ -696,8 +702,7 @@ def populate_individuals():
     current_selections = {name: var.get() for name, var in individual_selection_vars.items()}
     
     # Clear existing checkboxes
-    for widget in individual_container.winfo_children():
-        widget.destroy()
+    clear_container(individual_container)
     
     # Get the current plot type to determine filtering logic
     current_plot_type = plot_type_var.get()
@@ -748,17 +753,18 @@ def populate_individuals():
     
     attach_checkbox_callbacks()
 
+# Helper function for trace removal:
+def clear_traces(*variables):
+    for var in variables:
+        try:
+            var.trace_remove('write', None)
+        except:
+            pass
+        
 # Define setup_ui_callbacks function
 def setup_ui_callbacks():
     # Clear any existing traces
-    for trace_name in ['write']:
-        try:
-            dataset_var.trace_remove(trace_name, None)
-            plot_type_var.trace_remove(trace_name, None)
-            Individual_var.trace_remove(trace_name, None)
-            haemo_type_var.trace_remove(trace_name, None)
-        except:
-            pass
+    clear_traces(dataset_var, plot_type_var, Individual_var, haemo_type_var)
     
     # Set up the main callbacks in the correct order
     dataset_var.trace_add("write", lambda *args: (update_epoch_types(), toggle_individual_menu()))
