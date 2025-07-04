@@ -15,7 +15,8 @@ def paradigm_plot(individual: individual_participant_class, picks_ : list = ["al
         Whether the scroolbars should be shown or not.
     """
     # Identify the channel types in the picks
-    if picks_ == "all":
+    if picks_ == ["all"]:
+        picks_ = []
         picks_ = individual.raw_haemo.ch_names
     # If multiple types are selected, split into separate type lists
     
