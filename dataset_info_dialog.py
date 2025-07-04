@@ -160,7 +160,6 @@ class DatasetInfoDialog:
         self.populate_info()
         
         # Set focus and make window modal
-        self.dialog.transient(parent)
         self.dialog.grab_set()
         self.dialog.focus_set()
 
@@ -253,51 +252,44 @@ class DatasetInfoDialog:
                               command=self.close_dialog)
         close_btn.pack(side=tk.LEFT, padx=2)
         
-        # Main content area with notebook for better organization
-        self.notebook = ttk.Notebook(container)
-        self.notebook.pack(fill=tk.BOTH, expand=True)
-        
-        # Tab 1: Overview
-        self.overview_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.overview_frame, text="Overview")
-        
-        # Tab 2: Detailed Info
-        self.details_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.details_frame, text="Detailed Info")
-        
-        # Tab 3: Paradigm Analysis
-        self.paradigm_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.paradigm_frame, text="Paradigm Analysis")
-        
-        # Tab 4: Channel Layout
-        self.channel_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.channel_frame, text="Channel Layout")
-        
-        # Setup main frame for overview tab
-        self.main_frame = ttk.Frame(self.overview_frame)
+        # Main content area (back to original layout)
+        # Main content area (back to original layout)
+        self.main_frame = ttk.Frame(container)
         self.main_frame.pack(fill=tk.BOTH, expand=True)
-        
-        # Configure grid weights
-        self.main_frame.columnconfigure(0, weight=2)
-        self.main_frame.columnconfigure(1, weight=3)
+
+        self.main_frame.columnconfigure(0, weight=3)  # Info
+        self.main_frame.columnconfigure(1, weight=2)  # Plots
         self.main_frame.rowconfigure(0, weight=1)
         self.main_frame.rowconfigure(1, weight=1)
-        
-        # Info section (left side)
-        self.info_frame = ttk.LabelFrame(self.main_frame, text="Dataset Summary")
-        self.info_frame.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 10), pady=(0, 10))
-        
-        # Quick stats (top right)
-        self.stats_frame = ttk.LabelFrame(self.main_frame, text="Quick Statistics")
-        self.stats_frame.grid(row=0, column=1, sticky="nsew", pady=(0, 10))
-        
-        # Paradigm preview (bottom right)
-        self.paradigm_preview_frame = ttk.LabelFrame(self.main_frame, text="Paradigm Preview")
-        self.paradigm_preview_frame.grid(row=1, column=1, sticky="nsew")
+
+        # Left info section
+        self.info_frame = ttk.Frame(self.main_frame)
+        self.info_frame.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 10))
+
+        # Top-right: Channel layout
+        self.layout_frame = ttk.Frame(self.main_frame)
+        self.layout_frame.grid(row=0, column=1, sticky="nsew", pady=(0, 10))
+
+        # Bottom-right: Paradigm overview
+        self.paradigm_frame = ttk.Frame(self.main_frame)
+        self.paradigm_frame.grid(row=1, column=1, sticky="nsew")
+
+        # Close button at bottom
+        close_button = ttk.Button(container, text="Close", command=self.close_dialog)
+        close_button.pack(pady=10)
 
     def minimize_window(self):
-        """Minimize the window"""
+        """Minimize the window - remove transient state first"""
+        self.dialog.transient()  # Remove transient state
         self.dialog.iconify()
+        # Re-establish transient state when restored
+        self.dialog.bind('<Map>', self._on_deiconify)
+
+    def _on_deiconify(self, event):
+        """Re-establish transient state when window is restored"""
+        if event.widget == self.dialog:
+            self.dialog.transient(self.parent)
+            self.dialog.unbind('<Map>')  # Remove this binding after use
 
     def toggle_maximize(self):
         """Toggle between maximized and normal window state"""
@@ -309,119 +301,22 @@ class DatasetInfoDialog:
             self.maximize_btn.config(text="🗗")
 
     def populate_info(self):
-        """Populate all tabs with information"""
-        self.populate_overview()
-        self.populate_detailed_info()
-        self.populate_paradigm_analysis()
+        self.populate_general_info()
         self.populate_channel_layout()
+        self.populate_paradigm_overview()
 
-    def populate_overview(self):
-        """Populate the overview tab with summary information"""
-        # Info section
-        info_container = ttk.Frame(self.info_frame)
-        info_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-        # Basic info
-        ttk.Label(info_container, text="Basic Information", font=("Arial", 11, "bold")).pack(anchor="w", pady=(0, 5))
-        
-        total_participants = len(self.all_epochs)
-        ttk.Label(info_container, text=f"Participants: {total_participants}").pack(anchor="w", pady=2)
-        
-        if self.all_individuals:
-            excluded_participants = len(self.all_individuals) - total_participants
-            ttk.Label(info_container, text=f"Excluded: {excluded_participants}").pack(anchor="w", pady=2)
-        
-        ttk.Label(info_container, text=f"Sampling Rate: {self.freq:.2f} Hz").pack(anchor="w", pady=2)
-        
-        # Conditions
-        ttk.Label(info_container, text="Conditions:", font=("Arial", 11, "bold")).pack(anchor="w", pady=(10, 5))
-        for i, data_type in enumerate(self.data_types, 1):
-            ttk.Label(info_container, text=f"{i}. {data_type}").pack(anchor="w", pady=1)
-        
-        # Quick stats
-        self.populate_quick_stats()
-        
-        # Paradigm preview
-        self.populate_paradigm_preview()
-
-    def populate_quick_stats(self):
-        """Populate quick statistics section"""
-        stats_container = ttk.Frame(self.stats_frame)
-        stats_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-        if self.all_epochs:
-            first_epoch = self.all_epochs[0]
-            
-            # Channel counts
-            hbo_channels = [ch for ch in first_epoch.ch_names if ch.lower().endswith('hbo')]
-            hbr_channels = [ch for ch in first_epoch.ch_names if ch.lower().endswith('hbr')]
-            
-            ttk.Label(stats_container, text="Channel Counts", font=("Arial", 11, "bold")).pack(anchor="w", pady=(0, 5))
-            ttk.Label(stats_container, text=f"Total: {len(first_epoch.ch_names)}").pack(anchor="w", pady=2)
-            ttk.Label(stats_container, text=f"HbO: {len(hbo_channels)}").pack(anchor="w", pady=2)
-            ttk.Label(stats_container, text=f"HbR: {len(hbr_channels)}").pack(anchor="w", pady=2)
-            
-            # Epoch counts
-            ttk.Label(stats_container, text="Epoch Counts", font=("Arial", 11, "bold")).pack(anchor="w", pady=(10, 5))
-            total_epochs = sum(len(epoch) for epoch in self.all_epochs)
-            ttk.Label(stats_container, text=f"Total: {total_epochs}").pack(anchor="w", pady=2)
-            
-            for data_type in self.data_types:
-                if data_type in self.all_data:
-                    n_epochs = self.all_data[data_type].shape[0]
-                    ttk.Label(stats_container, text=f"{data_type}: {n_epochs}").pack(anchor="w", pady=2)
-
-    def populate_paradigm_preview(self):
-        """Populate paradigm preview section"""
-        preview_container = ttk.Frame(self.paradigm_preview_frame)
-        preview_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-        try:
-            if self.all_epochs:
-                first_epoch = self.all_epochs[0]
-                events = first_epoch.events
-                event_mapping = {v: k for k, v in first_epoch.event_id.items()}
-                
-                # Create a small preview plot
-                fig = Figure(figsize=(4, 2), dpi=100)
-                ax = fig.add_subplot(111)
-                
-                # Simple event distribution
-                condition_counts = Counter([event_mapping[id] for id in events[:, 2]])
-                conditions = list(condition_counts.keys())
-                counts = list(condition_counts.values())
-                
-                ax.bar(range(len(conditions)), counts)
-                ax.set_xticks(range(len(conditions)))
-                ax.set_xticklabels(conditions, rotation=45, ha='right', fontsize=8)
-                ax.set_ylabel('Count', fontsize=8)
-                ax.set_title('Event Distribution', fontsize=9)
-                
-                fig.tight_layout()
-                
-                canvas = FigureCanvasTkAgg(fig, preview_container)
-                canvas.draw()
-                canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-                
-        except Exception as e:
-            error_label = ttk.Label(preview_container, text=f"Preview unavailable: {str(e)}")
-            error_label.pack(expand=True)
-
-    def populate_detailed_info(self):
-        """Populate detailed information tab"""
-        # Create scrollable frame
-        canvas = tk.Canvas(self.details_frame)
-        scrollbar = ttk.Scrollbar(self.details_frame, orient="vertical", command=canvas.yview)
+    def populate_general_info(self):
+        canvas = tk.Canvas(self.info_frame)
+        scrollbar = ttk.Scrollbar(self.info_frame, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
 
         scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
 
-        # Populate with detailed information
-        ttk.Label(scrollable_frame, text="Detailed Dataset Information", font=("Arial", 14, "bold")).pack(anchor="w", pady=(0, 10))
+        ttk.Label(scrollable_frame, text=f"Dataset Name: {self.data_name}", font=("Arial", 12, "bold")).pack(anchor="w", pady=5)
 
-        # All the detailed information from the original populate_general_info method
         total_participants = len(self.all_epochs)
         ttk.Label(scrollable_frame, text=f"Total Participants: {total_participants}").pack(anchor="w", pady=2)
 
@@ -431,11 +326,13 @@ class DatasetInfoDialog:
 
         ttk.Label(scrollable_frame, text=f"Sampling Frequency: {self.freq:.2f} Hz").pack(anchor="w", pady=2)
 
-        # Continue with detailed channel information, bad channels, summary statistics etc.
+        ttk.Label(scrollable_frame, text="Conditions:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
+        for data_type in self.data_types:
+            ttk.Label(scrollable_frame, text=f"  • {data_type}").pack(anchor="w", pady=1)
+
         if self.all_epochs:
             first_epoch = self.all_epochs[0]
-            
-            ttk.Label(scrollable_frame, text="Channel Information:", font=("Arial", 12, "bold")).pack(anchor="w", pady=(10, 2))
+            ttk.Label(scrollable_frame, text="Channel Information:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
             ttk.Label(scrollable_frame, text=f"  • Total Channels: {len(first_epoch.ch_names)}").pack(anchor="w", pady=1)
 
             hbo_channels = [ch for ch in first_epoch.ch_names if ch.lower().endswith('hbo')]
@@ -452,8 +349,16 @@ class DatasetInfoDialog:
                         text += f" ... (+{len(bad_channels)-5} more)"
                     ttk.Label(scrollable_frame, text=f"    {text}").pack(anchor="w", pady=1)
 
-        # Summary statistics
-        ttk.Label(scrollable_frame, text="Summary Statistics:", font=("Arial", 12, "bold")).pack(anchor="w", pady=(10, 2))
+        ttk.Label(scrollable_frame, text="Epoch Information:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
+        total_epochs = sum(len(epoch) for epoch in self.all_epochs)
+        ttk.Label(scrollable_frame, text=f"  • Total Epochs: {total_epochs}").pack(anchor="w", pady=1)
+
+        for data_type in self.data_types:
+            if data_type in self.all_data:
+                n_epochs = self.all_data[data_type].shape[0]
+                ttk.Label(scrollable_frame, text=f"  • {data_type}: {n_epochs} epochs").pack(anchor="w", pady=1)
+
+        ttk.Label(scrollable_frame, text="Summary Statistics:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
         for data_type in self.data_types:
             if data_type in self.all_data:
                 data = self.all_data[data_type]
@@ -469,34 +374,10 @@ class DatasetInfoDialog:
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-    def populate_paradigm_analysis(self):
-        """Populate paradigm analysis tab with full paradigm plot"""
-        try:
-            if self.all_epochs:
-                first_epoch = self.all_epochs[0]
-                events = first_epoch.events
-                event_mapping = {v: k for k, v in first_epoch.event_id.items()}
-                
-                # Create full paradigm plot
-                fig = create_paradigm_plot(events, event_mapping, figure_size=(12, 8))
-                
-                canvas = FigureCanvasTkAgg(fig, self.paradigm_frame)
-                canvas.draw()
-                canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-                
-                # Add navigation toolbar
-                toolbar = NavigationToolbar2Tk(canvas, self.paradigm_frame)
-                toolbar.update()
-                
-        except Exception as e:
-            error_label = ttk.Label(self.paradigm_frame, text=f"Paradigm analysis error: {str(e)}")
-            error_label.pack(expand=True)
-
     def populate_channel_layout(self):
-        """Populate channel layout tab"""
         try:
             if self.all_epochs:
-                fig = Figure(figsize=(8, 6), dpi=100)
+                fig = Figure(figsize=(5, 4), dpi=100)
                 ax = fig.add_subplot(111)
                 first_epoch = self.all_epochs[0]
 
@@ -504,18 +385,51 @@ class DatasetInfoDialog:
                     info = first_epoch.info
                     raw_for_plot = mne.io.RawArray(np.zeros((len(info['ch_names']), 1000)), info)
                     raw_for_plot.plot_sensors(kind="topomap", show_names=True, axes=ax)
-                    ax.set_title("Sensor Layout", fontsize=14, fontweight='bold')
+                    ax.set_title("Sensor Setup")
 
-                canvas = FigureCanvasTkAgg(fig, self.channel_frame)
+                canvas = FigureCanvasTkAgg(fig, self.layout_frame)
+                canvas.draw()
+                canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+        except Exception as e:
+            error_label = ttk.Label(self.layout_frame, text=f"Sensor setup error: {str(e)}")
+            error_label.pack(expand=True)
+
+    def populate_paradigm_overview(self):
+        try:
+            if self.all_epochs:
+                # Extract events from the first participant's epochs
+                first_epoch = self.all_epochs[0]
+                
+                # Extract events and event mapping directly
+                events = first_epoch.events
+                event_mapping = {v: k for k, v in first_epoch.event_id.items()}  # Reverse mapping
+                
+                # Create paradigm plot
+                fig = create_paradigm_plot(events, event_mapping, figure_size=(8, 6))
+                
+                # Embed in tkinter - no navigation toolbar, just the plot
+                canvas = FigureCanvasTkAgg(fig, self.paradigm_frame)
                 canvas.draw()
                 canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
                 
-                # Add navigation toolbar
-                toolbar = NavigationToolbar2Tk(canvas, self.channel_frame)
-                toolbar.update()
-
+                # Add a title
+                title_label = ttk.Label(self.paradigm_frame, text="Paradigm Overview", 
+                                      font=("Arial", 12, "bold"))
+                title_label.pack(pady=(0, 10))
+                
+                # Add note about scrolling the timeline
+                note_label = ttk.Label(self.paradigm_frame, 
+                                     text="Use mouse scroll or drag to navigate the timeline", 
+                                     font=("Arial", 8), foreground="gray")
+                note_label.pack(pady=(0, 5))
+                    
+            else:
+                error_label = ttk.Label(self.paradigm_frame, text="No epoch data available")
+                error_label.pack(expand=True)
+                
         except Exception as e:
-            error_label = ttk.Label(self.channel_frame, text=f"Channel layout error: {str(e)}")
+            error_label = ttk.Label(self.paradigm_frame, text=f"Paradigm plot error: {str(e)}")
             error_label.pack(expand=True)
 
     def close_dialog(self):
