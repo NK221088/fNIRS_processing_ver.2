@@ -138,7 +138,149 @@ def create_paradigm_plot(events_data, event_mapping=None, figure_size=(8, 6)):
               loc='upper right', bbox_to_anchor=(1, 1), fontsize=8)
     
     fig.tight_layout()
-    return fig
+    return fig, ax3, time_sequence[-1]/60  # Return the timeline axis and total duration
+
+
+class ScrollableTimelineFrame(ttk.Frame):
+    """Custom frame with horizontal scrollbar for timeline subplot"""
+    
+    def __init__(self, parent, fig, timeline_ax, total_duration_min):
+        super().__init__(parent)
+        self.fig = fig
+        self.timeline_ax = timeline_ax
+        self.total_duration_min = total_duration_min
+        self.view_window = 20  # Default view window in minutes
+        
+        # Create horizontal scrollbar only if needed
+        if total_duration_min > self.view_window:
+            self.scrollbar = ttk.Scrollbar(self, orient=tk.HORIZONTAL, command=self.on_scroll)
+            self.scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+        else:
+            self.scrollbar = None
+        
+        # Create the canvas for the plot (pack after scrollbar)
+        self.canvas = FigureCanvasTkAgg(fig, self)
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        
+        # Configure scrollbar after canvas is created
+        if self.scrollbar:
+            self.update_scrollbar()
+            
+        # Bind mouse wheel to horizontal scrolling
+        self.canvas.get_tk_widget().bind("<MouseWheel>", self.on_mousewheel)
+        self.canvas.get_tk_widget().bind("<Button-4>", self.on_mousewheel)
+        self.canvas.get_tk_widget().bind("<Button-5>", self.on_mousewheel)
+        
+        # Initial draw
+        self.canvas.draw()
+    
+    def update_scrollbar(self):
+        """Update scrollbar position and size"""
+        if self.scrollbar is None:
+            return
+            
+        # Calculate scrollbar parameters
+        if self.total_duration_min <= self.view_window:
+            # If content fits in view, disable scrollbar
+            self.scrollbar.set(0, 1)
+            return
+            
+        # Current view position
+        current_xlim = self.timeline_ax.get_xlim()
+        current_start = current_xlim[0]
+        current_end = current_xlim[1]
+        current_width = current_end - current_start
+        
+        # Scrollbar position (0 to 1)
+        scroll_start = current_start / self.total_duration_min
+        scroll_end = current_end / self.total_duration_min
+        
+        # Ensure we don't exceed bounds
+        scroll_start = max(0, min(scroll_start, 1))
+        scroll_end = max(scroll_start, min(scroll_end, 1))
+        
+        self.scrollbar.set(scroll_start, scroll_end)
+    
+    def on_scroll(self, *args):
+        """Handle scrollbar movement"""
+        if args[0] == 'scroll':
+            # Scroll by pages
+            direction = int(args[1])
+            units = args[2]
+            
+            current_xlim = self.timeline_ax.get_xlim()
+            current_width = current_xlim[1] - current_xlim[0]
+            
+            if units == 'units':
+                # Small scroll
+                shift = direction * current_width * 0.1
+            else:
+                # Page scroll
+                shift = direction * current_width * 0.8
+                
+            new_start = current_xlim[0] + shift
+            new_end = current_xlim[1] + shift
+            
+        elif args[0] == 'moveto':
+            # Direct position
+            position = float(args[1])
+            current_xlim = self.timeline_ax.get_xlim()
+            current_width = current_xlim[1] - current_xlim[0]
+            
+            new_start = position * self.total_duration_min
+            new_end = new_start + current_width
+        
+        # Ensure we don't go beyond bounds
+        if new_end > self.total_duration_min:
+            new_end = self.total_duration_min
+            new_start = new_end - current_width
+        if new_start < 0:
+            new_start = 0
+            new_end = new_start + current_width
+            
+        # Update plot
+        self.timeline_ax.set_xlim(new_start, new_end)
+        self.canvas.draw()
+        self.update_scrollbar()
+    
+    def on_mousewheel(self, event):
+        """Handle mouse wheel scrolling"""
+        if self.scrollbar is None:
+            return
+            
+        # Determine scroll direction
+        if event.delta:
+            # Windows
+            delta = -event.delta / 120
+        elif event.num == 4:
+            # Linux scroll up
+            delta = -1
+        elif event.num == 5:
+            # Linux scroll down
+            delta = 1
+        else:
+            return
+            
+        # Scroll
+        current_xlim = self.timeline_ax.get_xlim()
+        current_width = current_xlim[1] - current_xlim[0]
+        shift = delta * current_width * 0.1
+        
+        new_start = current_xlim[0] + shift
+        new_end = current_xlim[1] + shift
+        
+        # Ensure we don't go beyond bounds
+        if new_end > self.total_duration_min:
+            new_end = self.total_duration_min
+            new_start = new_end - current_width
+        if new_start < 0:
+            new_start = 0
+            new_end = new_start + current_width
+            
+        # Update plot
+        self.timeline_ax.set_xlim(new_start, new_end)
+        self.canvas.draw()
+        self.update_scrollbar()
 
 
 class DatasetInfoDialog:
@@ -189,14 +331,13 @@ class DatasetInfoDialog:
         self.dialog.protocol("WM_DELETE_WINDOW", self.close_dialog)
         
         # Add maximize/minimize support
-        self.dialog.state('normal')  # Can be 'normal', 'zoomed', 'iconic', 'withdrawn'
+        self.dialog.state('normal')
         
         # Bind resize event to handle dynamic content adjustment
         self.dialog.bind('<Configure>', self.on_window_resize)
 
     def on_window_resize(self, event):
         """Handle window resize events"""
-        # Only respond to window resize events, not child widget events
         if event.widget == self.dialog:
             self.adjust_layout_for_size()
 
@@ -205,16 +346,13 @@ class DatasetInfoDialog:
         current_width = self.dialog.winfo_width()
         current_height = self.dialog.winfo_height()
         
-        # Adjust grid weights based on window size
         if current_width < 1000:
-            # Smaller window - stack vertically
             self.main_frame.columnconfigure(0, weight=1)
             self.main_frame.columnconfigure(1, weight=1)
             self.main_frame.rowconfigure(0, weight=1)
             self.main_frame.rowconfigure(1, weight=1)
             self.main_frame.rowconfigure(2, weight=1)
         else:
-            # Larger window - side by side layout
             self.main_frame.columnconfigure(0, weight=2)
             self.main_frame.columnconfigure(1, weight=3)
             self.main_frame.rowconfigure(0, weight=1)
@@ -252,8 +390,7 @@ class DatasetInfoDialog:
                               command=self.close_dialog)
         close_btn.pack(side=tk.LEFT, padx=2)
         
-        # Main content area (back to original layout)
-        # Main content area (back to original layout)
+        # Main content area
         self.main_frame = ttk.Frame(container)
         self.main_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -279,17 +416,16 @@ class DatasetInfoDialog:
         close_button.pack(pady=10)
 
     def minimize_window(self):
-        """Minimize the window - remove transient state first"""
-        self.dialog.transient()  # Remove transient state
+        """Minimize the window"""
+        self.dialog.transient()
         self.dialog.iconify()
-        # Re-establish transient state when restored
         self.dialog.bind('<Map>', self._on_deiconify)
 
     def _on_deiconify(self, event):
         """Re-establish transient state when window is restored"""
         if event.widget == self.dialog:
             self.dialog.transient(self.parent)
-            self.dialog.unbind('<Map>')  # Remove this binding after use
+            self.dialog.unbind('<Map>')
 
     def toggle_maximize(self):
         """Toggle between maximized and normal window state"""
@@ -405,24 +541,18 @@ class DatasetInfoDialog:
                 events = first_epoch.events
                 event_mapping = {v: k for k, v in first_epoch.event_id.items()}  # Reverse mapping
                 
-                # Create paradigm plot
-                fig = create_paradigm_plot(events, event_mapping, figure_size=(8, 6))
+                # Create paradigm plot - now returns additional info
+                fig, timeline_ax, total_duration_min = create_paradigm_plot(events, event_mapping, figure_size=(8, 6))
                 
-                # Embed in tkinter - no navigation toolbar, just the plot
-                canvas = FigureCanvasTkAgg(fig, self.paradigm_frame)
-                canvas.draw()
-                canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+                # Create scrollable timeline frame
+                timeline_frame = ScrollableTimelineFrame(self.paradigm_frame, fig, timeline_ax, total_duration_min)
+                timeline_frame.pack(fill=tk.BOTH, expand=True)
                 
-                # Add a title
-                title_label = ttk.Label(self.paradigm_frame, text="Paradigm Overview", 
-                                      font=("Arial", 12, "bold"))
-                title_label.pack(pady=(0, 10))
-                
-                # Add note about scrolling the timeline
-                note_label = ttk.Label(self.paradigm_frame, 
-                                     text="Use mouse scroll or drag to navigate the timeline", 
-                                     font=("Arial", 8), foreground="gray")
-                note_label.pack(pady=(0, 5))
+                # Add instruction label
+                instruction_label = ttk.Label(self.paradigm_frame, 
+                                            text="Use scrollbar or mouse wheel to navigate timeline", 
+                                            font=("Arial", 9), foreground="gray")
+                instruction_label.pack(pady=(5, 0))
                     
             else:
                 error_label = ttk.Label(self.paradigm_frame, text="No epoch data available")
@@ -439,7 +569,7 @@ class DatasetInfoDialog:
 
 def show_dataset_info(parent, all_epochs, data_name, all_data, freq, data_types, all_individuals=None):
     """
-    Show dataset information dialog with enhanced window management.
+    Show dataset information dialog with enhanced window management and scrollable timeline.
     
     Parameters:
     -----------
@@ -474,11 +604,14 @@ if __name__ == "__main__":
     root.geometry("400x300")
     
     def test_dialog():
-        # Create some sample data for testing
-        sample_events = np.array([
-            [61, 0, 1], [87, 0, 1], [117, 0, 3], [146, 0, 3], [212, 0, 2], [240, 0, 2],
-            [275, 0, 1], [344, 0, 3], [373, 0, 2], [404, 0, 2], [474, 0, 3], [512, 0, 2]
-        ])
+        # Create some sample data for testing with longer timeline
+        sample_events = []
+        for i in range(100):  # Create more events for better testing
+            timestamp = i * 30 + np.random.randint(0, 20)  # Every ~30 seconds with some variation
+            event_id = np.random.choice([1, 2, 3])
+            sample_events.append([timestamp, 0, event_id])
+        
+        sample_events = np.array(sample_events)
         
         # Mock epoch object
         class MockEpoch:
