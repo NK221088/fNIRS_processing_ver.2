@@ -9,6 +9,8 @@ from individual_frequency_plot import individual_frequency_plot
 from statistical_analysis import statistical_analysis
 from dataset_info_dialog import show_dataset_info
 import tkinter.messagebox
+from preprocessing_dialog import show_preprocessing_dialog
+
 
 dataSetList = list(data_loaders.keys())
 plotTypesList = ["Epoch Plot",
@@ -99,8 +101,7 @@ def toggle_individual_menu(*args):
         # Data processing settings
         combine_strategy_label, combine_strategy_menu,
         bad_channels_strategy_label, bad_channels_strategy_menu,
-        short_channel_correction_label, short_channel_correction_checkbox,
-        negative_correlation_label, negative_correlation_checkbox,
+        preprocessing_label, preprocessing_button, preprocessing_status_label,
         interpolate_bad_channels_label, interpolate_bad_channels_checkbox,
         threshold_label, threshold_entry,
         # Epoch selection
@@ -126,10 +127,9 @@ def toggle_individual_menu(*args):
         combine_strategy_menu.pack(pady=5)
         bad_channels_strategy_label.pack(anchor="w")
         bad_channels_strategy_menu.pack(pady=5)
-        short_channel_correction_label.pack(anchor="w")
-        short_channel_correction_checkbox.pack(anchor="w")
-        negative_correlation_label.pack(anchor="w")
-        negative_correlation_checkbox.pack(anchor="w")
+        preprocessing_label.pack(anchor="w")
+        preprocessing_button.pack(pady=5)
+        preprocessing_status_label.pack(anchor="w")
         interpolate_bad_channels_label.pack(anchor="w")
         interpolate_bad_channels_checkbox.pack(anchor="w")
         threshold_label.pack(anchor="w")
@@ -161,10 +161,9 @@ def toggle_individual_menu(*args):
         
     elif plot_type == "paradigm_plot":
         # Show data processing settings
-        short_channel_correction_label.pack(anchor="w")
-        short_channel_correction_checkbox.pack(anchor="w")
-        negative_correlation_label.pack(anchor="w")
-        negative_correlation_checkbox.pack(anchor="w")
+        preprocessing_label.pack(anchor="w")
+        preprocessing_button.pack(pady=5)
+        preprocessing_status_label.pack(anchor="w")
         interpolate_bad_channels_label.pack(anchor="w")
         interpolate_bad_channels_checkbox.pack(anchor="w")
         # Show individual selection dropdown
@@ -203,10 +202,9 @@ def toggle_individual_menu(*args):
         combine_strategy_menu.pack(pady=5)
         bad_channels_strategy_label.pack(anchor="w")
         bad_channels_strategy_menu.pack(pady=5)
-        short_channel_correction_label.pack(anchor="w")
-        short_channel_correction_checkbox.pack(anchor="w")
-        negative_correlation_label.pack(anchor="w")
-        negative_correlation_checkbox.pack(anchor="w")
+        preprocessing_label.pack(anchor="w")
+        preprocessing_button.pack(pady=5)
+        preprocessing_status_label.pack(anchor="w")
         interpolate_bad_channels_label.pack(anchor="w")
         interpolate_bad_channels_checkbox.pack(anchor="w")
         threshold_label.pack(anchor="w")
@@ -241,8 +239,6 @@ def run_analysis():
     settings["data_set"] = dataset_var.get()
     settings["epoch_type"] = epoch_type_var.get()
     settings["combine_strategy"] = combine_strategy_var.get()
-    settings["short_channel_correction"] = short_channel_correction_var.get()
-    settings["negative_correlation_enhancement"] = negative_correlation_enhancement_var.get()
     settings["interpolate_bad_channels"] = interpolate_bad_channels_var.get()
     settings["bad_channels_strategy"] = bad_channels_strategy_var.get()
     settings["threshold"] = int(threshold_var.get())
@@ -376,15 +372,24 @@ def run_analysis():
             valid_individuals = []
             for individual in all_individuals:
                 if hasattr(individual, 'epochs'):
-                    # Get the actual counts from the epochs object
                     has_all_data_types = True
                     for data_type in data_types:
-                        # Count how many epochs of this type exist
-                        epoch_count = sum(1 for event in individual.epochs.events if individual.epochs.event_id.get(data_type) == event[2])
+                        # Match any event ID whose key contains the data_type substring
+                        matching_ids = [
+                            v for k, v in individual.epochs.event_id.items()
+                            if data_type in k
+                        ]
+
+                        # Count events where the event ID matches one of the matching IDs
+                        epoch_count = sum(
+                            1 for event in individual.epochs.events
+                            if event[2] in matching_ids
+                        )
+
                         if epoch_count == 0:
                             has_all_data_types = False
                             break
-                    
+
                     if has_all_data_types:
                         valid_individuals.append(individual)
             
@@ -551,13 +556,66 @@ combine_strategy_label, combine_strategy_var, combine_strategy_menu = create_com
 bad_channels_strategy_label, bad_channels_strategy_var, bad_channels_strategy_menu = create_combobox_with_label(
     top_left_frame, "Bad Channels Strategy:", ["all", "delete", "threshold"], settings["bad_channels_strategy"])
 
-# Checkboxes
-short_channel_correction_label, short_channel_correction_var, short_channel_correction_checkbox = create_checkbox_with_label(
-    top_left_frame, "Short Channel Correction:", settings["short_channel_correction"])
+preprocessing_frame = tk.Frame(top_left_frame)
+preprocessing_frame.pack(fill="x", pady=10)
 
-negative_correlation_label, negative_correlation_enhancement_var, negative_correlation_checkbox = create_checkbox_with_label(
-    top_left_frame, "Negative Correlation Enhancement:", settings["negative_correlation_enhancement"])
+preprocessing_label = tk.Label(preprocessing_frame, text="Preprocessing Options:", font=("Arial", 12))
+preprocessing_label.pack(anchor="w")
 
+def open_preprocessing_dialog():
+    """Open the preprocessing options dialog."""
+    current_preprocessing_settings = {
+        "short_channel_correction": settings["short_channel_correction"],
+        "negative_correlation_enhancement": settings["negative_correlation_enhancement"]
+    }
+    
+    result = show_preprocessing_dialog(root, current_preprocessing_settings)
+    
+    if result:  # If user clicked OK
+        # Update the global settings
+        settings["short_channel_correction"] = result["short_channel_correction"]
+        settings["negative_correlation_enhancement"] = result["negative_correlation_enhancement"]
+        
+        # Update the status label
+        update_preprocessing_status()
+        
+        # Mark that data needs to be reloaded
+        global previous_short_channel_correction, previous_negative_correlation_enhancement
+        previous_short_channel_correction = None  # Force reload
+        previous_negative_correlation_enhancement = None  # Force reload
+
+def update_preprocessing_status():
+    """Update the status label to show current preprocessing settings."""
+    scc_status = "ON" if settings["short_channel_correction"] else "OFF"
+    nce_status = "ON" if settings["negative_correlation_enhancement"] else "OFF"
+    status_text = f"Short Channel Correction: {scc_status} | Negative Correlation Enhancement: {nce_status}"
+    preprocessing_status_label.config(text=status_text)
+
+preprocessing_button = tk.Button(
+    preprocessing_frame, 
+    text="Configure Preprocessing", 
+    command=open_preprocessing_dialog,
+    bg="lightblue", 
+    fg="black", 
+    font=("Arial", 11),
+    padx=10, 
+    pady=5
+)
+preprocessing_button.pack(pady=5)
+
+# Status label to show current settings
+preprocessing_status_label = tk.Label(
+    preprocessing_frame, 
+    text="", 
+    font=("Arial", 9),
+    fg="gray"
+)
+preprocessing_status_label.pack(anchor="w")
+
+# Initialize the status label
+update_preprocessing_status()
+
+# Checkbox
 interpolate_bad_channels_label, interpolate_bad_channels_var, interpolate_bad_channels_checkbox = create_checkbox_with_label(
     top_left_frame, "Interpolate Bad Channels:", settings["interpolate_bad_channels"])
 
@@ -747,22 +805,30 @@ def populate_individuals():
     
     # Filter individuals based on plot type
     if current_plot_type == "Standard fNIRS Response Plot":
-        # Only include individuals who have all data types (epoch types) with non-zero counts
         valid_individuals = []
         for individual in all_individuals:
             if hasattr(individual, 'epochs'):
-                # Get the actual counts from the epochs object
-                # The counts are shown in the epochs representation and can be extracted
                 has_all_data_types = True
                 for data_type in data_types:
-                    # Count how many epochs of this type exist
-                    epoch_count = sum(1 for event in individual.epochs.events if individual.epochs.event_id.get(data_type) == event[2])
+                    # Match any event ID whose key contains the data_type substring
+                    matching_ids = [
+                        v for k, v in individual.epochs.event_id.items()
+                        if data_type in k
+                    ]
+
+                    # Count events where the event ID matches one of the matching IDs
+                    epoch_count = sum(
+                        1 for event in individual.epochs.events
+                        if event[2] in matching_ids
+                    )
+
                     if epoch_count == 0:
                         has_all_data_types = False
                         break
-                
+
                 if has_all_data_types:
                     valid_individuals.append(individual)
+
             
         # Use filtered list for Standard fNIRS Response Plot
         individuals_to_display = valid_individuals

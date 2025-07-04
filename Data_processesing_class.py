@@ -2229,7 +2229,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                                  "2": "Control",
                                  "3": "TongueIM"
                                 }
-        self.file_path = Path(os.getenv('Pardis_HC_data'))
+        self.file_path = rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Arbejde_Rigshospitalet\HC_ICU_TongueMI\Data\HC\Follow-up"
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 15
