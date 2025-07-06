@@ -918,7 +918,7 @@ dataset1_menu.pack_forget()   # Initially hidden
 dataset1_menu["postcommand"] = lambda: adjust_combobox_width(dataset1_menu)
 
 dataset2_label = tk.Label(top_left_frame, text="Dataset 2:", font=("Arial", 12))
-dataset2_var = tk.StringVar(value="fNIrs_motor")
+dataset2_var = tk.StringVar(value=dataSetList[0])
 dataset2_menu = ttk.Combobox(top_left_frame, textvariable=dataset2_var, values=dataSetList, width=40)
 dataset2_label.pack_forget()  # Initially hidden
 dataset2_menu.pack_forget()   # Initially hidden

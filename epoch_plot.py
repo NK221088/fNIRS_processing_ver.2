@@ -121,22 +121,20 @@ def epoch_plot(epochs, picks: list, epoch_type: str, bad_channels_strategy: str,
         )
     
     # Save each plot if save is True (same as before)
-    plots_folder = "Plots"
-    if save:
-        current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        Plot_types = ["Oxyhemoglobin", "Deoxyhemoglobin"]
-        saved_plots = []
-        
-        # Ensure plots is a list
-        if not isinstance(plots, list):
-            plots = [plots]
-        
-        for plot_type, plot in zip(Plot_types[:len(plots)], plots):
-            filename = os.path.join(plots_folder, f"{epoch_type}_epochs_plot_{plot_type}_{bad_channels_strategy}_{data_set}_{current_datetime}.pdf")
+    current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    plot_types = ["Oxyhemoglobin", "Deoxyhemoglobin"]
+
+    if not os.path.exists("Plots"):
+        os.makedirs("Plots")
+
+    for i, plot in enumerate(plots):
+        if save:
+            label = plot_types[i] if i < len(plot_types) else f"Plot_{i}"
+            filename = os.path.join("Plots", f"{epoch_type}_epochs_plot_{label}_{bad_channels_strategy}_{data_set}_{current_datetime}.pdf")
             plot.savefig(filename)
-            print(f"Plot {plot_type} saved as {filename}")
-            plt.close(plot)  # Close the figure after saving
-            saved_plots.append(plot)
-    
+            print(f"Plot {label} saved as {filename}")
+        
+        plt.close(plot)  # Always close the figure
+
     return plots
 

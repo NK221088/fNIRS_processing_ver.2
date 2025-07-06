@@ -9,5 +9,6 @@ def individual_frequency_plot(individual: individual_participant_class):
         )
         fig.suptitle(f"{when} filtering", weight="bold", size="x-large")
         figures.append(fig)  # Store the figure
+        plt.close(fig)
     
     return figures  # Return the list of figures

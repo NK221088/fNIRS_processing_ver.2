@@ -1,5 +1,6 @@
 from Participant_class import individual_participant_class
 import mne
+import matplotlib.pyplot as plt
 
 def paradigm_plot(individual: individual_participant_class, picks_ : list = ["all"], duration: int= 500, show_scrollbars: bool=True, haemo_type : str = "hbo"):
 
@@ -45,5 +46,9 @@ def paradigm_plot(individual: individual_participant_class, picks_ : list = ["al
         individual_hbr_copy.pick(picks[dists > 0.01])
         hbr_plots = individual_hbr_copy.plot(n_channels=len(individual_hbr_copy.ch_names), duration=duration, show_scrollbars=show_scrollbars, show = False)
         plots.extend(hbr_plots if isinstance(hbr_plots, list) else [hbr_plots])
+    
+    # Always close the figures to prevent memory accumulation or re-display
+    for fig in plots:
+        plt.close(fig)
         
     return plots

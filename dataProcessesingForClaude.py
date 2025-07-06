@@ -188,7 +188,6 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
             raw_intensity = self.define_raw_intensity(sub_id)
             raw_intensity = self.make_without_intro_annotations(raw_intensity)
 
-
             raw_intensity.annotations.rename(self.annotation_names)
             unwanted = np.nonzero(raw_intensity.annotations.description == self.unwanted)
             raw_intensity.annotations.delete(unwanted)
@@ -202,6 +201,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
             sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
 
             raw_od.info["bads"] = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
+            
             if self.interpolate_bad_channels:
                 raw_od.interpolate_bads()
 

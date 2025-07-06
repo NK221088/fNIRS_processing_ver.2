@@ -101,6 +101,6 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
         filename = os.path.join("Plots", f"standard_fNIRS_response_plot_{current_datetime}.pdf")
         plot[0].savefig(filename)
         print(f"Plot saved as {filename}")
-        plt.close(plot[0])  # Close the figure after saving
+    plt.close(plot[0])  # Close the figure after saving
     
     return plot
