@@ -1,5 +1,6 @@
 from Participant_class import individual_participant_class
 import mne
+import matplotlib.pyplot as plt
 
 def individual_frequency_plot(individual: individual_participant_class):
     figures = []  # List to store the figures
