@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import os
 from collections import Counter
 from datetime import datetime
+import re
 
 def epoch_plot(epochs, picks: list, epoch_type: str, bad_channels_strategy: str, save : bool, combine_strategy: str = "mean", threshold = None, data_set : str = "data_name"):
 
@@ -66,6 +67,32 @@ def epoch_plot(epochs, picks: list, epoch_type: str, bad_channels_strategy: str,
                 epochs[i].info['bads'] = bad_channels
             epochs = mne.concatenate_epochs(epochs)
     
+    # Helper function to reorder channels for proper pairing
+    def reorder_channels_for_pairing(epochs_obj):
+        """Reorder channels to pair hbo/hbr channels together"""
+        try:
+            ch_names = epochs_obj.ch_names
+            hbo_channels = [ch for ch in ch_names if 'hbo' in ch.lower()]
+            hbr_channels = [ch for ch in ch_names if 'hbr' in ch.lower()]
+            
+            # Create paired ordering
+            paired_channels = []
+            for hbo_ch in sorted(hbo_channels):
+                # Find corresponding hbr channel
+                hbr_ch = hbo_ch.replace('hbo', 'hbr').replace('HbO', 'HbR')
+                if hbr_ch in hbr_channels:
+                    paired_channels.extend([hbo_ch, hbr_ch])
+            
+            # Only reorder if we have paired channels and they're not already in order
+            if paired_channels and paired_channels != ch_names:
+                print(f"Reordering channels for proper pairing...")
+                return epochs_obj.reorder_channels(paired_channels)
+            else:
+                return epochs_obj
+        except Exception as e:
+            print(f"Warning: Could not reorder channels: {e}")
+            return epochs_obj
+    
     # Separate channel types if picks is provided
     if picks != "all":
         # Identify the channel types in the picks
@@ -111,14 +138,50 @@ def epoch_plot(epochs, picks: list, epoch_type: str, bad_channels_strategy: str,
                 show=False,
             )
     else:
-        # If no picks (all channels), proceed with original method
-        plots = epochs[epoch_type].plot_image(
-            combine=combine_strategy,
-            vmin=-30,
-            vmax=30,
-            ts_args=dict(ylim=dict(hbo=[-15, 15], hbr=[-15, 15])),
-            show=False,
-        )
+        # If no picks (all channels), reorder channels first to ensure proper pairing
+        try:
+            # Reorder channels for proper pairing
+            epochs_reordered = reorder_channels_for_pairing(epochs[epoch_type])
+            
+            plots = epochs_reordered.plot_image(
+                combine=combine_strategy,
+                vmin=-30,
+                vmax=30,
+                ts_args=dict(ylim=dict(hbo=[-15, 15], hbr=[-15, 15])),
+                show=False,
+            )
+        except Exception as e:
+            print(f"Error with automatic channel pairing: {e}")
+            print("Falling back to explicit channel selection...")
+            
+            # Fallback: separate hbo and hbr channels
+            ch_names = epochs[epoch_type].ch_names
+            hbo_channels = [ch for ch in ch_names if 'hbo' in ch.lower()]
+            hbr_channels = [ch for ch in ch_names if 'hbr' in ch.lower()]
+            
+            plots = []
+            
+            if hbo_channels:
+                hbo_plots = epochs[epoch_type].plot_image(
+                    picks=hbo_channels,
+                    combine=combine_strategy,
+                    vmin=-30,
+                    vmax=30,
+                    ts_args=dict(ylim=dict(hbo=[-15, 15])),
+                    show=False,
+                )
+                plots.extend(hbo_plots if isinstance(hbo_plots, list) else [hbo_plots])
+            
+            if hbr_channels:
+                hbr_plots = epochs[epoch_type].plot_image(
+                    picks=hbr_channels,
+                    combine=combine_strategy,
+                    vmin=-30,
+                    vmax=30,
+                    ts_args=dict(ylim=dict(hbr=[-15, 15])),
+                    show=False,
+                )
+                plots.extend(hbr_plots if isinstance(hbr_plots, list) else [hbr_plots])
     
     # Save each plot if save is True (same as before)
     current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -137,4 +200,3 @@ def epoch_plot(epochs, picks: list, epoch_type: str, bad_channels_strategy: str,
         plt.close(plot)  # Always close the figure
 
     return plots
-
