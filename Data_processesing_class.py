@@ -8,6 +8,7 @@ from Participant_class import individual_participant_class
 import glob
 from pathlib import Path
 from dotenv import load_dotenv
+from preprocessesing_toolbox.baselineCorrection import baselineCorrection as bc
 
 load_dotenv()
 
@@ -1932,16 +1933,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             )
 
             # Apply baseline correction per channel with error handling for removed channels
-            for epoch_idx in range(len(epochs)):
-                for ch_name in epochs.ch_names:
-                    try:
-                        epochs_ch_idx = epochs.ch_names.index(ch_name)
-                        raw_ch_idx = raw_haemo.ch_names.index(ch_name)
-                        epochs._data[epoch_idx, epochs_ch_idx, :] -= resting_baseline[raw_ch_idx]
-                    except ValueError:
-                        # Channel was removed during preprocessing - skip it
-                        print(f"Skipping channel {ch_name}: not found in baseline data")
-                        continue
+            epochs = bc.useFirstBaseline(resting_baseline, epochs, raw_haemo)
 
             if len(epochs) != 0:
                 self.all_epochs.append(epochs)
