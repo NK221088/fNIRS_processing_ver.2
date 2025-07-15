@@ -2324,7 +2324,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
 
                 events, event_dict = mne.events_from_annotations(raw_haemo)
                 
-                raw_haemo = blcorrect.usePreviousRest(events, event_dict, raw_haemo, self.stim)
+                raw_haemo = blcorrect.usePreviousRest(events, event_dict, raw_haemo, self.stimulus_duration)
                 
                 epochs = mne.Epochs(
                     raw_haemo,
