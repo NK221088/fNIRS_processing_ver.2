@@ -521,7 +521,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
         self.reject_criteria = dict(hbo=80e-6)
         self.tmin = tmin
         self.tmax = 15
-        self.baseline = (0, 0)
+        self.baseline = (None, 0)
         self.data_types = ["Imagery"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_CUH_patient_data"
@@ -679,7 +679,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
         self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
         self.tmin = tmin
         self.tmax = 28
-        self.baseline = (0, 0)
+        self.baseline = (None, 0)
         self.data_types = ["HandMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
@@ -886,7 +886,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
         self.tmin = tmin
         self.tmax = 28
-        self.baseline = (0, 0)
+        self.baseline = (None, 0)
         self.data_types = ["TongueMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
@@ -1093,7 +1093,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
         self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
         self.tmin = tmin
         self.tmax = 28
-        self.baseline = (0, 0)
+        self.baseline = (None, 0)
         self.data_types = ["HandMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
@@ -1296,7 +1296,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
         self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
         self.tmin = tmin
         self.tmax = 28
-        self.baseline = (0, 0)
+        self.baseline = (None, 0)
         self.data_types = ["TongueMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
@@ -1481,7 +1481,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
         self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
         self.tmin = tmin
         self.tmax = 15
-        self.baseline = (0, 0)
+        self.baseline = (None, 0)
         self.data_types = ["HandMI", "TongueMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
@@ -1650,7 +1650,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
         self.tmin = tmin
         self.tmax = 21
-        self.baseline = (0, 0)
+        self.baseline = (None, 0)
         self.data_types = ["HandMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
@@ -1859,7 +1859,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
         self.tmin = tmin
         self.tmax = 21
-        self.baseline = (0, 0)
+        self.baseline = (None, 0)
         self.data_types = ["TongueMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_tongue_long_data"
@@ -2058,7 +2058,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
         self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
         self.tmin = tmin
         self.tmax = 21
-        self.baseline = (0, 0)
+        self.baseline = (None, 0)
         self.data_types = ["TongueMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Pardis_DOC_data"
@@ -2244,7 +2244,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
         self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
         self.tmin = tmin
         self.tmax = 20
-        self.baseline = (0, 0)
+        self.baseline = (None, 0)
         self.data_types = ["TonguePhysical", "TongueIM"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Pardis_HC"

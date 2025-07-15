@@ -33,7 +33,8 @@ settings = {
     "plot_type": "Epoch Plot",
     "individual": True,
     "haemo_type": "hbo",
-    "baseline_correction": "Previous rest period"
+    "baseline_correction": "Previous rest period",
+    "tmin": 0,
 }
 
 first_data_load = True
@@ -46,6 +47,7 @@ previous_short_channel_correction = settings["short_channel_correction"]
 previous_negative_correlation_enhancement = settings["negative_correlation_enhancement"]
 previous_interpolate_bad_channels = settings["interpolate_bad_channels"]
 previous_baseline_correction = settings["baseline_correction"]
+previous_tmin = settings["tmin"]
 def update_epoch_types(*args):
     """Load data and update epoch type dropdown based on dataset selection."""
     global previous_dataset, all_individuals, all_epochs, data_name, all_data, freq, data_types, start_up, first_data_load
@@ -61,6 +63,7 @@ def update_epoch_types(*args):
                 interpolate_bad_channels=settings["interpolate_bad_channels"],
                 individuals=settings["individual"],
                 baseline_correction = settings["baseline_correction"],
+                tmin=settings["tmin"],
             )
             # Update dropdown options
             epoch_type_menu["values"] = data_types
@@ -103,7 +106,7 @@ def toggle_individual_menu(*args):
         # Data processing settings
         combine_strategy_label, combine_strategy_menu,
         bad_channels_strategy_label, bad_channels_strategy_menu,
-        preprocessing_label, preprocessing_button, preprocessing_status_label,
+        preprocessing_label, preprocessing_button,
         interpolate_bad_channels_label, interpolate_bad_channels_checkbox,
         threshold_label, threshold_entry,
         # Epoch selection
@@ -131,7 +134,6 @@ def toggle_individual_menu(*args):
         bad_channels_strategy_menu.pack(pady=5)
         preprocessing_label.pack(anchor="w")
         preprocessing_button.pack(pady=5)
-        preprocessing_status_label.pack(anchor="w")
         interpolate_bad_channels_label.pack(anchor="w")
         interpolate_bad_channels_checkbox.pack(anchor="w")
         threshold_label.pack(anchor="w")
@@ -165,7 +167,6 @@ def toggle_individual_menu(*args):
         # Show data processing settings
         preprocessing_label.pack(anchor="w")
         preprocessing_button.pack(pady=5)
-        preprocessing_status_label.pack(anchor="w")
         interpolate_bad_channels_label.pack(anchor="w")
         interpolate_bad_channels_checkbox.pack(anchor="w")
         # Show individual selection dropdown
@@ -206,7 +207,6 @@ def toggle_individual_menu(*args):
         bad_channels_strategy_menu.pack(pady=5)
         preprocessing_label.pack(anchor="w")
         preprocessing_button.pack(pady=5)
-        preprocessing_status_label.pack(anchor="w")
         interpolate_bad_channels_label.pack(anchor="w")
         interpolate_bad_channels_checkbox.pack(anchor="w")
         threshold_label.pack(anchor="w")
@@ -237,7 +237,7 @@ def show_dataset_info_dialog():
 # Updated run_analysis function
 def run_analysis():
     """Run data processing and visualization based on selected plot type."""
-    global previous_epoch_type, all_epochs, data_name, all_data, freq, data_types, all_individuals, first_data_load, previous_short_channel_correction, previous_negative_correlation_enhancement, previous_interpolate_bad_channels
+    global previous_epoch_type, all_epochs, data_name, all_data, freq, data_types, all_individuals, first_data_load, previous_short_channel_correction, previous_negative_correlation_enhancement, previous_interpolate_bad_channels, previous_baseline_correction, previous_tmin
     settings["data_set"] = dataset_var.get()
     settings["epoch_type"] = epoch_type_var.get()
     settings["combine_strategy"] = combine_strategy_var.get()
@@ -253,7 +253,8 @@ def run_analysis():
         or settings["short_channel_correction"] != previous_short_channel_correction
         or settings["negative_correlation_enhancement"] != previous_negative_correlation_enhancement
         or settings["interpolate_bad_channels"] != previous_interpolate_bad_channels
-        or settings["baseline_correction"] != previous_baseline_correction  
+        or settings["baseline_correction"] != previous_baseline_correction
+        or settings["tmin"] != previous_tmin
     )
     if reload_data:
         all_epochs, data_name, all_data, freq, data_types, all_individuals = load_data(
@@ -262,13 +263,15 @@ def run_analysis():
             negative_correlation_enhancement=settings["negative_correlation_enhancement"],
             interpolate_bad_channels=settings["interpolate_bad_channels"],
             individuals=settings["individual"],
-            baseline_correction=settings["baseline_correction"]
+            baseline_correction=settings["baseline_correction"],
+        tmin=settings["tmin"]
         )
         previous_epoch_type = settings["epoch_type"]  # Update stored epoch type
         previous_short_channel_correction = settings["short_channel_correction"] # Update chosen short_channel_correction_setting
         previous_negative_correlation_enhancement = settings["negative_correlation_enhancement"]
         previous_interpolate_bad_channels = settings["interpolate_bad_channels"]
-        previous_baseline_correction = settings["baseline_correction"] 
+        previous_baseline_correction = settings["baseline_correction"]
+        previous_tmin = settings["tmin"]
         toggle_individual_menu()
     
     first_data_load = False
@@ -572,7 +575,8 @@ def open_preprocessing_dialog():
     current_preprocessing_settings = {
         "short_channel_correction": settings["short_channel_correction"],
         "negative_correlation_enhancement": settings["negative_correlation_enhancement"],
-        "baseline_correction": settings["baseline_correction"]
+        "baseline_correction": settings["baseline_correction"],
+        "tmin": settings["tmin"]
     }
     
     result = show_preprocessing_dialog(root, current_preprocessing_settings)
@@ -582,24 +586,13 @@ def open_preprocessing_dialog():
         settings["short_channel_correction"] = result["short_channel_correction"]
         settings["negative_correlation_enhancement"] = result["negative_correlation_enhancement"]
         settings["baseline_correction"] = result["baseline_correction"]
-
-        # Update the status label
-        update_preprocessing_status()
+        settings["tmin"] = result["tmin"]
         
         # Mark that data needs to be reloaded
         global previous_short_channel_correction, previous_negative_correlation_enhancement
         previous_short_channel_correction = None  # Force reload
         previous_negative_correlation_enhancement = None  # Force reload
         previous_baseline_correction = None  # Force reload
-
-
-def update_preprocessing_status():
-    """Update the status label to show current preprocessing settings."""
-    scc_status = "ON" if settings["short_channel_correction"] else "OFF"
-    nce_status = "ON" if settings["negative_correlation_enhancement"] else "OFF"
-    bc_status = settings["baseline_correction"]
-    status_text = f"Short Channel Correction: {scc_status} | Negative Correlation Enhancement: {nce_status}"
-    preprocessing_status_label.config(text=status_text)
 
 preprocessing_button = tk.Button(
     preprocessing_frame, 
@@ -612,18 +605,6 @@ preprocessing_button = tk.Button(
     pady=5
 )
 preprocessing_button.pack(pady=5)
-
-# Status label to show current settings
-preprocessing_status_label = tk.Label(
-    preprocessing_frame, 
-    text="", 
-    font=("Arial", 9),
-    fg="gray"
-)
-preprocessing_status_label.pack(anchor="w")
-
-# Initialize the status label
-update_preprocessing_status()
 
 # Checkbox
 interpolate_bad_channels_label, interpolate_bad_channels_var, interpolate_bad_channels_checkbox = create_checkbox_with_label(
