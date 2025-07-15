@@ -1,33 +1,31 @@
 from preprocessesing_toolbox.extractEpochDataFromTime import ExtractRawDataFromAbsoluteTime
 
 class baselineCorrection:
-    """
-    Class for baseline correction of fNIRS data.
-
-    Parameters
-    ----------
-    name : str
-        The name of the baseline correction method.
-
-    Attributes
-    ----------
-    name : str
-        The name of the baseline correction method.
-
-    Methods
-    -------
-    get_name()
-        Returns the name of the correction method.
-
-    useFirstBaseline(resting_baseline, epochs, raw_haemo)
-        Uses the first resting baseline to subtract from all epochs.
-    """
+    """Class for baseline correction of fNIRS data."""
     
     def __init__(self, name):
         self.name = name
+        # Registry mapping method names to functions
+        self.methods = {
+            "First Baseline available": self.useFirstBaseline,
+            "Previous rest period": self.usePreviousRest,
+            "xSecondsBefore": None  # This uses MNE's built-in baseline
+        }
     
-    def get_name(self):
-        return self.name
+    def get_available_methods(self):
+        """Get list of available baseline correction methods for UI display."""
+        return ["First Baseline available", "Previous rest period", "xSecondsBefore"]
+    
+    def apply_correction(self, method_name, *args, **kwargs):
+        """Apply a specific baseline correction method."""
+        if method_name not in self.methods:
+            raise ValueError(f"Unknown method: {method_name}")
+        
+        method = self.methods[method_name]
+        if method is None:
+            raise ValueError(f"Method {method_name} should be handled by MNE")
+        
+        return method(*args, **kwargs)
     
     def useFirstBaseline(self, resting_baseline, epochs, raw_haemo):
         """
@@ -60,9 +58,8 @@ class baselineCorrection:
                         continue
         return epochs
     
-    @staticmethod
-    def usePreviousRest(events, event_dict, raw_haemo, stimulusDuration):
-        name = "Previous rest period"
+    def usePreviousRest(self, events, event_dict, raw_haemo, stimulusDuration):
+        name = "Use previous rest"
         eventID = list(event_dict.values())
         eventID.remove(event_dict["Control"])
         raw_data = raw_haemo.get_data()

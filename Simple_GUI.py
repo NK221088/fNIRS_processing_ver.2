@@ -33,7 +33,7 @@ settings = {
     "plot_type": "Epoch Plot",
     "individual": True,
     "haemo_type": "hbo",
-    "baseline_correction": "None"
+    "baseline_correction": "Previous rest period"
 }
 
 first_data_load = True
@@ -45,8 +45,7 @@ previous_epoch_type = settings["epoch_type"]
 previous_short_channel_correction = settings["short_channel_correction"]
 previous_negative_correlation_enhancement = settings["negative_correlation_enhancement"]
 previous_interpolate_bad_channels = settings["interpolate_bad_channels"]
-previous_baseline_correction = settings["baseline_correction"]  # Add this line
-
+previous_baseline_correction = settings["baseline_correction"]
 def update_epoch_types(*args):
     """Load data and update epoch type dropdown based on dataset selection."""
     global previous_dataset, all_individuals, all_epochs, data_name, all_data, freq, data_types, start_up, first_data_load
@@ -60,7 +59,8 @@ def update_epoch_types(*args):
                 short_channel_correction=settings["short_channel_correction"],
                 negative_correlation_enhancement=settings["negative_correlation_enhancement"],
                 interpolate_bad_channels=settings["interpolate_bad_channels"],
-                individuals=settings["individual"]
+                individuals=settings["individual"],
+                baseline_correction = settings["baseline_correction"],
             )
             # Update dropdown options
             epoch_type_menu["values"] = data_types
@@ -253,8 +253,7 @@ def run_analysis():
         or settings["short_channel_correction"] != previous_short_channel_correction
         or settings["negative_correlation_enhancement"] != previous_negative_correlation_enhancement
         or settings["interpolate_bad_channels"] != previous_interpolate_bad_channels
-        or settings["baseline_correction"] != previous_baseline_correction  # Add this line
-
+        or settings["baseline_correction"] != previous_baseline_correction  
     )
     if reload_data:
         all_epochs, data_name, all_data, freq, data_types, all_individuals = load_data(
@@ -269,7 +268,7 @@ def run_analysis():
         previous_short_channel_correction = settings["short_channel_correction"] # Update chosen short_channel_correction_setting
         previous_negative_correlation_enhancement = settings["negative_correlation_enhancement"]
         previous_interpolate_bad_channels = settings["interpolate_bad_channels"]
-        previous_baseline_correction = settings["baseline_correction"]  # Add this line
+        previous_baseline_correction = settings["baseline_correction"] 
         toggle_individual_menu()
     
     first_data_load = False

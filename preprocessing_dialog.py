@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import ttk
 import tkinter.messagebox
 from preprocessesing_toolbox.baselineCorrection import baselineCorrection
-import inspect
 class PreprocessingDialog:
     def __init__(self, parent, current_settings):
         self.parent = parent
@@ -30,22 +29,9 @@ class PreprocessingDialog:
     
     def get_baseline_correction_methods(self):
         """Get available baseline correction methods from the baselineCorrection class."""
-        methods = []
-        
-        # Get all methods from the baselineCorrection class
-        for name, method in inspect.getmembers(baselineCorrection, predicate=inspect.ismethod):
-            if not name.startswith('_') and name != 'get_name':  # Skip private methods and get_name
-                methods.append(name)
-        
-        # Get all static methods from the baselineCorrection class
-        for name, method in inspect.getmembers(baselineCorrection, predicate=inspect.isfunction):
-            if not name.startswith('_'):  # Skip private methods
-                methods.append(name)
-        
-        # Add "None" as the first option
-        methods.insert(0, "None")
-    
-        return methods
+        # Create a temporary instance to get the available methods
+        temp_corrector = baselineCorrection("temp")
+        return temp_corrector.get_available_methods()
     
     def center_dialog(self):
         """Center the dialog on the parent window."""
@@ -144,7 +130,7 @@ class PreprocessingDialog:
         
         # Get available methods dynamically
         baseline_options = self.get_baseline_correction_methods()
-        self.baseline_correction_var = tk.StringVar(value=self.settings.get("baseline_correction", "None"))
+        self.baseline_correction_var = tk.StringVar(value=self.settings.get("baseline_correction"))
         
         self.baseline_correction_dropdown = ttk.Combobox(
             baseline_correction_frame,
@@ -246,7 +232,7 @@ class PreprocessingDialog:
     def show_baseline_correction_info(self):
         """Show information about baseline correction."""
         available_methods = self.get_baseline_correction_methods()
-        methods_text = "\n".join([f"• {method}" for method in available_methods if method != "None"])
+        methods_text = "\n".join([f"• {method}" for method in available_methods])
         
         info_text = (
             "Baseline Correction:\n\n"
@@ -263,7 +249,7 @@ class PreprocessingDialog:
         """Reset all settings to their default values."""
         self.short_channel_var.set(True)
         self.negative_corr_var.set(False)
-        self.baseline_correction_var.set("None")
+        self.baseline_correction_var.set("usePreviousRest")
     
     def ok(self):
         """Accept the settings and close the dialog."""
@@ -309,7 +295,7 @@ if __name__ == "__main__":
     current_settings = {
         "short_channel_correction": True,
         "negative_correlation_enhancement": False,
-        "baseline_correction": "None"
+        "baseline_correction": "usePreviousRest"
     }
     
     def test_dialog():

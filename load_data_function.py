@@ -16,11 +16,10 @@ data_loaders = {
     "Melika: Tongue long paradigme": fNIRS_Melika_tongue_long_data_load,
     "Pardis: DOC data": fNIRS_Pardis_DOC_data_load,
     "Pardis: HC data": fNIRS_Pardis_HC_data_load,
-
 }
 
 def load_data(data_set : str, short_channel_correction : bool = None, negative_correlation_enhancement : bool = None, individuals :bool = False, interpolate_bad_channels:bool=False, baseline_correction: str = "Previous rest period"):
     if data_set not in data_loaders:
         raise ValueError("Dataset does not exist.")
-    loader = data_loaders[data_set](short_channel_correction = short_channel_correction, negative_correlation_enhancement = negative_correlation_enhancement, individuals = individuals, interpolate_bad_channels=interpolate_bad_channels)
+    loader = data_loaders[data_set](short_channel_correction = short_channel_correction, negative_correlation_enhancement = negative_correlation_enhancement, individuals = individuals, interpolate_bad_channels=interpolate_bad_channels, baseline_correction = baseline_correction)
     return loader.load_data()
