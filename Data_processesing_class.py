@@ -9,6 +9,7 @@ import glob
 from pathlib import Path
 from dotenv import load_dotenv
 from preprocessesing_toolbox.baselineCorrection import baselineCorrection as bc
+from preprocessesing_toolbox.extractEpochDataFromTime import ExtractRawDataFromAbsoluteTime
 
 load_dotenv()
 
@@ -2323,6 +2324,37 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                     raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
 
                 events, event_dict = mne.events_from_annotations(raw_haemo)
+                
+                eventID = list(event_dict.values())
+                eventID.remove(event_dict["Control"])
+                raw_data = raw_haemo.get_data()
+                for i in range(1, len(events)):  # start from 1 to have a "previous" row
+                    current_event = events[i, 2]
+                    if current_event in eventID:
+                        previous_row = events[i - 1]
+                        current_row = events[i]
+                        
+                        # Extract data from previous epoch
+                        tminPrevious = ExtractRawDataFromAbsoluteTime.convert_sample_to_absolute_time(previous_row[0], raw_haemo.info["sfreq"])
+                        tmaxPrevious = tminPrevious + self.stimulus_duration
+                        timeCroppedDataPreviousEvent, _ = ExtractRawDataFromAbsoluteTime.extract_data_from_absolute_time(raw_haemo, tminPrevious, tmaxPrevious)
+                        
+                        # Extract data from current epoch
+                        tminCurrent = ExtractRawDataFromAbsoluteTime.convert_sample_to_absolute_time(current_row[0], raw_haemo.info["sfreq"])
+                        tmaxCurrent = tminCurrent + self.stimulus_duration
+                        
+                        # Subtract mean of previous epoch (for each channel) from current epoch
+                        meanPrevious = timeCroppedDataPreviousEvent.mean(axis=1)
+                        
+                        startSample = current_row[0]
+                        endSample = startSample + int(self.stimulus_duration * raw_haemo.info["sfreq"])
+                        
+                        # Subtract the mean from each channel in the current epoch
+                        for ch_idx in range(raw_data.shape[0]):
+                            raw_data[ch_idx, startSample:endSample] -= meanPrevious[ch_idx]
+                        
+                        # Update the raw object with modified data
+                        raw_haemo._data = raw_data
 
                 epochs = mne.Epochs(
                     raw_haemo,
