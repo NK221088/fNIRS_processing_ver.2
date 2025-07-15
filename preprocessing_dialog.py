@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import tkinter.messagebox
 from preprocessesing_toolbox.baselineCorrection import baselineCorrection
+import inspect
 class PreprocessingDialog:
     def __init__(self, parent, current_settings):
         self.parent = parent
@@ -26,6 +27,25 @@ class PreprocessingDialog:
         
         # Wait for dialog to close
         self.dialog.wait_window()
+    
+    def get_baseline_correction_methods(self):
+        """Get available baseline correction methods from the baselineCorrection class."""
+        methods = []
+        
+        # Get all methods from the baselineCorrection class
+        for name, method in inspect.getmembers(baselineCorrection, predicate=inspect.ismethod):
+            if not name.startswith('_') and name != 'get_name':  # Skip private methods and get_name
+                methods.append(name)
+        
+        # Get all static methods from the baselineCorrection class
+        for name, method in inspect.getmembers(baselineCorrection, predicate=inspect.isfunction):
+            if not name.startswith('_'):  # Skip private methods
+                methods.append(name)
+        
+        # Add "None" as the first option
+        methods.insert(0, "None")
+    
+        return methods
     
     def center_dialog(self):
         """Center the dialog on the parent window."""
@@ -111,7 +131,6 @@ class PreprocessingDialog:
         )
         negative_info_btn.pack(side="right")
         
-        # Baseline correction (now as dropdown)
         baseline_correction_frame = tk.Frame(options_frame)
         baseline_correction_frame.pack(fill="x", pady=5)
         
@@ -123,8 +142,8 @@ class PreprocessingDialog:
         )
         baseline_label.pack(side="left")
         
-        # Dropdown options
-        baseline_options = ["None", "Linear", "Polynomial", "Spline"]
+        # Get available methods dynamically
+        baseline_options = self.get_baseline_correction_methods()
         self.baseline_correction_var = tk.StringVar(value=self.settings.get("baseline_correction", "None"))
         
         self.baseline_correction_dropdown = ttk.Combobox(
@@ -226,15 +245,15 @@ class PreprocessingDialog:
     
     def show_baseline_correction_info(self):
         """Show information about baseline correction."""
+        available_methods = self.get_baseline_correction_methods()
+        methods_text = "\n".join([f"• {method}" for method in available_methods if method != "None"])
+        
         info_text = (
             "Baseline Correction:\n\n"
             "Baseline correction removes drift and systematic changes in the signal "
             "that are not related to brain activation.\n\n"
-            "Options:\n"
-            "• None: No baseline correction applied\n"
-            "• Linear: Removes linear drift over time\n"
-            "• Polynomial: Removes polynomial trends\n"
-            "• Spline: Uses spline interpolation for complex baseline patterns\n\n"
+            "Available methods:\n"
+            f"{methods_text}\n\n"
             "Choose based on the type of baseline drift in your data."
         )
         
