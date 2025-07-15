@@ -572,7 +572,7 @@ def open_preprocessing_dialog():
     current_preprocessing_settings = {
         "short_channel_correction": settings["short_channel_correction"],
         "negative_correlation_enhancement": settings["negative_correlation_enhancement"],
-        "Baseline correction": settings["baseline_correction"]
+        "baseline_correction": settings["baseline_correction"]
     }
     
     result = show_preprocessing_dialog(root, current_preprocessing_settings)
