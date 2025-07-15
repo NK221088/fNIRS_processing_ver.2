@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+import tkinter.messagebox
 
 class PreprocessingDialog:
     def __init__(self, parent, current_settings):
@@ -10,7 +11,7 @@ class PreprocessingDialog:
         # Create the dialog window
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Preprocessing Options")
-        self.dialog.geometry("400x300")
+        self.dialog.geometry("400x350")  # Increased height for dropdown
         self.dialog.resizable(False, False)
         
         # Make dialog modal
@@ -39,7 +40,7 @@ class PreprocessingDialog:
         
         # Calculate center position
         dialog_width = 400
-        dialog_height = 300
+        dialog_height = 350  # Updated height
         x = parent_x + (parent_width - dialog_width) // 2
         y = parent_y + (parent_height - dialog_height) // 2
         
@@ -109,6 +110,44 @@ class PreprocessingDialog:
             font=("Arial", 8)
         )
         negative_info_btn.pack(side="right")
+        
+        # Baseline correction (now as dropdown)
+        baseline_correction_frame = tk.Frame(options_frame)
+        baseline_correction_frame.pack(fill="x", pady=5)
+        
+        # Label for baseline correction
+        baseline_label = tk.Label(
+            baseline_correction_frame,
+            text="Baseline Correction:",
+            font=("Arial", 11)
+        )
+        baseline_label.pack(side="left")
+        
+        # Dropdown options
+        baseline_options = ["None", "Linear", "Polynomial", "Spline"]
+        self.baseline_correction_var = tk.StringVar(value=self.settings.get("baseline_correction", "None"))
+        
+        self.baseline_correction_dropdown = ttk.Combobox(
+            baseline_correction_frame,
+            textvariable=self.baseline_correction_var,
+            values=baseline_options,
+            state="readonly",
+            width=15,
+            font=("Arial", 10)
+        )
+        self.baseline_correction_dropdown.pack(side="left", padx=(10, 0))
+
+        # Info button for baseline correction
+        baseline_info_btn = tk.Button(
+            baseline_correction_frame, 
+            text="?", 
+            command=self.show_baseline_correction_info,
+            width=2, 
+            height=1,
+            bg="lightblue",
+            font=("Arial", 8)
+        )
+        baseline_info_btn.pack(side="right")
         
         # Separator
         separator = ttk.Separator(main_frame, orient="horizontal")
@@ -185,16 +224,34 @@ class PreprocessingDialog:
         
         tk.messagebox.showinfo("Negative Correlation Enhancement", info_text)
     
+    def show_baseline_correction_info(self):
+        """Show information about baseline correction."""
+        info_text = (
+            "Baseline Correction:\n\n"
+            "Baseline correction removes drift and systematic changes in the signal "
+            "that are not related to brain activation.\n\n"
+            "Options:\n"
+            "• None: No baseline correction applied\n"
+            "• Linear: Removes linear drift over time\n"
+            "• Polynomial: Removes polynomial trends\n"
+            "• Spline: Uses spline interpolation for complex baseline patterns\n\n"
+            "Choose based on the type of baseline drift in your data."
+        )
+        
+        tk.messagebox.showinfo("Baseline Correction", info_text)
+
     def reset_to_defaults(self):
         """Reset all settings to their default values."""
         self.short_channel_var.set(True)
         self.negative_corr_var.set(False)
+        self.baseline_correction_var.set("None")
     
     def ok(self):
         """Accept the settings and close the dialog."""
         self.result = {
             "short_channel_correction": self.short_channel_var.get(),
-            "negative_correlation_enhancement": self.negative_corr_var.get()
+            "negative_correlation_enhancement": self.negative_corr_var.get(),
+            "baseline_correction": self.baseline_correction_var.get(),
         }
         self.dialog.destroy()
     
@@ -232,7 +289,8 @@ if __name__ == "__main__":
     # Example current settings
     current_settings = {
         "short_channel_correction": True,
-        "negative_correlation_enhancement": False
+        "negative_correlation_enhancement": False,
+        "baseline_correction": "None"
     }
     
     def test_dialog():
