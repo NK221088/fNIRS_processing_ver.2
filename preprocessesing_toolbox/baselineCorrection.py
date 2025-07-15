@@ -62,6 +62,7 @@ class baselineCorrection:
     
     @staticmethod
     def usePreviousRest(events, event_dict, raw_haemo, stimulusDuration):
+        name = "Previous rest period"
         eventID = list(event_dict.values())
         eventID.remove(event_dict["Control"])
         raw_data = raw_haemo.get_data()

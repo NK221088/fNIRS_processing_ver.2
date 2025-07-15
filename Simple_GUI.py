@@ -32,7 +32,8 @@ settings = {
     "threshold": 3,
     "plot_type": "Epoch Plot",
     "individual": True,
-    "haemo_type": "hbo"  # New setting for hemoglobin type
+    "haemo_type": "hbo",
+    "baseline_correction": "None"
 }
 
 first_data_load = True
@@ -44,6 +45,7 @@ previous_epoch_type = settings["epoch_type"]
 previous_short_channel_correction = settings["short_channel_correction"]
 previous_negative_correlation_enhancement = settings["negative_correlation_enhancement"]
 previous_interpolate_bad_channels = settings["interpolate_bad_channels"]
+previous_baseline_correction = settings["baseline_correction"]  # Add this line
 
 def update_epoch_types(*args):
     """Load data and update epoch type dropdown based on dataset selection."""
@@ -251,6 +253,8 @@ def run_analysis():
         or settings["short_channel_correction"] != previous_short_channel_correction
         or settings["negative_correlation_enhancement"] != previous_negative_correlation_enhancement
         or settings["interpolate_bad_channels"] != previous_interpolate_bad_channels
+        or settings["baseline_correction"] != previous_baseline_correction  # Add this line
+
     )
     if reload_data:
         all_epochs, data_name, all_data, freq, data_types, all_individuals = load_data(
@@ -258,12 +262,14 @@ def run_analysis():
             short_channel_correction=settings["short_channel_correction"],
             negative_correlation_enhancement=settings["negative_correlation_enhancement"],
             interpolate_bad_channels=settings["interpolate_bad_channels"],
-            individuals=settings["individual"]
+            individuals=settings["individual"],
+            baseline_correction=settings["baseline_correction"]
         )
         previous_epoch_type = settings["epoch_type"]  # Update stored epoch type
         previous_short_channel_correction = settings["short_channel_correction"] # Update chosen short_channel_correction_setting
         previous_negative_correlation_enhancement = settings["negative_correlation_enhancement"]
         previous_interpolate_bad_channels = settings["interpolate_bad_channels"]
+        previous_baseline_correction = settings["baseline_correction"]  # Add this line
         toggle_individual_menu()
     
     first_data_load = False
@@ -576,7 +582,8 @@ def open_preprocessing_dialog():
         # Update the global settings
         settings["short_channel_correction"] = result["short_channel_correction"]
         settings["negative_correlation_enhancement"] = result["negative_correlation_enhancement"]
-        
+        settings["baseline_correction"] = result["baseline_correction"]
+
         # Update the status label
         update_preprocessing_status()
         
@@ -584,11 +591,14 @@ def open_preprocessing_dialog():
         global previous_short_channel_correction, previous_negative_correlation_enhancement
         previous_short_channel_correction = None  # Force reload
         previous_negative_correlation_enhancement = None  # Force reload
+        previous_baseline_correction = None  # Force reload
+
 
 def update_preprocessing_status():
     """Update the status label to show current preprocessing settings."""
     scc_status = "ON" if settings["short_channel_correction"] else "OFF"
     nce_status = "ON" if settings["negative_correlation_enhancement"] else "OFF"
+    bc_status = settings["baseline_correction"]
     status_text = f"Short Channel Correction: {scc_status} | Negative Correlation Enhancement: {nce_status}"
     preprocessing_status_label.config(text=status_text)
 
