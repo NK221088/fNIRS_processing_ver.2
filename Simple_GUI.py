@@ -31,7 +31,6 @@ settings = {
     "bad_channels_strategy": "all",
     "threshold": 3,
     "plot_type": "Epoch Plot",
-    "individual": True,
     "haemo_type": "hbo",
     "baseline_correction": "Previous rest period",
     "tmin": 0,
@@ -70,7 +69,6 @@ def update_epoch_types(*args):
                 short_channel_correction=settings["short_channel_correction"],
                 negative_correlation_enhancement=settings["negative_correlation_enhancement"],
                 interpolate_bad_channels=settings["interpolate_bad_channels"],
-                individuals=settings["individual"],
                 baseline_correction = settings["baseline_correction"],
                 tmin=settings["tmin"],
             )
@@ -271,7 +269,6 @@ def run_analysis():
             short_channel_correction=settings["short_channel_correction"],
             negative_correlation_enhancement=settings["negative_correlation_enhancement"],
             interpolate_bad_channels=settings["interpolate_bad_channels"],
-            individuals=settings["individual"],
             baseline_correction=settings["baseline_correction"],
         tmin=settings["tmin"]
         )

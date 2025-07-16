@@ -59,8 +59,9 @@ class fNIRS_data_load:
 
             raw_intensity.annotations.set_durations(self.stimulus_duration)
             raw_intensity.annotations.rename(self.annotation_names)
-            unwanted = np.nonzero(raw_intensity.annotations.description == self.unwanted)
-            raw_intensity.annotations.delete(unwanted)
+            for _unwanted in self.unwanted:
+                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
+                    raw_intensity.annotations.delete(unwanted)
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
             
@@ -155,7 +156,7 @@ class fNIRS_data_load:
 ###############################################################################################################################################################################################
 
 class AudioSpeechNoise_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction : bool, negative_correlation_enhancement : bool, interpolate_bad_channels:bool=False, tmin:int = -5):
+    def __init__(self, short_channel_correction : bool, negative_correlation_enhancement : bool, interpolate_bad_channels:bool=False, tmin:int = -5,baseline_correction: str = "Previous rest period"):
         self.number_of_participants = 17
         self.all_speech = []
         self.all_noise = []
@@ -176,6 +177,7 @@ class AudioSpeechNoise_data_load(fNIRS_data_load):
         self.data_name = "AudioSpeechNoise"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["15.0"]
+        self.baseline_correction = baseline_correction
         super().__init__(
                         number_of_participants = self.number_of_participants,
                         file_path = self.file_path,
@@ -192,7 +194,8 @@ class AudioSpeechNoise_data_load(fNIRS_data_load):
                         number_of_data_types = self.number_of_data_types,
                         data_name = self.data_name,
                         interpolate_bad_channels = self.interpolate_bad_channels,
-                        unwanted = self.unwanted)
+                        unwanted = self.unwanted,
+                        baseline_correction = self.baseline_correction)
 
     def define_raw_intensity(self, sub_id):
         fnirs_snirf_file_path = os.path.join(self.file_path, f"sub-{sub_id}", "ses-01", "nirs", f"sub-{sub_id}_ses-01_task-AudioSpeechNoise_nirs.snirf")
@@ -203,7 +206,7 @@ class AudioSpeechNoise_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_motor_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period"):
         self.number_of_participants = 1
         self.all_tapping = []
         self.all_control = []
@@ -224,6 +227,7 @@ class fNIRS_motor_data_load(fNIRS_data_load):
         self.data_name = "fnirs_motor_plus_anti"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["15.0"]
+        self.baseline_correction = baseline_correction
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -252,7 +256,7 @@ class fNIRS_motor_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_full_motor_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period"):
         self.number_of_participants = 5
         self.all_tapping = []
         self.all_control = []
@@ -273,6 +277,7 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
         self.data_name = "Dr. Luke: full motor data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["15.0"]
+        self.baseline_correction = baseline_correction
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -299,7 +304,7 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period"):
         self.number_of_participants = 4
         self.all_tapping = []
         self.all_control = []
@@ -320,6 +325,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
         self.data_name = "fNIRS_Alexandros_DoC_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["15.0"]
+        self.baseline_correction = baseline_correction
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -336,7 +342,8 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
-            unwanted = self.unwanted)
+            unwanted = self.unwanted,
+            baseline_correction = self.baseline_correction)
 
     def define_raw_intensity(self, sub_id):
         raw_intensity = mne.io.read_raw_snirf(f"Dataset/Alexandros/DoC/_2024-04-29_{sub_id}.snirf", verbose=True)
@@ -350,8 +357,9 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
             raw_intensity = self.make_annotations(raw_intensity)
 
             raw_intensity.annotations.rename(self.annotation_names)
-            unwanted = np.nonzero(raw_intensity.annotations.description == self.unwanted)
-            raw_intensity.annotations.delete(unwanted)
+            for _unwanted in self.unwanted:
+                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
+                    raw_intensity.annotations.delete(unwanted)
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
             
@@ -443,7 +451,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period"):
         self.number_of_participants = 7
         self.all_tapping = []
         self.all_control = []
@@ -465,6 +473,7 @@ class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
         self.data_name = "fNIRS_Alexandros_Healthy_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["1"]
+        self.baseline_correction = baseline_correction
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -493,7 +502,7 @@ class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_CUH_patient_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period"):
         self.number_of_participants = 48
         self.all_tapping = []
         self.all_control = []
@@ -514,6 +523,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
         self.data_name = "fNIRS_CUH_patient_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = "Pause"
+        baseline_correction = baseline_correction
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -530,7 +540,8 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
-            unwanted = self.unwanted)
+            unwanted = self.unwanted,
+            baseline_correction = self.baseline_correction)
 
     def define_raw_intensity(self, sub_id):
             if sub_id == 9:
@@ -551,8 +562,9 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
             raw_intensity = self.make_annotations(raw_intensity)
 
             raw_intensity.annotations.rename(self.annotation_names)
-            unwanted = np.nonzero(raw_intensity.annotations.description == self.unwanted)
-            raw_intensity.annotations.delete(unwanted)
+            for _unwanted in self.unwanted:
+                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
+                    raw_intensity.annotations.delete(unwanted)
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
             
@@ -645,7 +657,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period"):
         self.number_of_participants = 4
         self.all_tapping = []
         self.all_control = []
@@ -667,6 +679,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
         self.data_name = "fNIRS_Melika_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = [""]
+        self.baseline_correction = baseline_correction
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -683,7 +696,8 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
-            unwanted = self.unwanted)
+            unwanted = self.unwanted,
+            baseline_correction = self.baseline_correction)
 
     def define_raw_intensity(self, sub_id):
         raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
@@ -702,8 +716,9 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
 
 
             raw_intensity.annotations.rename(self.annotation_names)
-            unwanted = np.nonzero(raw_intensity.annotations.description == self.unwanted)
-            raw_intensity.annotations.delete(unwanted)
+            for _unwanted in self.unwanted:
+                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
+                    raw_intensity.annotations.delete(unwanted)
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
             
@@ -847,7 +862,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period"):
         self.number_of_participants = 4
         self.all_tapping = []
         self.all_control = []
@@ -868,6 +883,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         self.data_name = "fNIRS_Melika_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["2"]
+        self.baseline_correction = baseline_correction
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -884,7 +900,8 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
-            unwanted = self.unwanted)
+            unwanted = self.unwanted,
+            baseline_correction = self.baseline_correction)
 
     def define_raw_intensity(self, sub_id):
         raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
@@ -901,8 +918,9 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
                 raw_intensity = self.make_annotations(raw_intensity)
 
             raw_intensity.annotations.rename(self.annotation_names)
-            unwanted = np.nonzero(raw_intensity.annotations.description == self.unwanted)
-            raw_intensity.annotations.delete(unwanted)
+            for _unwanted in self.unwanted:
+                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
+                    raw_intensity.annotations.delete(unwanted)
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
 
@@ -1049,7 +1067,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period"):
         self.number_of_participants = 9
         self.all_tapping = []
         self.all_control = []
@@ -1070,6 +1088,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
         self.data_name = "fNIRS_Melika_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = [""]
+        self.baseline_correction = baseline_correction
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -1086,7 +1105,8 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
-            unwanted = self.unwanted)
+            unwanted = self.unwanted,
+            baseline_correction = self.baseline_correction)
 
     def define_raw_intensity(self, sub_id):
         raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
@@ -1101,8 +1121,9 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
 
 
             raw_intensity.annotations.rename(self.annotation_names)
-            unwanted = np.nonzero(raw_intensity.annotations.description == self.unwanted)
-            raw_intensity.annotations.delete(unwanted)
+            for _unwanted in self.unwanted:
+                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
+                    raw_intensity.annotations.delete(unwanted)
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
             
@@ -1247,7 +1268,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period"):
         self.number_of_participants = 9
         self.all_tapping = []
         self.all_control = []
@@ -1268,6 +1289,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
         self.data_name = "fNIRS_Melika_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["2"]
+        self.baseline_correction = baseline_correction
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -1284,7 +1306,8 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
-            unwanted = self.unwanted)
+            unwanted = self.unwanted,
+            baseline_correction = self.baseline_correction)
 
     def define_raw_intensity(self, sub_id):
         raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
@@ -1298,8 +1321,9 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
             raw_intensity = self.make_annotations(raw_intensity)
 
             raw_intensity.annotations.rename(self.annotation_names)
-            unwanted = np.nonzero(raw_intensity.annotations.description == self.unwanted)
-            raw_intensity.annotations.delete(unwanted)
+            for _unwanted in self.unwanted:
+                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
+                    raw_intensity.annotations.delete(unwanted)
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
 
@@ -1425,7 +1449,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_old_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period"):
         self.number_of_participants = 11
         self.all_tapping = []
         self.all_control = []
@@ -1447,6 +1471,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
         self.data_name = "fNIRS_Melika_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["0"]
+        self.baseline_correction = baseline_correction
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -1463,7 +1488,8 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
-            unwanted = self.unwanted)
+            unwanted = self.unwanted,
+            baseline_correction = self.baseline_correction)
 
     def define_raw_intensity(self, sub_id):
         raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
@@ -1479,8 +1505,9 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
             raw_intensity = self.make_annotations(raw_intensity)
 
             raw_intensity.annotations.rename(self.annotation_names)
-            unwanted = np.nonzero(raw_intensity.annotations.description == self.unwanted)
-            raw_intensity.annotations.delete(unwanted)
+            for _unwanted in self.unwanted:
+                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
+                    raw_intensity.annotations.delete(unwanted)
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
             
@@ -1589,7 +1616,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period"):
         self.number_of_participants = 7
         self.all_tapping = []
         self.all_control = []
@@ -1610,6 +1637,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         self.data_name = "fNIRS_Melika_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = [""]
+        self.baseline_correction = baseline_correction
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -1626,7 +1654,8 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
-            unwanted = self.unwanted)
+            unwanted = self.unwanted,
+            baseline_correction = self.baseline_correction)
 
     def define_raw_intensity(self, sub_id):
         raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
@@ -1641,8 +1670,9 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
 
 
             raw_intensity.annotations.rename(self.annotation_names)
-            unwanted = np.nonzero(raw_intensity.annotations.description == self.unwanted)
-            raw_intensity.annotations.delete(unwanted)
+            for _unwanted in self.unwanted:
+                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
+                    raw_intensity.annotations.delete(unwanted)
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
             
@@ -1792,7 +1822,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period"):
         self.number_of_participants = 6
         self.all_tapping = []
         self.all_control = []
@@ -1813,6 +1843,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.data_name = "fNIRS_Melika_tongue_long_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["2"]
+        self.baseline_correction = baseline_correction
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -1829,7 +1860,8 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
-            unwanted = self.unwanted)
+            unwanted = self.unwanted,
+            baseline_correction = self.baseline_correction)
 
     def define_raw_intensity(self, sub_id):
         raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
@@ -1843,8 +1875,9 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             raw_intensity = self.make_annotations(raw_intensity)
 
             raw_intensity.annotations.rename(self.annotation_names)
-            unwanted = np.nonzero(raw_intensity.annotations.description == self.unwanted)
-            raw_intensity.annotations.delete(unwanted)
+            for _unwanted in self.unwanted:
+                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
+                    raw_intensity.annotations.delete(unwanted)
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
 
@@ -1985,7 +2018,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period"):
         self.number_of_participants = 68
         self.all_tapping = []
         self.all_control = []
@@ -2006,6 +2039,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
         self.data_name = "fNIRS_Pardis_DOC_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = [""]
+        self.baseline_correction = baseline_correction
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -2022,7 +2056,8 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
-            unwanted = self.unwanted)
+            unwanted = self.unwanted,
+            baseline_correction = self.baseline_correction)
 
     def find_snirf_file(self, p_folder_path):
         """
@@ -2061,10 +2096,12 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
             try:
                 raw_intensity = self.define_raw_intensity(p_folder_name)
                 raw_intensity = self.make_annotations(raw_intensity)
-
+                
                 raw_intensity.annotations.rename(self.annotation_names)
-                unwanted = np.nonzero(raw_intensity.annotations.description == self.unwanted)
-                raw_intensity.annotations.delete(unwanted)
+
+                for _unwanted in self.unwanted:
+                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
+                    raw_intensity.annotations.delete(unwanted)
 
                 raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
 
@@ -2090,6 +2127,20 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
 
                 events, event_dict = mne.events_from_annotations(raw_haemo)
 
+                # Apply custom baseline correction if needed
+                if self.baseline_correction != "xSecondsBefore":
+                    corrector = baselineCorrection(self.baseline_correction)
+                    raw_haemo = corrector.apply_correction(
+                        self.baseline_correction,
+                        events, 
+                        event_dict, 
+                        raw_haemo, 
+                        self.stimulus_duration
+                    )
+
+                # Set baseline parameter based on correction method
+                baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
+
                 epochs = mne.Epochs(
                     raw_haemo,
                     events,
@@ -2099,7 +2150,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
                     reject=self.reject_criteria,
                     reject_by_annotation=True,
                     proj=True,
-                    baseline=None,
+                    baseline=baseline,
                     preload=True,
                     detrend=None,
                     verbose=True,

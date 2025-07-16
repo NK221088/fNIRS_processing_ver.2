@@ -335,6 +335,9 @@ class PreprocessingDialog:
         current_hbo = self.settings.get("reject_criteria", {}).get("hbo", 80e-6)
         hbo_display_value = current_hbo * 1e6  # Convert to ×10⁻⁶ units
         
+        # Register validation function for positive numeric input
+        vcmd_positive = (self.dialog.register(self.validate_positive_numeric_input), '%P')
+        
         self.reject_criteria_var = tk.StringVar(value=str(hbo_display_value))
         self.reject_criteria_entry = tk.Entry(
             reject_criteria_frame,
@@ -455,7 +458,10 @@ class PreprocessingDialog:
         
         # Bind mousewheel to canvas
         def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            if canvas.winfo_exists():  # Check if canvas still exists
+                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        self._on_mousewheel = _on_mousewheel  # Store reference for later cleanup
         canvas.bind_all("<MouseWheel>", _on_mousewheel)
     
     def show_short_channel_info(self):
@@ -676,11 +682,14 @@ class PreprocessingDialog:
             "reject_criteria": {"hbo": reject_criteria_value},
             "unwanted": unwanted_labels
         }
+        
+        self.dialog.unbind_all("<MouseWheel>") # Cleanup mousewheel binding
         self.dialog.destroy()
     
     def cancel(self):
         """Cancel and close the dialog without saving changes."""
         self.result = None
+        self.dialog.unbind_all("<MouseWheel>") # Cleanup mousewheel binding
         self.dialog.destroy()
     
     def get_result(self):
