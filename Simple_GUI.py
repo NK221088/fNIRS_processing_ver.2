@@ -456,25 +456,6 @@ info_button = tk.Button(dataset_selection_frame, text="Info", command=show_datas
                        bg="lightblue", fg="black", font=("Arial", 10), padx=10, pady=2)
 info_button.pack(side="left")
 
-# Epoch type selection
-epoch_type_label, epoch_type_var, epoch_type_menu = create_combobox_with_label(
-    top_left_frame, "Epoch Type:")
-
-# Plot type selection
-tk.Label(top_left_frame, text="Select Plot Type:", font=("Arial", 12)).pack(anchor="w")
-plot_type_var = tk.StringVar(value=settings["plot_type"])
-plot_type_menu = ttk.Combobox(top_left_frame, textvariable=plot_type_var, values=plotTypesList)
-# Call the function that updates the UI based on the selected plot type
-plot_type_menu.pack(pady=5)
-
-# Helper function to create checkbox with label
-def create_checkbox_with_label(parent, label_text, default_value):
-    label = create_label(parent, label_text)
-    var = tk.BooleanVar(value=default_value)
-    checkbox = tk.Checkbutton(parent, text="Enable", variable=var)
-    checkbox.pack(anchor="w")
-    return label, var, checkbox
-
 # Helper function to toggle widget visibility
 def toggle_widgets(show, *widgets):
     for widget in widgets:
@@ -534,6 +515,25 @@ preprocessing_button = tk.Button(
     pady=5
 )
 preprocessing_button.pack(pady=5)
+
+# Plot type selection
+tk.Label(top_left_frame, text="Select Plot Type:", font=("Arial", 12)).pack(anchor="w")
+plot_type_var = tk.StringVar(value=settings["plot_type"])
+plot_type_menu = ttk.Combobox(top_left_frame, textvariable=plot_type_var, values=plotTypesList)
+# Call the function that updates the UI based on the selected plot type
+plot_type_menu.pack(pady=5)
+
+# Epoch type selection
+epoch_type_label, epoch_type_var, epoch_type_menu = create_combobox_with_label(
+    top_left_frame, "Epoch Type:")
+
+# Helper function to create checkbox with label
+def create_checkbox_with_label(parent, label_text, default_value):
+    label = create_label(parent, label_text)
+    var = tk.BooleanVar(value=default_value)
+    checkbox = tk.Checkbutton(parent, text="Enable", variable=var)
+    checkbox.pack(anchor="w")
+    return label, var, checkbox
 
 plot_settings_frame = tk.Frame(top_left_frame)
 plot_settings_frame.pack(fill="x", pady=10)

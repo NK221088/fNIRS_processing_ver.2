@@ -78,7 +78,7 @@ class fNIRS_data_load:
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
 
             raw_haemo_unfiltered = raw_haemo.copy()
-            raw_haemo.filter(self.filter_lower_value, self.filter_upper_value7, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
+            raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
             if self.negative_correlation_enhancement:
                 raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
