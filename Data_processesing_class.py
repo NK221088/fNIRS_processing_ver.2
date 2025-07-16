@@ -16,7 +16,8 @@ class fNIRS_data_load:
     def __init__(self, file_path, number_of_participants=1, annotation_names=None, stimulus_duration=5,
                  short_channel_correction=True, negative_correlation_enhancement=True, scalp_coupling_threshold=0.8,
                  reject_criteria=dict(hbo=80e-6), tmin=0, tmax=15, baseline=(None, 0), data_types=[], number_of_data_types=2,
-                 data_name="None", individuals = False, interpolate_bad_channels=False, unwanted = ["15.0"], baseline_correction: str = "Previous rest period"):
+                 data_name="None", interpolate_bad_channels=False, unwanted = ["15.0"], baseline_correction: str = "Previous rest period",
+                 filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):        
         self.number_of_participants = number_of_participants
         self.file_path = file_path
         self.annotation_names = annotation_names
@@ -33,12 +34,14 @@ class fNIRS_data_load:
         self.data_types = data_types
         self.number_of_data_types = len(data_types)
         self.data_name = data_name
-        self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = unwanted
         self.baseline_correction = baseline_correction
-        if individuals:
-            setattr(self, 'Individual_participants', [])
+        self.filter_lower_value = filter_lower_value
+        self.filter_upper_value = filter_upper_value
+        self.h_trans_bandwidth = h_trans_bandwidth
+        self.l_trans_bandwidth = l_trans_bandwidth
+        setattr(self, 'Individual_participants', [])
         for name in self.data_types:
             setattr(self, f'all_{name}', [])
 
@@ -117,22 +120,19 @@ class fNIRS_data_load:
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
-                if self.individuals:
-                    Participant_i = individual_participant_class(f"Participant_{i}")
-                    Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
-                    Participant_i.raw_intensity = raw_intensity
-                    Participant_i.raw_od = raw_od
-                    Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
-                    Participant_i.raw_haemo = raw_haemo
-                    Participant_i.epochs = epochs
+                Participant_i = individual_participant_class(f"Participant_{i}")
+                Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
+                Participant_i.raw_intensity = raw_intensity
+                Participant_i.raw_od = raw_od
+                Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
+                Participant_i.raw_haemo = raw_haemo
+                Participant_i.epochs = epochs
                 
                 for name in self.data_types:
                     getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
-                    if self.individuals:
-                        Participant_i.events.update({name: epochs[name].get_data(copy=True)})
+                    Participant_i.events.update({name: epochs[name].get_data(copy=True)})
                 
-                if self.individuals:
-                    getattr(self, 'Individual_participants').append(Participant_i)
+                getattr(self, 'Individual_participants').append(Participant_i)
                 
 
         # Concatenate the control data
@@ -150,12 +150,12 @@ class fNIRS_data_load:
         # Update all_data with control_dict
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
-        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants if self.individuals else None
+        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
 
 ###############################################################################################################################################################################################
 
 class AudioSpeechNoise_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction : bool, negative_correlation_enhancement : bool, individuals :bool = False, interpolate_bad_channels:bool=False, tmin:int = -5):
+    def __init__(self, short_channel_correction : bool, negative_correlation_enhancement : bool, interpolate_bad_channels:bool=False, tmin:int = -5):
         self.number_of_participants = 17
         self.all_speech = []
         self.all_noise = []
@@ -174,9 +174,8 @@ class AudioSpeechNoise_data_load(fNIRS_data_load):
         self.data_types = ["Speech", "Noise"]
         self.number_of_data_types = 2
         self.data_name = "AudioSpeechNoise"
-        self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = "15.0"
+        self.unwanted = ["15.0"]
         super().__init__(
                         number_of_participants = self.number_of_participants,
                         file_path = self.file_path,
@@ -192,7 +191,6 @@ class AudioSpeechNoise_data_load(fNIRS_data_load):
                         data_types = self.data_types,
                         number_of_data_types = self.number_of_data_types,
                         data_name = self.data_name,
-                        individuals = self.individuals,
                         interpolate_bad_channels = self.interpolate_bad_channels,
                         unwanted = self.unwanted)
 
@@ -205,7 +203,7 @@ class AudioSpeechNoise_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_motor_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals :bool = False, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
         self.number_of_participants = 1
         self.all_tapping = []
         self.all_control = []
@@ -224,9 +222,8 @@ class fNIRS_motor_data_load(fNIRS_data_load):
         self.data_types = ["Tapping"]
         self.number_of_data_types = 2
         self.data_name = "fnirs_motor_plus_anti"
-        self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = "15.0"
+        self.unwanted = ["15.0"]
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -242,7 +239,6 @@ class fNIRS_motor_data_load(fNIRS_data_load):
             data_types=self.data_types,
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
-            individuals = self.individuals,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted)
 
@@ -256,7 +252,7 @@ class fNIRS_motor_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_full_motor_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
         self.number_of_participants = 5
         self.all_tapping = []
         self.all_control = []
@@ -275,9 +271,8 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
         self.data_types = ["Tapping"]
         self.number_of_data_types = 2
         self.data_name = "Dr. Luke: full motor data"
-        self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = "15.0"
+        self.unwanted = ["15.0"]
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -293,7 +288,6 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
             data_types=self.data_types,
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
-            individuals = self.individuals,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted)
 
@@ -305,7 +299,7 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
         self.number_of_participants = 4
         self.all_tapping = []
         self.all_control = []
@@ -324,9 +318,8 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
         self.data_types = ["Tongue"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Alexandros_DoC_data"
-        self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = "15.0"
+        self.unwanted = ["15.0"]
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -342,7 +335,6 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
             data_types=self.data_types,
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
-            individuals = self.individuals,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted)
 
@@ -402,22 +394,19 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
-                if self.individuals:
-                    Participant_i = individual_participant_class(f"Participant_{i}")
-                    Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
-                    Participant_i.raw_intensity = raw_intensity
-                    Participant_i.raw_od = raw_od
-                    Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
-                    Participant_i.raw_haemo = raw_haemo
-                    Participant_i.epochs = epochs
+                Participant_i = individual_participant_class(f"Participant_{i}")
+                Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
+                Participant_i.raw_intensity = raw_intensity
+                Participant_i.raw_od = raw_od
+                Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
+                Participant_i.raw_haemo = raw_haemo
+                Participant_i.epochs = epochs
                 
                 for name in self.data_types:
                     getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
-                    if self.individuals:
-                        Participant_i.events.update({name: epochs[name].get_data(copy=True)})
+                    Participant_i.events.update({name: epochs[name].get_data(copy=True)})
                 
-                if self.individuals:
-                    getattr(self, 'Individual_participants').append(Participant_i)
+                getattr(self, 'Individual_participants').append(Participant_i)
                 
 
         # Concatenate the control data
@@ -435,7 +424,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
         # Update all_data with control_dict
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
-        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants if self.individuals else None
+        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
 
     
     def make_annotations(self, raw_intensity):
@@ -454,7 +443,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
         self.number_of_participants = 7
         self.all_tapping = []
         self.all_control = []
@@ -474,9 +463,8 @@ class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
         self.data_types = ["Imagery"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Alexandros_Healthy_data"
-        self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = "1"
+        self.unwanted = ["1"]
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -492,7 +480,6 @@ class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
             data_types=self.data_types,
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
-            individuals = self.individuals,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted)
 
@@ -506,7 +493,7 @@ class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_CUH_patient_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
         self.number_of_participants = 48
         self.all_tapping = []
         self.all_control = []
@@ -525,7 +512,6 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
         self.data_types = ["Imagery"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_CUH_patient_data"
-        self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = "Pause"
         super().__init__(
@@ -543,7 +529,6 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
             data_types=self.data_types,
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
-            individuals = self.individuals,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted)
 
@@ -610,22 +595,19 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
-                if self.individuals:
-                    Participant_i = individual_participant_class(f"Participant_{i}")
-                    Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
-                    Participant_i.raw_intensity = raw_intensity
-                    Participant_i.raw_od = raw_od
-                    Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
-                    Participant_i.raw_haemo = raw_haemo
-                    Participant_i.epochs = epochs
+                Participant_i = individual_participant_class(f"Participant_{i}")
+                Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
+                Participant_i.raw_intensity = raw_intensity
+                Participant_i.raw_od = raw_od
+                Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
+                Participant_i.raw_haemo = raw_haemo
+                Participant_i.epochs = epochs
                 
                 for name in self.data_types:
                     getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
-                    if self.individuals:
-                        Participant_i.events.update({name: epochs[name].get_data(copy=True)})
+                    Participant_i.events.update({name: epochs[name].get_data(copy=True)})
                 
-                if self.individuals:
-                    getattr(self, 'Individual_participants').append(Participant_i)
+                getattr(self, 'Individual_participants').append(Participant_i)
                 
 
         # Concatenate the control data
@@ -643,7 +625,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
         # Update all_data with control_dict
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
-        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants if self.individuals else None
+        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
 
     
     def make_annotations(self, raw_intensity):
@@ -663,7 +645,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
         self.number_of_participants = 4
         self.all_tapping = []
         self.all_control = []
@@ -683,9 +665,8 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
         self.data_types = ["HandMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
-        self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = ""
+        self.unwanted = [""]
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -701,7 +682,6 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
             data_types=self.data_types,
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
-            individuals = self.individuals,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted)
 
@@ -789,24 +769,20 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
-                if self.individuals:
-                    Participant_i = individual_participant_class(f"Participant_{i}")
-                    Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
-                    Participant_i.raw_intensity = raw_intensity
-                    Participant_i.raw_od = raw_od
-                    Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
-                    Participant_i.raw_haemo = raw_haemo
-                    Participant_i.epochs = epochs
+                Participant_i = individual_participant_class(f"Participant_{i}")
+                Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
+                Participant_i.raw_intensity = raw_intensity
+                Participant_i.raw_od = raw_od
+                Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
+                Participant_i.raw_haemo = raw_haemo
+                Participant_i.epochs = epochs
                 
                 for name in self.data_types:
                     getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
-                    if self.individuals:
-                        Participant_i.events.update({name: epochs[name].get_data(copy=True)})
+                    Participant_i.events.update({name: epochs[name].get_data(copy=True)})
                 
-                if self.individuals:
-                    getattr(self, 'Individual_participants').append(Participant_i)
-                
-
+                getattr(self, 'Individual_participants').append(Participant_i)
+            
         # Concatenate the control data
         self.all_control = np.concatenate(self.all_control, axis=0)
 
@@ -822,7 +798,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
         # Update all_data with control_dict
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
-        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants if self.individuals else None
+        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
 
     
     def make_without_intro_annotations(self, raw_intensity):
@@ -871,7 +847,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
         self.number_of_participants = 4
         self.all_tapping = []
         self.all_control = []
@@ -890,9 +866,8 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         self.data_types = ["TongueMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
-        self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = "2"
+        self.unwanted = ["2"]
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -908,7 +883,6 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
             data_types=self.data_types,
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
-            individuals = self.individuals,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted)
 
@@ -996,22 +970,19 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
-                if self.individuals:
-                    Participant_i = individual_participant_class(f"Participant_{i}")
-                    Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
-                    Participant_i.raw_intensity = raw_intensity
-                    Participant_i.raw_od = raw_od
-                    Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
-                    Participant_i.raw_haemo = raw_haemo
-                    Participant_i.epochs = epochs
+                Participant_i = individual_participant_class(f"Participant_{i}")
+                Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
+                Participant_i.raw_intensity = raw_intensity
+                Participant_i.raw_od = raw_od
+                Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
+                Participant_i.raw_haemo = raw_haemo
+                Participant_i.epochs = epochs
                 
                 for name in self.data_types:
                     getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
-                    if self.individuals:
-                        Participant_i.events.update({name: epochs[name].get_data(copy=True)})
+                    Participant_i.events.update({name: epochs[name].get_data(copy=True)})
                 
-                if self.individuals:
-                    getattr(self, 'Individual_participants').append(Participant_i)
+                getattr(self, 'Individual_participants').append(Participant_i)
                 
 
         # Concatenate the control data
@@ -1029,7 +1000,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         # Update all_data with control_dict
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
-        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants if self.individuals else None
+        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
 
     
     def make_without_intro_annotations(self, raw_intensity):
@@ -1078,7 +1049,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
         self.number_of_participants = 9
         self.all_tapping = []
         self.all_control = []
@@ -1097,9 +1068,8 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
         self.data_types = ["HandMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
-        self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = ""
+        self.unwanted = [""]
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -1115,7 +1085,6 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
             data_types=self.data_types,
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
-            individuals = self.individuals,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted)
 
@@ -1199,22 +1168,19 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
-                if self.individuals:
-                    Participant_i = individual_participant_class(f"Participant_{i}")
-                    Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
-                    Participant_i.raw_intensity = raw_intensity
-                    Participant_i.raw_od = raw_od
-                    Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
-                    Participant_i.raw_haemo = raw_haemo
-                    Participant_i.epochs = epochs
+                Participant_i = individual_participant_class(f"Participant_{i}")
+                Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
+                Participant_i.raw_intensity = raw_intensity
+                Participant_i.raw_od = raw_od
+                Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
+                Participant_i.raw_haemo = raw_haemo
+                Participant_i.epochs = epochs
                 
                 for name in self.data_types:
                     getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
-                    if self.individuals:
-                        Participant_i.events.update({name: epochs[name].get_data(copy=True)})
+                    Participant_i.events.update({name: epochs[name].get_data(copy=True)})
                 
-                if self.individuals:
-                    getattr(self, 'Individual_participants').append(Participant_i)
+                getattr(self, 'Individual_participants').append(Participant_i)
                 
 
         # Concatenate the control data
@@ -1232,7 +1198,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
         # Update all_data with control_dict
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
-        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants if self.individuals else None
+        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
 
     
     def make_without_intro_annotations(self, raw_intensity):
@@ -1281,7 +1247,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
         self.number_of_participants = 9
         self.all_tapping = []
         self.all_control = []
@@ -1300,9 +1266,8 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
         self.data_types = ["TongueMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
-        self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = "2"
+        self.unwanted = ["2"]
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -1318,7 +1283,6 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
             data_types=self.data_types,
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
-            individuals = self.individuals,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted)
 
@@ -1402,25 +1366,21 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
             if len(epochs) != 0:
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
-                
-                if self.individuals:
-                    Participant_i = individual_participant_class(f"Participant_{i}")
-                    Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
-                    Participant_i.raw_intensity = raw_intensity
-                    Participant_i.raw_od = raw_od
-                    Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
-                    Participant_i.raw_haemo = raw_haemo
-                    Participant_i.epochs = epochs
+            
+                Participant_i = individual_participant_class(f"Participant_{i}")
+                Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
+                Participant_i.raw_intensity = raw_intensity
+                Participant_i.raw_od = raw_od
+                Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
+                Participant_i.raw_haemo = raw_haemo
+                Participant_i.epochs = epochs
                 
                 for name in self.data_types:
                     getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
-                    if self.individuals:
-                        Participant_i.events.update({name: epochs[name].get_data(copy=True)})
+                    Participant_i.events.update({name: epochs[name].get_data(copy=True)})
                 
-                if self.individuals:
-                    getattr(self, 'Individual_participants').append(Participant_i)
+                getattr(self, 'Individual_participants').append(Participant_i)
                 
-
         # Concatenate the control data
         self.all_control = np.concatenate(self.all_control, axis=0)
 
@@ -1436,7 +1396,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
         # Update all_data with control_dict
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
-        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants if self.individuals else None
+        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
 
     def make_annotations(self, raw_intensity):
         sampling_frequency = raw_intensity.info["sfreq"]
@@ -1465,7 +1425,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_old_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
         self.number_of_participants = 11
         self.all_tapping = []
         self.all_control = []
@@ -1485,9 +1445,8 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
         self.data_types = ["HandMI", "TongueMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
-        self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = "0"
+        self.unwanted = ["0"]
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -1503,7 +1462,6 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
             data_types=self.data_types,
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
-            individuals = self.individuals,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted)
 
@@ -1588,24 +1546,20 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
-                if self.individuals:
-                    Participant_i = individual_participant_class(f"Participant_{i}")
-                    Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
-                    Participant_i.raw_intensity = raw_intensity
-                    Participant_i.raw_od = raw_od
-                    Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
-                    Participant_i.raw_haemo = raw_haemo
-                    Participant_i.epochs = epochs
+                Participant_i = individual_participant_class(f"Participant_{i}")
+                Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
+                Participant_i.raw_intensity = raw_intensity
+                Participant_i.raw_od = raw_od
+                Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
+                Participant_i.raw_haemo = raw_haemo
+                Participant_i.epochs = epochs
                 
                 for name in self.data_types:
                     getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
-                    if self.individuals:
-                        Participant_i.events.update({name: epochs[name].get_data(copy=True)})
+                    Participant_i.events.update({name: epochs[name].get_data(copy=True)})
                 
-                if self.individuals:
-                    getattr(self, 'Individual_participants').append(Participant_i)
+                getattr(self, 'Individual_participants').append(Participant_i)
                 
-
         # Concatenate the control data
         self.all_control = np.concatenate(self.all_control, axis=0)
 
@@ -1621,7 +1575,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
         # Update all_data with control_dict
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
-        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants if self.individuals else None
+        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
 
     
     def make_annotations(self, raw_intensity):
@@ -1635,7 +1589,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
         self.number_of_participants = 7
         self.all_tapping = []
         self.all_control = []
@@ -1654,9 +1608,8 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         self.data_types = ["HandMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
-        self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = ""
+        self.unwanted = [""]
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -1672,7 +1625,6 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
             data_types=self.data_types,
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
-            individuals = self.individuals,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted)
 
@@ -1756,24 +1708,20 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
-                if self.individuals:
-                    Participant_i = individual_participant_class(f"Participant_{i}")
-                    Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
-                    Participant_i.raw_intensity = raw_intensity
-                    Participant_i.raw_od = raw_od
-                    Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
-                    Participant_i.raw_haemo = raw_haemo
-                    Participant_i.epochs = epochs
+                Participant_i = individual_participant_class(f"Participant_{i}")
+                Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
+                Participant_i.raw_intensity = raw_intensity
+                Participant_i.raw_od = raw_od
+                Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
+                Participant_i.raw_haemo = raw_haemo
+                Participant_i.epochs = epochs
                 
                 for name in self.data_types:
                     getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
-                    if self.individuals:
-                        Participant_i.events.update({name: epochs[name].get_data(copy=True)})
+                    Participant_i.events.update({name: epochs[name].get_data(copy=True)})
                 
-                if self.individuals:
-                    getattr(self, 'Individual_participants').append(Participant_i)
+                getattr(self, 'Individual_participants').append(Participant_i)
                 
-
         # Concatenate the control data
         self.all_control = np.concatenate(self.all_control, axis=0)
 
@@ -1789,7 +1737,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         # Update all_data with control_dict
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
-        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants if self.individuals else None
+        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
 
     
     def make_without_intro_annotations(self, raw_intensity):
@@ -1844,7 +1792,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
         self.number_of_participants = 6
         self.all_tapping = []
         self.all_control = []
@@ -1863,9 +1811,8 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.data_types = ["TongueMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_tongue_long_data"
-        self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = "2"
+        self.unwanted = ["2"]
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -1881,7 +1828,6 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             data_types=self.data_types,
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
-            individuals = self.individuals,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted)
 
@@ -1954,24 +1900,20 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
-                if self.individuals:
-                    Participant_i = individual_participant_class(f"Participant_{i}")
-                    Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
-                    Participant_i.raw_intensity = raw_intensity
-                    Participant_i.raw_od = raw_od
-                    Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
-                    Participant_i.raw_haemo = raw_haemo
-                    Participant_i.epochs = epochs
+                Participant_i = individual_participant_class(f"Participant_{i}")
+                Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
+                Participant_i.raw_intensity = raw_intensity
+                Participant_i.raw_od = raw_od
+                Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
+                Participant_i.raw_haemo = raw_haemo
+                Participant_i.epochs = epochs
                 
                 for name in self.data_types:
                     getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
-                    if self.individuals:
-                        Participant_i.events.update({name: epochs[name].get_data(copy=True)})
+                    Participant_i.events.update({name: epochs[name].get_data(copy=True)})
                 
-                if self.individuals:
-                    getattr(self, 'Individual_participants').append(Participant_i)
+                getattr(self, 'Individual_participants').append(Participant_i)
                 
-
         # Concatenate the control data
         self.all_control = np.concatenate(self.all_control, axis=0)
 
@@ -1987,7 +1929,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         # Update all_data with control_dict
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
-        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants if self.individuals else None
+        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
 
     
     def make_without_intro_annotations(self, raw_intensity):
@@ -2043,7 +1985,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False, tmin:int = 0):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0):
         self.number_of_participants = 68
         self.all_tapping = []
         self.all_control = []
@@ -2062,9 +2004,8 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
         self.data_types = ["TongueMI"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Pardis_DOC_data"
-        self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = ""
+        self.unwanted = [""]
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -2080,7 +2021,6 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
             data_types=self.data_types,
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
-            individuals = self.individuals,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted)
 
@@ -2169,22 +2109,19 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
                     self.all_epochs.append(epochs)
                     self.all_control.append(epochs["Control"].get_data(copy=True))
                     
-                    if self.individuals:
-                        Participant_i = individual_participant_class(f"Participant_{i}")
-                        Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
-                        Participant_i.raw_intensity = raw_intensity
-                        Participant_i.raw_od = raw_od
-                        Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
-                        Participant_i.raw_haemo = raw_haemo
-                        Participant_i.epochs = epochs
+                    Participant_i = individual_participant_class(f"Participant_{i}")
+                    Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
+                    Participant_i.raw_intensity = raw_intensity
+                    Participant_i.raw_od = raw_od
+                    Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
+                    Participant_i.raw_haemo = raw_haemo
+                    Participant_i.epochs = epochs
                     
                     for name in self.data_types:
                         getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
-                        if self.individuals:
-                            Participant_i.events.update({name: epochs[name].get_data(copy=True)})
+                        Participant_i.events.update({name: epochs[name].get_data(copy=True)})
                     
-                    if self.individuals:
-                        getattr(self, 'Individual_participants').append(Participant_i)
+                    getattr(self, 'Individual_participants').append(Participant_i)
             except FileNotFoundError as e:
                 print(f"Error loading {p_folder_name}: {e}")
             except Exception as e:
@@ -2205,7 +2142,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
         # Update all_data with control_dict
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
-        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants if self.individuals else None
+        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
 
     def make_annotations(self, raw_intensity):
         sampling_frequency = raw_intensity.info["sfreq"]
@@ -2228,7 +2165,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, individuals : bool = False, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period"):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period"):
         self.number_of_participants = 68
         self.all_tapping = []
         self.all_control = []
@@ -2248,7 +2185,6 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
         self.data_types = ["TonguePhysical", "TongueIM"]
         self.number_of_data_types = 2
         self.data_name = "fNIRS_Pardis_HC"
-        self.individuals = individuals
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["5", "6", "7"]
         self.baseline_correction = baseline_correction
@@ -2267,7 +2203,6 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
             data_types=self.data_types,
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
-            individuals = self.individuals,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted,
             baseline_correction = self.baseline_correction,
@@ -2375,22 +2310,19 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                     self.all_epochs.append(epochs)
                     self.all_control.append(epochs["Control"].get_data(copy=True))
                     
-                    if self.individuals:
-                        Participant_i = individual_participant_class(f"Participant_{i}")
-                        Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
-                        Participant_i.raw_intensity = raw_intensity
-                        Participant_i.raw_od = raw_od
-                        Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
-                        Participant_i.raw_haemo = raw_haemo
-                        Participant_i.epochs = epochs
+                    Participant_i = individual_participant_class(f"Participant_{i}")
+                    Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
+                    Participant_i.raw_intensity = raw_intensity
+                    Participant_i.raw_od = raw_od
+                    Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
+                    Participant_i.raw_haemo = raw_haemo
+                    Participant_i.epochs = epochs
                     
                     for name in self.data_types:
                         getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
-                        if self.individuals:
-                            Participant_i.events.update({name: epochs[name].get_data(copy=True)})
+                        Participant_i.events.update({name: epochs[name].get_data(copy=True)})
                     
-                    if self.individuals:
-                        getattr(self, 'Individual_participants').append(Participant_i)
+                    getattr(self, 'Individual_participants').append(Participant_i)
             except FileNotFoundError as e:
                 print(f"Error loading {folder_name}: {e}")
             except Exception as e:
@@ -2411,4 +2343,4 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
         # Update all_data with control_dict
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
-        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants if self.individuals else None
+        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
