@@ -8,9 +8,8 @@ from paradigm_plot import paradigm_plot
 from individual_frequency_plot import individual_frequency_plot
 from statistical_analysis import statistical_analysis
 from dataset_info_dialog import show_dataset_info
-import tkinter.messagebox
 from preprocessing_dialog import show_preprocessing_dialog
-
+from plot_settings_dialog import show_plot_settings_dialog
 
 dataSetList = list(data_loaders.keys())
 plotTypesList = ["Epoch Plot",
@@ -24,6 +23,7 @@ plotTypesList = ["Epoch Plot",
 settings = {
     "data_set": dataSetList[-1],  # Default to first dataset
     "epoch_type": "Tapping",
+    "individual": "All Individuals",
     "combine_strategy": "mean",
     "short_channel_correction": True,
     "negative_correlation_enhancement": False,
@@ -46,15 +46,20 @@ start_up = True
 # Track previous selections
 previous_dataset = settings["data_set"]
 previous_epoch_type = settings["epoch_type"]
+previous_individual = settings["individual"]
+previous_combine_strategy = settings["combine_strategy"]
+previous_bad_channels_strategy = settings["bad_channels_strategy"]
+previous_interpolate_bad_channels = settings["interpolate_bad_channels"]
+previous_threshold = settings["threshold"]
 previous_short_channel_correction = settings["short_channel_correction"]
 previous_negative_correlation_enhancement = settings["negative_correlation_enhancement"]
-previous_interpolate_bad_channels = settings["interpolate_bad_channels"]
 previous_baseline_correction = settings["baseline_correction"]
 previous_tmin = settings["tmin"]
 previous_stimulus_duration = settings["stimulus_duration"]
 previous_scalp_coupling_threshold = settings["scalp_coupling_threshold"]
 previous_reject_criteria = settings["reject_criteria"]
 previous_unwanted = settings["unwanted"]
+
 
 def update_epoch_types(*args):
     """Load data and update epoch type dropdown based on dataset selection."""
@@ -97,10 +102,7 @@ def toggle_individual_menu(*args):
     
     # First hide all specialized widgets
     for widget in [
-        # Individual selection
-        individual_label, individuals_menu,
-        # Individual checkboxes
-        individual_selection_label, individual_selection_frame,
+        # Individual selection - REMOVED (now in dialog)
         # Channel selection
         channel_selection_label, channel_frame,
         # Hemoglobin type
@@ -110,18 +112,12 @@ def toggle_individual_menu(*args):
         time_window_label, time_window_frame,
         dataset1_label, dataset1_menu,
         dataset2_label, dataset2_menu,
-        # Data processing settings
-        combine_strategy_label, combine_strategy_menu,
-        bad_channels_strategy_label, bad_channels_strategy_menu,
-        preprocessing_label, preprocessing_button,
-        interpolate_bad_channels_label, interpolate_bad_channels_checkbox,
-        threshold_label, threshold_entry,
-        # Epoch selection
-        epoch_type_label, epoch_type_menu
+        # Individual checkboxes
+        individual_selection_label, individual_selection_frame,
     ]:
         widget.pack_forget()
     
-    # Then show only what's needed for each plot type
+    # Show only what's needed for each plot type
     if plot_type == "Statistical Analysis":
         # Show statistical analysis specific settings
         area_of_interest_label.pack(anchor="w")
@@ -134,18 +130,7 @@ def toggle_individual_menu(*args):
         dataset2_menu.pack(pady=5)
         
     elif plot_type == "Standard fNIRS Response Plot":
-        # Show data processing settings
-        combine_strategy_label.pack(anchor="w")
-        combine_strategy_menu.pack(pady=5)
-        bad_channels_strategy_label.pack(anchor="w")
-        bad_channels_strategy_menu.pack(pady=5)
-        preprocessing_label.pack(anchor="w")
-        preprocessing_button.pack(pady=5)
-        interpolate_bad_channels_label.pack(anchor="w")
-        interpolate_bad_channels_checkbox.pack(anchor="w")
-        threshold_label.pack(anchor="w")
-        threshold_entry.pack(pady=5)
-        # Show individual selection
+        # Show individual selection checkboxes
         individual_selection_label.pack(anchor="w")
         individual_selection_frame.pack(fill="x", expand=False)
         # Show channel selection
@@ -156,71 +141,25 @@ def toggle_individual_menu(*args):
         # Populate channel checkboxes
         populate_channels()
         
-    elif plot_type == "individual frequency plot":
-        # Show epoch type selection
-        epoch_type_label.pack(anchor="w")
-        epoch_type_menu.pack(pady=5)
-        # Show individual selection dropdown
-        individual_label.pack(anchor="w")
-        individuals_menu.pack(pady=5)
-        # Update to show only individual participants for paradigm_plot
-        individuals_menu["values"] = [getattr(ind, "name", f"Participant_{i+1}") 
-                                     for i, ind in enumerate(all_individuals)]
-        # If "All Individuals" was previously selected, change to first individual
-        if Individual_var.get() == "All Individuals" and individuals_menu["values"]:
-            Individual_var.set(individuals_menu["values"][0])
-        
-    elif plot_type == "paradigm_plot":
-        # Show data processing settings
-        preprocessing_label.pack(anchor="w")
-        preprocessing_button.pack(pady=5)
-        interpolate_bad_channels_label.pack(anchor="w")
-        interpolate_bad_channels_checkbox.pack(anchor="w")
-        # Show individual selection dropdown
-        individual_label.pack(anchor="w") 
-        individuals_menu.pack(pady=5)
+    elif plot_type in ["individual frequency plot", "paradigm_plot"]:
         # Show hemoglobin type selection for paradigm_plot
-        haemo_type_label.pack(anchor="w")
-        haemo_type_menu.pack(pady=5)
+        if plot_type == "paradigm_plot":
+            haemo_type_label.pack(anchor="w")
+            haemo_type_menu.pack(pady=5)
         
-        # Update to show only individual participants for paradigm_plot
-        individuals_menu["values"] = [getattr(ind, "name", f"Participant_{i+1}") 
-                                     for i, ind in enumerate(all_individuals)]
-        # If "All Individuals" was previously selected, change to first individual
-        if Individual_var.get() == "All Individuals" and individuals_menu["values"]:
-            Individual_var.set(individuals_menu["values"][0])
-        
-        
-        # Show channel selection
-        channel_selection_label.pack(anchor="w", pady=(10, 2))
-        channel_frame.pack(fill="both", expand=False, pady=(0, 10))
-
-        # Populate the channel checkboxes
-        populate_channels()
+        # Show channel selection for paradigm_plot
+        if plot_type == "paradigm_plot":
+            channel_selection_label.pack(anchor="w", pady=(10, 2))
+            channel_frame.pack(fill="both", expand=False, pady=(0, 10))
+            populate_channels()
         
     elif plot_type == "Epoch Plot":
-        # Show epoch type selection
-        epoch_type_label.pack(anchor="w")
-        epoch_type_menu.pack(pady=5)
-        # Show individual selection dropdown with "All Individuals" option
-        individual_label.pack(anchor="w")
-        individuals_menu["values"] = ["All Individuals"] + [getattr(ind, "name", f"Participant_{i+1}") 
-                                                       for i, ind in enumerate(all_individuals)]
-        individuals_menu.pack(pady=5)
-        # Show data processing settings
-        combine_strategy_label.pack(anchor="w")
-        combine_strategy_menu.pack(pady=5)
-        bad_channels_strategy_label.pack(anchor="w")
-        bad_channels_strategy_menu.pack(pady=5)
-        preprocessing_label.pack(anchor="w")
-        preprocessing_button.pack(pady=5)
-        interpolate_bad_channels_label.pack(anchor="w")
-        interpolate_bad_channels_checkbox.pack(anchor="w")
-        threshold_label.pack(anchor="w")
-        threshold_entry.pack(pady=5)
+        # No additional UI needed - all settings are in dialog
+        pass
         
     # Force the UI to update
     root.update_idletasks()
+        
 
 def show_dataset_info_dialog():
     """Show the dataset information dialog."""
@@ -244,18 +183,18 @@ def show_dataset_info_dialog():
 # Updated run_analysis function
 def run_analysis():
     """Run data processing and visualization based on selected plot type."""
-    global previous_epoch_type, all_epochs, data_name, all_data, freq, data_types, all_individuals, first_data_load, previous_short_channel_correction, previous_negative_correlation_enhancement, previous_interpolate_bad_channels, previous_baseline_correction, previous_tmin
+    global previous_epoch_type, all_epochs, data_name, all_data, freq, data_types, all_individuals, first_data_load
+    global previous_short_channel_correction, previous_negative_correlation_enhancement, previous_interpolate_bad_channels
+    global previous_baseline_correction, previous_tmin, previous_individual, previous_combine_strategy
+    global previous_bad_channels_strategy, previous_threshold
+    
     settings["data_set"] = dataset_var.get()
-    settings["epoch_type"] = epoch_type_var.get()
-    settings["combine_strategy"] = combine_strategy_var.get()
-    settings["interpolate_bad_channels"] = interpolate_bad_channels_var.get()
-    settings["bad_channels_strategy"] = bad_channels_strategy_var.get()
-    settings["threshold"] = int(threshold_var.get())
     settings["plot_type"] = plot_type_var.get()
+    settings["haemo_type"] = haemo_type_var.get()
     # Determine if data needs to be reloaded
     reload_data = (
         (settings["plot_type"] not in ["individual frequency plot","paradigm_plot", "Epoch Plot", "Standard fNIRS Response Plot"])
-        or settings["epoch_type"] != previous_epoch_type # Reload only if epoch type changed
+        or settings["epoch_type"] != previous_epoch_type
         or first_data_load == True
         or settings["short_channel_correction"] != previous_short_channel_correction
         or settings["negative_correlation_enhancement"] != previous_negative_correlation_enhancement
@@ -270,10 +209,10 @@ def run_analysis():
             negative_correlation_enhancement=settings["negative_correlation_enhancement"],
             interpolate_bad_channels=settings["interpolate_bad_channels"],
             baseline_correction=settings["baseline_correction"],
-        tmin=settings["tmin"]
+            tmin=settings["tmin"]
         )
-        previous_epoch_type = settings["epoch_type"]  # Update stored epoch type
-        previous_short_channel_correction = settings["short_channel_correction"] # Update chosen short_channel_correction_setting
+        previous_epoch_type = settings["epoch_type"]
+        previous_short_channel_correction = settings["short_channel_correction"]
         previous_negative_correlation_enhancement = settings["negative_correlation_enhancement"]
         previous_interpolate_bad_channels = settings["interpolate_bad_channels"]
         previous_baseline_correction = settings["baseline_correction"]
@@ -287,17 +226,11 @@ def run_analysis():
     
     # If paradigm_plot, we need to handle picks differently
     if settings["plot_type"] == "paradigm_plot":
-        # For paradigm_plot, we need to select channels with appropriate suffix based on haemo_type
         selected_channels = [channel for channel, var in channel_vars.items() if var.get()]
         selected_haemo_type = settings["haemo_type"]
-        
-        # For paradigm_plot, add hemoglobin type suffix to channel names
-        # Make sure the base channel names don't already have a hemoglobin type suffix
         picks = [f"{channel} {selected_haemo_type}" for channel in selected_channels]
     else:
-        # Modify channel selection for plotting (original logic for other plot types)
         selected_channels = [channel for channel, var in channel_vars.items() if var.get()]
-        # If ALL channels are selected, set picks to None to let MNE handle channel types
         picks = selected_channels if len(selected_channels) < len(channel_vars) else "all"
     
     # Add hemoglobin type to settings
@@ -359,7 +292,7 @@ def run_analysis():
         figures = []
         
         if settings["plot_type"] == "Epoch Plot":
-            selected_individual = Individual_var.get()
+            selected_individual = settings["individual"]
             
             if selected_individual == "All Individuals":
                 figures = [epoch_plot(
@@ -369,7 +302,8 @@ def run_analysis():
                     threshold=settings["threshold"], data_set=data_name
                 )]
             else:
-                individual_index = next((i for i, ind in enumerate(all_individuals) if ind.name == selected_individual), None)
+                individual_index = next((i for i, ind in enumerate(all_individuals) 
+                                    if getattr(ind, "name", f"Participant_{i+1}") == selected_individual), None)
                 if individual_index is not None:
                     individual_data = all_individuals[individual_index]
                     figures = [epoch_plot(
@@ -420,13 +354,9 @@ def run_analysis():
                                                     save=False, combine_strategy=settings["combine_strategy"],
                                                     threshold=settings["threshold"], data_set=data_name, picks_=picks)]
         elif settings["plot_type"] == "paradigm_plot":
-            selected_individual = Individual_var.get()
-            
-            # For paradigm_plot, we need to select channels with appropriate suffix based on haemo_type
+            selected_individual = settings["individual"]
             selected_channels = [channel for channel, var in channel_vars.items() if var.get()]
-            selected_haemo_type = haemo_type_var.get()  # Get the current hemoglobin type
-            
-            # Create picks with the correct hemoglobin type suffix
+            selected_haemo_type = settings["haemo_type"]
             picks = [f"{channel} {selected_haemo_type}" for channel in selected_channels]
             
             # Find the individual by name
@@ -439,9 +369,10 @@ def run_analysis():
                     haemo_type=selected_haemo_type
                 )]
         elif settings["plot_type"] == "individual frequency plot":
-            selected_individual = Individual_var.get()
+            selected_individual = settings["individual"]
             # Find the individual by name
-            index = next((i for i, ind in enumerate(all_individuals) if getattr(ind, "name", f"Participant_{i+1}") == selected_individual), -1)
+            index = next((i for i, ind in enumerate(all_individuals) 
+                        if getattr(ind, "name", f"Participant_{i+1}") == selected_individual), -1)
             if index >= 0:
                 figures = [individual_frequency_plot(all_individuals[index])]
         
@@ -562,14 +493,6 @@ individual_label, Individual_var, individuals_menu = create_combobox_with_label(
     top_left_frame, "Select Individual:")
 toggle_widgets(False, individual_label, individuals_menu)
 
-# Combine strategy selection
-combine_strategy_label, combine_strategy_var, combine_strategy_menu = create_combobox_with_label(
-    top_left_frame, "Combine Strategy:", ["mean", "median", "gfp"], settings["combine_strategy"])
-
-# Bad Channels Strategy
-bad_channels_strategy_label, bad_channels_strategy_var, bad_channels_strategy_menu = create_combobox_with_label(
-    top_left_frame, "Bad Channels Strategy:", ["all", "delete", "threshold"], settings["bad_channels_strategy"])
-
 preprocessing_frame = tk.Frame(top_left_frame)
 preprocessing_frame.pack(fill="x", pady=10)
 
@@ -612,15 +535,65 @@ preprocessing_button = tk.Button(
 )
 preprocessing_button.pack(pady=5)
 
-# Checkbox
-interpolate_bad_channels_label, interpolate_bad_channels_var, interpolate_bad_channels_checkbox = create_checkbox_with_label(
-    top_left_frame, "Interpolate Bad Channels:", settings["interpolate_bad_channels"])
+plot_settings_frame = tk.Frame(top_left_frame)
+plot_settings_frame.pack(fill="x", pady=10)
 
-# Threshold selection
-threshold_label = create_label(top_left_frame, "Threshold:")
-threshold_var = tk.StringVar(value=str(settings["threshold"]))
-threshold_entry = tk.Entry(top_left_frame, textvariable=threshold_var)
-threshold_entry.pack(pady=5)
+plot_settings_label = tk.Label(plot_settings_frame, text="Plot Settings:", font=("Arial", 12))
+plot_settings_label.pack(anchor="w")
+
+def open_plot_settings_dialog():
+    """Open the plot settings dialog."""
+    current_plot_settings = {
+        "epoch_type": settings["epoch_type"],
+        "individual": settings["individual"],
+        "combine_strategy": settings["combine_strategy"],
+        "bad_channels_strategy": settings["bad_channels_strategy"],
+        "interpolate_bad_channels": settings["interpolate_bad_channels"],
+        "threshold": settings["threshold"]
+    }
+    
+    result = show_plot_settings_dialog(
+        parent=root,
+        current_settings=current_plot_settings,
+        data_types=data_types if 'data_types' in globals() else [],
+        all_individuals=all_individuals if 'all_individuals' in globals() else []
+    )
+    
+    if result:  # If user clicked OK
+        # Update the global settings
+        settings["epoch_type"] = result["epoch_type"]
+        settings["individual"] = result["individual"]
+        settings["combine_strategy"] = result["combine_strategy"]
+        settings["bad_channels_strategy"] = result["bad_channels_strategy"]
+        settings["interpolate_bad_channels"] = result["interpolate_bad_channels"]
+        settings["threshold"] = result["threshold"]
+        
+        # Mark that data needs to be reloaded if certain settings changed
+        global previous_epoch_type, previous_individual, previous_combine_strategy
+        global previous_bad_channels_strategy, previous_interpolate_bad_channels, previous_threshold
+        
+        # Force reload if epoch type changed
+        if settings["epoch_type"] != previous_epoch_type:
+            previous_epoch_type = None
+        
+        # Update other tracking variables
+        previous_individual = settings["individual"]
+        previous_combine_strategy = settings["combine_strategy"]
+        previous_bad_channels_strategy = settings["bad_channels_strategy"]
+        previous_interpolate_bad_channels = settings["interpolate_bad_channels"]
+        previous_threshold = settings["threshold"]
+
+plot_settings_button = tk.Button(
+    plot_settings_frame,
+    text="Configure Plot Settings",
+    command=open_plot_settings_dialog,
+    bg="lightgreen",
+    fg="black",
+    font=("Arial", 11),
+    padx=10,
+    pady=5
+)
+plot_settings_button.pack(pady=5)
 
 # Channel selection
 channel_selection_label = tk.Label(top_left_frame, text="Select Channels:", font=("Arial", 12))
