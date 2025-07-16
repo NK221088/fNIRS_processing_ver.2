@@ -35,6 +35,10 @@ settings = {
     "haemo_type": "hbo",
     "baseline_correction": "Previous rest period",
     "tmin": 0,
+    "stimulus_duration": 5,
+    "scalp_coupling_threshold": 0.8,
+    "reject_criteria": dict(hbo=80e-6),
+    "unwanted": ["15.0"],
 }
 
 first_data_load = True
@@ -48,6 +52,11 @@ previous_negative_correlation_enhancement = settings["negative_correlation_enhan
 previous_interpolate_bad_channels = settings["interpolate_bad_channels"]
 previous_baseline_correction = settings["baseline_correction"]
 previous_tmin = settings["tmin"]
+previous_stimulus_duration = settings["stimulus_duration"]
+previous_scalp_coupling_threshold = settings["scalp_coupling_threshold"]
+previous_reject_criteria = settings["reject_criteria"]
+previous_unwanted = settings["unwanted"]
+
 def update_epoch_types(*args):
     """Load data and update epoch type dropdown based on dataset selection."""
     global previous_dataset, all_individuals, all_epochs, data_name, all_data, freq, data_types, start_up, first_data_load

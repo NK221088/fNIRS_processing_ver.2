@@ -16,7 +16,7 @@ class fNIRS_data_load:
     def __init__(self, file_path, number_of_participants=1, annotation_names=None, stimulus_duration=5,
                  short_channel_correction=True, negative_correlation_enhancement=True, scalp_coupling_threshold=0.8,
                  reject_criteria=dict(hbo=80e-6), tmin=0, tmax=15, baseline=(None, 0), data_types=[], number_of_data_types=2,
-                 data_name="None", individuals = False, interpolate_bad_channels=False, unwanted = "15.0", baseline_correction: str = "Previous rest period"):
+                 data_name="None", individuals = False, interpolate_bad_channels=False, unwanted = ["15.0"], baseline_correction: str = "Previous rest period"):
         self.number_of_participants = number_of_participants
         self.file_path = file_path
         self.annotation_names = annotation_names
