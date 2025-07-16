@@ -1,8 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
-import tkinter.messagebox
 from preprocessesing_toolbox.baselineCorrection import baselineCorrection
-
+from preprocessesing_toolbox.preprocessing_info import PreprocessingInfo
 class PreprocessingDialog:
     def __init__(self, parent, current_settings):
         self.parent = parent
@@ -91,22 +90,20 @@ class PreprocessingDialog:
         """Validate that unwanted labels input is properly formatted."""
         if value.strip() == "":
             return True  # Allow empty input
-        
-        # Check if it looks like a valid format (numbers separated by commas)
-        try:
-            # Remove brackets if present
-            clean_value = value.strip().strip('[]')
-            if clean_value == "":
-                return True
-            
-            # Split by comma and check each part
-            parts = [part.strip().strip('"\'') for part in clean_value.split(',')]
-            for part in parts:
-                if part:  # Skip empty parts
-                    float(part)  # Check if it can be converted to float
+
+        # Try to process a comma-separated list, optionally in brackets
+        clean_value = value.strip().strip('[]')
+        if clean_value == "":
             return True
-        except ValueError:
-            return False
+
+        # Split the input into parts
+        parts = [part.strip().strip('"\'') for part in clean_value.split(',')]
+
+        # Validate each part - for general strings, just check non-emptiness
+        for part in parts:
+            if not part:  # Empty after stripping
+                return False 
+        return True
     
     def on_baseline_method_change(self, event=None):
         """Handle changes in baseline correction method selection."""
@@ -283,6 +280,155 @@ class PreprocessingDialog:
         separator1 = ttk.Separator(options_frame, orient="horizontal")
         separator1.pack(fill="x", pady=15)
         
+        # === FILTER SETTINGS SECTION ===
+        # Filter settings title
+        filter_title = tk.Label(options_frame, text="Filter Settings", 
+                               font=("Arial", 12, "bold"))
+        filter_title.pack(pady=(0, 10))
+        
+        # Filter Lower Value
+        filter_lower_frame = tk.Frame(options_frame)
+        filter_lower_frame.pack(fill="x", pady=5)
+        
+        filter_lower_label = tk.Label(
+            filter_lower_frame,
+            text="Filter Lower Value (Hz):",
+            font=("Arial", 11)
+        )
+        filter_lower_label.pack(side="left")
+        
+        # Register validation function for positive numeric input
+        vcmd_positive = (self.dialog.register(self.validate_positive_numeric_input), '%P')
+        
+        self.filter_lower_var = tk.StringVar(value=str(self.settings.get("filter_lower_value", 0.05)))
+        self.filter_lower_entry = tk.Entry(
+            filter_lower_frame,
+            textvariable=self.filter_lower_var,
+            width=10,
+            font=("Arial", 10),
+            validate='key',
+            validatecommand=vcmd_positive
+        )
+        self.filter_lower_entry.pack(side="left", padx=(10, 0))
+        
+        # Info button for filter lower value
+        filter_lower_info_btn = tk.Button(
+            filter_lower_frame, 
+            text="?", 
+            command=self.show_filter_lower_info,
+            width=2, 
+            height=1,
+            bg="lightblue",
+            font=("Arial", 8)
+        )
+        filter_lower_info_btn.pack(side="right")
+        
+        # Filter Upper Value
+        filter_upper_frame = tk.Frame(options_frame)
+        filter_upper_frame.pack(fill="x", pady=5)
+        
+        filter_upper_label = tk.Label(
+            filter_upper_frame,
+            text="Filter Upper Value (Hz):",
+            font=("Arial", 11)
+        )
+        filter_upper_label.pack(side="left")
+        
+        self.filter_upper_var = tk.StringVar(value=str(self.settings.get("filter_upper_value", 0.7)))
+        self.filter_upper_entry = tk.Entry(
+            filter_upper_frame,
+            textvariable=self.filter_upper_var,
+            width=10,
+            font=("Arial", 10),
+            validate='key',
+            validatecommand=vcmd_positive
+        )
+        self.filter_upper_entry.pack(side="left", padx=(10, 0))
+        
+        # Info button for filter upper value
+        filter_upper_info_btn = tk.Button(
+            filter_upper_frame, 
+            text="?", 
+            command=self.show_filter_upper_info,
+            width=2, 
+            height=1,
+            bg="lightblue",
+            font=("Arial", 8)
+        )
+        filter_upper_info_btn.pack(side="right")
+        
+        # High Transition Bandwidth
+        h_trans_frame = tk.Frame(options_frame)
+        h_trans_frame.pack(fill="x", pady=5)
+        
+        h_trans_label = tk.Label(
+            h_trans_frame,
+            text="High Transition Bandwidth (Hz):",
+            font=("Arial", 11)
+        )
+        h_trans_label.pack(side="left")
+        
+        self.h_trans_var = tk.StringVar(value=str(self.settings.get("h_trans_bandwidth", 0.2)))
+        self.h_trans_entry = tk.Entry(
+            h_trans_frame,
+            textvariable=self.h_trans_var,
+            width=10,
+            font=("Arial", 10),
+            validate='key',
+            validatecommand=vcmd_positive
+        )
+        self.h_trans_entry.pack(side="left", padx=(10, 0))
+        
+        # Info button for high transition bandwidth
+        h_trans_info_btn = tk.Button(
+            h_trans_frame, 
+            text="?", 
+            command=self.show_h_trans_info,
+            width=2, 
+            height=1,
+            bg="lightblue",
+            font=("Arial", 8)
+        )
+        h_trans_info_btn.pack(side="right")
+        
+        # Low Transition Bandwidth
+        l_trans_frame = tk.Frame(options_frame)
+        l_trans_frame.pack(fill="x", pady=5)
+        
+        l_trans_label = tk.Label(
+            l_trans_frame,
+            text="Low Transition Bandwidth (Hz):",
+            font=("Arial", 11)
+        )
+        l_trans_label.pack(side="left")
+        
+        self.l_trans_var = tk.StringVar(value=str(self.settings.get("l_trans_bandwidth", 0.02)))
+        self.l_trans_entry = tk.Entry(
+            l_trans_frame,
+            textvariable=self.l_trans_var,
+            width=10,
+            font=("Arial", 10),
+            validate='key',
+            validatecommand=vcmd_positive
+        )
+        self.l_trans_entry.pack(side="left", padx=(10, 0))
+        
+        # Info button for low transition bandwidth
+        l_trans_info_btn = tk.Button(
+            l_trans_frame, 
+            text="?", 
+            command=self.show_l_trans_info,
+            width=2, 
+            height=1,
+            bg="lightblue",
+            font=("Arial", 8)
+        )
+        l_trans_info_btn.pack(side="right")
+        
+        # Separator
+        separator2 = ttk.Separator(options_frame, orient="horizontal")
+        separator2.pack(fill="x", pady=15)
+        
         # Scalp Coupling Threshold
         coupling_threshold_frame = tk.Frame(options_frame)
         coupling_threshold_frame.pack(fill="x", pady=5)
@@ -334,9 +480,6 @@ class PreprocessingDialog:
         # Convert from scientific notation to user-friendly format
         current_hbo = self.settings.get("reject_criteria", {}).get("hbo", 80e-6)
         hbo_display_value = current_hbo * 1e6  # Convert to ×10⁻⁶ units
-        
-        # Register validation function for positive numeric input
-        vcmd_positive = (self.dialog.register(self.validate_positive_numeric_input), '%P')
         
         self.reject_criteria_var = tk.StringVar(value=str(hbo_display_value))
         self.reject_criteria_entry = tk.Entry(
@@ -406,8 +549,8 @@ class PreprocessingDialog:
         unwanted_labels_info_btn.pack(side="right")
         
         # Separator
-        separator2 = ttk.Separator(options_frame, orient="horizontal")
-        separator2.pack(fill="x", pady=20)
+        separator3 = ttk.Separator(options_frame, orient="horizontal")
+        separator3.pack(fill="x", pady=20)
         
         # Buttons frame
         buttons_frame = tk.Frame(options_frame)
@@ -466,110 +609,48 @@ class PreprocessingDialog:
     
     def show_short_channel_info(self):
         """Show information about short channel correction."""
-        info_text = (
-            "Short Channel Correction:\n\n"
-            "Short channels are typically placed close to the scalp surface "
-            "and are used to measure systemic physiological noise (like heartbeat, "
-            "respiration, and blood pressure changes) that affects the fNIRS signal.\n\n"
-            "When enabled, this correction removes this systemic noise from the "
-            "longer channels that measure brain activity, improving the signal-to-noise "
-            "ratio and the reliability of the brain activation measurements."
-        )
-        
-        tk.messagebox.showinfo("Short Channel Correction", info_text)
+        PreprocessingInfo.show_short_channel_info()
     
     def show_negative_corr_info(self):
         """Show information about negative correlation enhancement."""
-        info_text = (
-            "Negative Correlation Enhancement:\n\n"
-            "This technique enhances the anticorrelation between oxyhemoglobin (HbO) "
-            "and deoxyhemoglobin (HbR) signals.\n\n"
-            "In healthy brain tissue, these signals typically show opposite patterns "
-            "during activation. This enhancement can improve the detection of brain "
-            "activation by emphasizing this natural anticorrelation pattern.\n\n"
-            "Note: Use with caution as it may also amplify noise in some cases."
-        )
-        
-        tk.messagebox.showinfo("Negative Correlation Enhancement", info_text)
+        PreprocessingInfo.show_negative_corr_info()
     
     def show_baseline_correction_info(self):
         """Show information about baseline correction."""
         available_methods = self.get_baseline_correction_methods()
-        methods_text = "\n".join([f"• {method}" for method in available_methods])
-        
-        info_text = (
-            "Baseline Correction:\n\n"
-            "Baseline correction removes drift and systematic changes in the signal "
-            "that are not related to brain activation.\n\n"
-            "Available methods:\n"
-            f"{methods_text}\n\n"
-            "Choose based on the type of baseline drift in your data."
-        )
-        
-        tk.messagebox.showinfo("Baseline Correction", info_text)
+        PreprocessingInfo.show_baseline_correction_info(available_methods)
     
     def show_tmin_info(self):
         """Show information about tmin parameter."""
-        info_text = (
-            "tmin (Time Minimum):\n\n"
-            "This parameter defines the start time (in seconds) relative to the "
-            "event onset for baseline correction when using 'xSecondsBefore' method.\n\n"
-            "• Negative values: Time before the event (e.g., -5 means 5 seconds before)\n"
-            "• Positive values: Time after the event (e.g., 2 means 2 seconds after)\n"
-            "• Zero: Exactly at the event onset\n\n"
-            "Common usage: -5 to -2 seconds before stimulus onset for pre-stimulus baseline."
-        )
-        
-        tk.messagebox.showinfo("tmin Parameter", info_text)
+        PreprocessingInfo.show_tmin_info()
     
     def show_coupling_threshold_info(self):
         """Show information about scalp coupling threshold."""
-        info_text = (
-            "Scalp Coupling Threshold:\n\n"
-            "This parameter determines the minimum required coupling quality "
-            "between the optodes and the scalp surface.\n\n"
-            "Values range from 0.0 to 1.0:\n"
-            "• 0.0: No coupling requirement (accept all channels)\n"
-            "• 0.5: Moderate coupling requirement\n"
-            "• 0.8: High coupling requirement (recommended)\n"
-            "• 1.0: Perfect coupling required\n\n"
-            "Channels below this threshold will be excluded from analysis "
-            "due to poor signal quality."
-        )
-        
-        tk.messagebox.showinfo("Scalp Coupling Threshold", info_text)
-    
+        PreprocessingInfo.show_coupling_threshold_info()
+
     def show_reject_criteria_info(self):
         """Show information about rejection criteria."""
-        info_text = (
-            "HbO Rejection Threshold:\n\n"
-            "This parameter sets the maximum allowed oxyhemoglobin (HbO) "
-            "concentration change for accepting data epochs.\n\n"
-            "Values are specified in ×10⁻⁶ units (micromolar):\n"
-            "• Typical range: 50-100 ×10⁻⁶\n"
-            "• Lower values: More stringent artifact rejection\n"
-            "• Higher values: More lenient artifact rejection\n\n"
-            "Epochs with HbO changes exceeding this threshold will be "
-            "rejected as artifacts (likely due to motion or other noise)."
-        )
-        
-        tk.messagebox.showinfo("HbO Rejection Threshold", info_text)
-    
+        PreprocessingInfo.show_reject_criteria_info()
+
     def show_unwanted_labels_info(self):
         """Show information about unwanted labels."""
-        info_text = (
-            "Unwanted Labels:\n\n"
-            "This parameter specifies data labels that should be excluded "
-            "from analysis.\n\n"
-            "Format: Enter labels separated by commas\n"
-            "• Example: 15.0, 20.5, 30.0\n"
-            "• Labels are typically numeric values encoded as strings\n"
-            "• Empty field means no labels will be excluded\n\n"
-            "Data epochs/trials with these labels will be filtered out "
-            "during preprocessing to focus on the conditions of interest."
-        )
-        
-        tk.messagebox.showinfo("Unwanted Labels", info_text)
+        PreprocessingInfo.show_unwanted_labels_info()
+    
+    def show_filter_lower_info(self):
+        """Show information about filter lower value."""
+        PreprocessingInfo.show_filter_lower_info()
+
+    def show_filter_upper_info(self):
+        """Show information about filter upper value."""
+        PreprocessingInfo.show_filter_upper_info()
+
+    def show_h_trans_info(self):
+        """Show information about high transition bandwidth."""
+        PreprocessingInfo.show_h_trans_info()
+
+    def show_l_trans_info(self):
+        """Show information about low transition bandwidth."""
+        PreprocessingInfo.show_l_trans_info()
 
     def reset_to_defaults(self):
         """Reset all settings to their default values."""
@@ -577,6 +658,10 @@ class PreprocessingDialog:
         self.negative_corr_var.set(False)
         self.baseline_correction_var.set("usePreviousRest")
         self.tmin_var.set("-5")
+        self.filter_lower_var.set("0.05")  
+        self.filter_upper_var.set("0.7")   
+        self.h_trans_var.set("0.2")        
+        self.l_trans_var.set("0.02")
         self.coupling_threshold_var.set("0.8")
         self.reject_criteria_var.set("80")
         self.unwanted_labels_var.set("15.0")
@@ -616,6 +701,62 @@ class PreprocessingDialog:
                 tk.messagebox.showerror("Invalid Input", "tmin must be a valid integer.")
                 return False
         
+        # Validate filter lower value
+        filter_lower_str = self.filter_lower_var.get().strip()
+        if not filter_lower_str:
+            tk.messagebox.showerror("Invalid Input", "Please enter a value for filter lower value.")
+            return False
+        try:
+            filter_lower = float(filter_lower_str)
+            if filter_lower <= 0:
+                tk.messagebox.showerror("Invalid Input", "Filter lower value must be positive.")
+                return False
+        except ValueError:
+            tk.messagebox.showerror("Invalid Input", "Filter lower value must be a valid number.")
+            return False
+        
+        # Validate filter upper value
+        filter_upper_str = self.filter_upper_var.get().strip()
+        if not filter_upper_str:
+            tk.messagebox.showerror("Invalid Input", "Please enter a value for filter upper value.")
+            return False
+        try:
+            filter_upper = float(filter_upper_str)
+            if filter_upper <= 0:
+                tk.messagebox.showerror("Invalid Input", "Filter upper value must be positive.")
+                return False
+        except ValueError:
+            tk.messagebox.showerror("Invalid Input", "Filter upper value must be a valid number.")
+            return False
+        
+        # Validate high transition bandwidth
+        h_trans_str = self.h_trans_var.get().strip()
+        if not h_trans_str:
+            tk.messagebox.showerror("Invalid Input", "Please enter a value for high transition bandwidth.")
+            return False
+        try:
+            h_trans = float(h_trans_str)
+            if h_trans <= 0:
+                tk.messagebox.showerror("Invalid Input", "High transition bandwidth must be positive.")
+                return False
+        except ValueError:
+            tk.messagebox.showerror("Invalid Input", "High transition bandwidth must be a valid number.")
+            return False
+        
+        # Validate low transition bandwidth
+        l_trans_str = self.l_trans_var.get().strip()
+        if not l_trans_str:
+            tk.messagebox.showerror("Invalid Input", "Please enter a value for low transition bandwidth.")
+            return False
+        try:
+            l_trans = float(l_trans_str)
+            if l_trans <= 0:
+                tk.messagebox.showerror("Invalid Input", "Low transition bandwidth must be positive.")
+                return False
+        except ValueError:
+            tk.messagebox.showerror("Invalid Input", "Low transition bandwidth must be a valid number.")
+            return False
+    
         # Validate coupling threshold
         coupling_threshold_str = self.coupling_threshold_var.get().strip()
         if not coupling_threshold_str:
@@ -674,13 +815,17 @@ class PreprocessingDialog:
         unwanted_labels = self.parse_unwanted_labels(self.unwanted_labels_var.get().strip())
         
         self.result = {
-            "short_channel_correction": self.short_channel_var.get(),
-            "negative_correlation_enhancement": self.negative_corr_var.get(),
-            "baseline_correction": self.baseline_correction_var.get(),
-            "tmin": tmin_value,
-            "scalp_coupling_threshold": float(self.coupling_threshold_var.get().strip()),
-            "reject_criteria": {"hbo": reject_criteria_value},
-            "unwanted": unwanted_labels
+        "short_channel_correction": self.short_channel_var.get(),
+        "negative_correlation_enhancement": self.negative_corr_var.get(),
+        "baseline_correction": self.baseline_correction_var.get(),
+        "tmin": tmin_value,
+        "filter_lower_value": float(self.filter_lower_var.get().strip()),      
+        "filter_upper_value": float(self.filter_upper_var.get().strip()),     
+        "h_trans_bandwidth": float(self.h_trans_var.get().strip()),           
+        "l_trans_bandwidth": float(self.l_trans_var.get().strip()),           
+        "scalp_coupling_threshold": float(self.coupling_threshold_var.get().strip()),
+        "reject_criteria": {"hbo": reject_criteria_value},
+        "unwanted": unwanted_labels
         }
         
         self.dialog.unbind_all("<MouseWheel>") # Cleanup mousewheel binding
