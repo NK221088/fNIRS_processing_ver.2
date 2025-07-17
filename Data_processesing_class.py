@@ -84,37 +84,31 @@ class fNIRS_data_load:
                 raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
 
             events, event_dict = mne.events_from_annotations(raw_haemo)
-            
-            if self.baseline_correction == "xSecondsBefore":
-                epochs = mne.Epochs(
-                    raw_haemo,
-                    events,
-                    event_id=event_dict,
-                    tmin=self.tmin,
-                    tmax=self.tmax,
-                    reject=self.reject_criteria,
-                    reject_by_annotation=True,
-                    proj=True,
-                    baseline=self.baseline,
-                    preload=True,
-                    detrend=None,
-                    verbose=True,
-                )
-            else:
-                print("hej")
+
+            # Set baseline parameter based on correction method
+            baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
+
             epochs = mne.Epochs(
-                    raw_haemo,
-                    events,
-                    event_id=event_dict,
-                    tmin=self.tmin,
-                    tmax=self.tmax,
-                    reject=self.reject_criteria,
-                    reject_by_annotation=True,
-                    proj=True,
-                    baseline=None,
-                    preload=True,
-                    detrend=None,
-                    verbose=True,
+                raw_haemo,
+                events,
+                event_id=event_dict,
+                tmin=self.tmin,
+                tmax=self.tmax,
+                reject=self.reject_criteria,
+                reject_by_annotation=True,
+                proj=True,
+                baseline=baseline,
+                preload=True,
+                detrend=None,
+                verbose=True,
+            )
+            
+            # Apply custom baseline correction if needed
+            if self.baseline_correction != "xSecondsBefore":
+                corrector = baselineCorrection(self.baseline_correction)
+                epochs = corrector.apply_correction(
+                    self.baseline_correction,
+                    epochs,
                 )
 
             if len(epochs) != 0:
@@ -418,6 +412,20 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
 
             events, event_dict = mne.events_from_annotations(raw_haemo)
 
+            # Apply custom baseline correction if needed
+            if self.baseline_correction != "xSecondsBefore":
+                corrector = baselineCorrection(self.baseline_correction)
+                raw_haemo = corrector.apply_correction(
+                    self.baseline_correction,
+                    events, 
+                    event_dict, 
+                    raw_haemo, 
+                    self.stimulus_duration
+                )
+
+            # Set baseline parameter based on correction method
+            baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
+
             epochs = mne.Epochs(
                 raw_haemo,
                 events,
@@ -427,7 +435,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
                 reject=self.reject_criteria,
                 reject_by_annotation=True,
                 proj=True,
-                baseline=self.baseline,
+                baseline=baseline,
                 preload=True,
                 detrend=None,
                 verbose=True,
@@ -805,16 +813,8 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
 
             events, event_dict = mne.events_from_annotations(raw_haemo)
 
-            resting_state_sample = events[events[:, 2] == event_dict["Resting state"], 0][0]  # Get the sample number
-            resting_state_time = resting_state_sample / raw_haemo.info['sfreq']  # Convert to seconds
-
-            # Extract resting state data separately for baseline calculation
-            resting_state_start = resting_state_time
-            resting_state_end = resting_state_time + 30
-
-            # Get the mean signal during resting state (per channel)
-            resting_data = raw_haemo.copy().crop(resting_state_start, resting_state_end)
-            resting_baseline = resting_data.get_data().mean(axis=1)  # Mean across time for each channel
+            # Set baseline parameter based on correction method
+            baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
 
             epochs = mne.Epochs(
                 raw_haemo,
@@ -825,23 +825,19 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
                 reject=self.reject_criteria,
                 reject_by_annotation=True,
                 proj=True,
-                baseline=None,
+                baseline=baseline,
                 preload=True,
                 detrend=None,
                 verbose=True,
             )
-
-            # Apply baseline correction per channel with error handling for removed channels
-            for epoch_idx in range(len(epochs)):
-                for ch_name in epochs.ch_names:
-                    try:
-                        epochs_ch_idx = epochs.ch_names.index(ch_name)
-                        raw_ch_idx = raw_haemo.ch_names.index(ch_name)
-                        epochs._data[epoch_idx, epochs_ch_idx, :] -= resting_baseline[raw_ch_idx]
-                    except ValueError:
-                        # Channel was removed during preprocessing - skip it
-                        print(f"Skipping channel {ch_name}: not found in baseline data")
-                        continue
+            
+            # Apply custom baseline correction if needed
+            if self.baseline_correction != "xSecondsBefore":
+                corrector = baselineCorrection(self.baseline_correction)
+                epochs = corrector.apply_correction(
+                    self.baseline_correction,
+                    epochs,
+                )
 
             if len(epochs) != 0:
                 self.all_epochs.append(epochs)
@@ -1139,7 +1135,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period"):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):
         self.number_of_participants = 9
         self.all_tapping = []
         self.all_control = []
@@ -1161,6 +1157,10 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = [""]
         self.baseline_correction = baseline_correction
+        self.filter_lower_value = filter_lower_value
+        self.filter_upper_value = filter_upper_value
+        self.h_trans_bandwidth = h_trans_bandwidth
+        self.l_trans_bandwidth = l_trans_bandwidth
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -1178,7 +1178,11 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted,
-            baseline_correction = self.baseline_correction)
+            baseline_correction = self.baseline_correction,
+            filter_lower_value = self.filter_lower_value,
+            filter_upper_value = self.filter_upper_value,
+            h_trans_bandwidth = self.h_trans_bandwidth,
+            l_trans_bandwidth = self.l_trans_bandwidth)
 
     def define_raw_intensity(self, sub_id):
         raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
@@ -1219,16 +1223,8 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
 
             events, event_dict = mne.events_from_annotations(raw_haemo)
 
-            resting_state_sample = events[events[:, 2] == event_dict["Resting state"], 0][0]  # Get the sample number
-            resting_state_time = resting_state_sample / raw_haemo.info['sfreq']  # Convert to seconds
-
-            # Extract resting state data separately for baseline calculation
-            resting_state_start = resting_state_time
-            resting_state_end = resting_state_time + 30
-
-            # Get the mean signal during resting state (per channel)
-            resting_data = raw_haemo.copy().crop(resting_state_start, resting_state_end)
-            resting_baseline = resting_data.get_data().mean(axis=1)  # Mean across time for each channel
+            # Set baseline parameter based on correction method
+            baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
 
             epochs = mne.Epochs(
                 raw_haemo,
@@ -1239,23 +1235,19 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
                 reject=self.reject_criteria,
                 reject_by_annotation=True,
                 proj=True,
-                baseline=None,
+                baseline=baseline,
                 preload=True,
                 detrend=None,
                 verbose=True,
             )
-
-            # Apply baseline correction per channel with error handling for removed channels
-            for epoch_idx in range(len(epochs)):
-                for ch_name in epochs.ch_names:
-                    try:
-                        epochs_ch_idx = epochs.ch_names.index(ch_name)
-                        raw_ch_idx = raw_haemo.ch_names.index(ch_name)
-                        epochs._data[epoch_idx, epochs_ch_idx, :] -= resting_baseline[raw_ch_idx]
-                    except ValueError:
-                        # Channel was removed during preprocessing - skip it
-                        print(f"Skipping channel {ch_name}: not found in baseline data")
-                        continue
+            
+            # Apply custom baseline correction if needed
+            if self.baseline_correction != "xSecondsBefore":
+                corrector = baselineCorrection(self.baseline_correction)
+                epochs = corrector.apply_correction(
+                    self.baseline_correction,
+                    epochs,
+                )
 
             if len(epochs) != 0:
                 self.all_epochs.append(epochs)
@@ -1622,16 +1614,8 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
 
             events, event_dict = mne.events_from_annotations(raw_haemo)
 
-            resting_state_sample = events[events[:, 2] == event_dict["Control"], 0][0]  # Get the sample number
-            resting_state_time = resting_state_sample / raw_haemo.info['sfreq']  # Convert to seconds
-
-            # Extract resting state data separately for baseline calculation
-            resting_state_start = resting_state_time
-            resting_state_end = resting_state_time + self.stimulus_duration
-
-            # Get the mean signal during resting state (per channel)
-            resting_data = raw_haemo.copy().crop(resting_state_start, resting_state_end)
-            resting_baseline = resting_data.get_data().mean(axis=1)  # Mean across time for each channel
+            # Set baseline parameter based on correction method
+            baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
 
             epochs = mne.Epochs(
                 raw_haemo,
@@ -1642,23 +1626,20 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
                 reject=self.reject_criteria,
                 reject_by_annotation=True,
                 proj=True,
-                baseline=None,
+                baseline=baseline,
                 preload=True,
                 detrend=None,
                 verbose=True,
             )
-
-            # Apply baseline correction per channel with error handling for removed channels
-            for epoch_idx in range(len(epochs)):
-                for ch_name in epochs.ch_names:
-                    try:
-                        epochs_ch_idx = epochs.ch_names.index(ch_name)
-                        raw_ch_idx = raw_haemo.ch_names.index(ch_name)
-                        epochs._data[epoch_idx, epochs_ch_idx, :] -= resting_baseline[raw_ch_idx]
-                    except ValueError:
-                        # Channel was removed during preprocessing - skip it
-                        print(f"Skipping channel {ch_name}: not found in baseline data")
-                        continue
+            
+            # Apply custom baseline correction if needed
+            if self.baseline_correction != "xSecondsBefore":
+                corrector = baselineCorrection(self.baseline_correction)
+                epochs = corrector.apply_correction(
+                    self.baseline_correction,
+                    epochs,
+                    self.data_types,
+                )
 
             if len(epochs) != 0:
                 self.all_epochs.append(epochs)
@@ -1796,17 +1777,6 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
 
             events, event_dict = mne.events_from_annotations(raw_haemo)
 
-            # Apply custom baseline correction if needed
-            if self.baseline_correction != "xSecondsBefore":
-                corrector = baselineCorrection(self.baseline_correction)
-                raw_haemo = corrector.apply_correction(
-                    self.baseline_correction,
-                    events, 
-                    event_dict, 
-                    raw_haemo, 
-                    self.stimulus_duration
-                )
-
             # Set baseline parameter based on correction method
             baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
 
@@ -1824,6 +1794,15 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                 detrend=None,
                 verbose=True,
             )
+            
+            # Apply custom baseline correction if needed
+            if self.baseline_correction != "xSecondsBefore":
+                corrector = baselineCorrection(self.baseline_correction)
+                epochs = corrector.apply_correction(
+                    self.baseline_correction,
+                    epochs,
+                    data_types=self.data_types,
+                )
 
             if len(epochs) != 0:
                 self.all_epochs.append(epochs)
@@ -2003,17 +1982,6 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
 
             events, event_dict = mne.events_from_annotations(raw_haemo)
 
-            # Apply custom baseline correction if needed
-            if self.baseline_correction != "xSecondsBefore":
-                corrector = baselineCorrection(self.baseline_correction)
-                raw_haemo = corrector.apply_correction(
-                    self.baseline_correction,
-                    events, 
-                    event_dict, 
-                    raw_haemo, 
-                    self.stimulus_duration
-                )
-
             # Set baseline parameter based on correction method
             baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
 
@@ -2031,6 +1999,15 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 detrend=None,
                 verbose=True,
             )
+            
+            # Apply custom baseline correction if needed
+            if self.baseline_correction != "xSecondsBefore":
+                corrector = baselineCorrection(self.baseline_correction)
+                epochs = corrector.apply_correction(
+                    self.baseline_correction,
+                    epochs,
+                    self.data_types,
+                )
 
             if len(epochs) != 0:
                 self.all_epochs.append(epochs)
