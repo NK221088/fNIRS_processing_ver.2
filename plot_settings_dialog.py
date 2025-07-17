@@ -108,10 +108,13 @@ class PlotSettingsDialog:
         self.epoch_type_combo = ttk.Combobox(
             epoch_frame, 
             textvariable=self.epoch_type_var, 
-            values=self.data_types, 
+            values=self.data_types,
             state="readonly"
         )
         self.epoch_type_combo.pack(fill="x", padx=10, pady=(0, 10))
+        
+        # Update the values when dialog opens
+        self.refresh_epoch_types()
     
     def create_individual_section(self, parent):
         """Create individual selection section."""
@@ -279,6 +282,15 @@ class PlotSettingsDialog:
         """Handle Cancel button click."""
         self.result = None
         self.dialog.destroy()
+    
+    def refresh_epoch_types(self):
+        """Refresh the epoch type dropdown with current data types."""
+        if self.data_types:
+            self.epoch_type_combo['values'] = self.data_types
+            # If current selection is not in new data types, reset to first available
+            current_selection = self.epoch_type_var.get()
+            if current_selection not in self.data_types and self.data_types:
+                self.epoch_type_var.set(self.data_types[0])
 
 
 def show_plot_settings_dialog(parent, current_settings, data_types=None, all_individuals=None):
@@ -296,3 +308,4 @@ def show_plot_settings_dialog(parent, current_settings, data_types=None, all_ind
     """
     dialog = PlotSettingsDialog(parent, current_settings, data_types, all_individuals)
     return dialog.result
+

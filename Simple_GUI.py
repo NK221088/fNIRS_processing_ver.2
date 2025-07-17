@@ -21,7 +21,7 @@ plotTypesList = ["Epoch Plot",
 
 # Default settings (add hemoglobin type to settings)
 settings = {
-    "data_set": dataSetList[-1],  # Default to first dataset
+    "data_set": dataSetList[11],  # Default to first dataset
     "epoch_type": "Tapping",
     "individual": "All Individuals",
     "combine_strategy": "mean",
@@ -555,18 +555,6 @@ plot_type_menu = ttk.Combobox(top_left_frame, textvariable=plot_type_var, values
 # Call the function that updates the UI based on the selected plot type
 plot_type_menu.pack(pady=5)
 
-# Epoch type selection
-epoch_type_label, epoch_type_var, epoch_type_menu = create_combobox_with_label(
-    top_left_frame, "Epoch Type:")
-
-# Helper function to create checkbox with label
-def create_checkbox_with_label(parent, label_text, default_value):
-    label = create_label(parent, label_text)
-    var = tk.BooleanVar(value=default_value)
-    checkbox = tk.Checkbutton(parent, text="Enable", variable=var)
-    checkbox.pack(anchor="w")
-    return label, var, checkbox
-
 plot_settings_frame = tk.Frame(top_left_frame)
 plot_settings_frame.pack(fill="x", pady=10)
 
@@ -626,6 +614,18 @@ plot_settings_button = tk.Button(
     pady=5
 )
 plot_settings_button.pack(pady=5)
+
+# Epoch type selection
+epoch_type_label, epoch_type_var, epoch_type_menu = create_combobox_with_label(
+    top_left_frame, "Epoch Type:")
+
+# Helper function to create checkbox with label
+def create_checkbox_with_label(parent, label_text, default_value):
+    label = create_label(parent, label_text)
+    var = tk.BooleanVar(value=default_value)
+    checkbox = tk.Checkbutton(parent, text="Enable", variable=var)
+    checkbox.pack(anchor="w")
+    return label, var, checkbox
 
 # Channel selection
 channel_selection_label = tk.Label(top_left_frame, text="Select Channels:", font=("Arial", 12))
