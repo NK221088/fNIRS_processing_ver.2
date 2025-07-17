@@ -9,6 +9,7 @@ import glob
 from pathlib import Path
 from dotenv import load_dotenv
 from preprocessesing_toolbox.baselineCorrection import baselineCorrection
+from preprocessesing_toolbox.post_rejection import reject_if_single_event_type
 
 load_dotenv()
 
@@ -102,17 +103,19 @@ class fNIRS_data_load:
                 detrend=None,
                 verbose=True,
             )
-            
-            # Apply custom baseline correction if needed
-            if self.baseline_correction != "xSecondsBefore":
-                corrector = baselineCorrection(self.baseline_correction)
-                epochs = corrector.apply_correction(
-                    self.baseline_correction,
-                    epochs,
-                    data_types=self.data_types,
-                )
+
+            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
 
             if len(epochs) != 0:
+                # Apply custom baseline correction if needed
+                if self.baseline_correction != "xSecondsBefore":
+                    corrector = baselineCorrection(self.baseline_correction)
+                    epochs = corrector.apply_correction(
+                        self.baseline_correction,
+                        epochs,
+                        data_types=self.data_types,
+                    )
+
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
@@ -430,17 +433,19 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
                 detrend=None,
                 verbose=True,
             )
-            
-            # Apply custom baseline correction if needed
-            if self.baseline_correction != "xSecondsBefore":
-                corrector = baselineCorrection(self.baseline_correction)
-                epochs = corrector.apply_correction(
-                    self.baseline_correction,
-                    epochs,
-                    data_types=self.data_types,
-                )
+
+            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
 
             if len(epochs) != 0:
+                # Apply custom baseline correction if needed
+                if self.baseline_correction != "xSecondsBefore":
+                    corrector = baselineCorrection(self.baseline_correction)
+                    epochs = corrector.apply_correction(
+                        self.baseline_correction,
+                        epochs,
+                        data_types=self.data_types,
+                    )
+
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
@@ -666,17 +671,19 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
                 detrend=None,
                 verbose=True,
             )
-            
-            # Apply custom baseline correction if needed
-            if self.baseline_correction != "xSecondsBefore":
-                corrector = baselineCorrection(self.baseline_correction)
-                epochs = corrector.apply_correction(
-                    self.baseline_correction,
-                    epochs,
-                    data_types=self.data_types,
-                )
+
+            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
 
             if len(epochs) != 0:
+                # Apply custom baseline correction if needed
+                if self.baseline_correction != "xSecondsBefore":
+                    corrector = baselineCorrection(self.baseline_correction)
+                    epochs = corrector.apply_correction(
+                        self.baseline_correction,
+                        epochs,
+                        data_types=self.data_types,
+                    )
+
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
@@ -841,17 +848,19 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
                 detrend=None,
                 verbose=True,
             )
-            
-            # Apply custom baseline correction if needed
-            if self.baseline_correction != "xSecondsBefore":
-                corrector = baselineCorrection(self.baseline_correction)
-                epochs = corrector.apply_correction(
-                    self.baseline_correction,
-                    epochs,
-                    data_types=self.data_types,
-                )
+
+            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
 
             if len(epochs) != 0:
+                # Apply custom baseline correction if needed
+                if self.baseline_correction != "xSecondsBefore":
+                    corrector = baselineCorrection(self.baseline_correction)
+                    epochs = corrector.apply_correction(
+                        self.baseline_correction,
+                        epochs,
+                        data_types=self.data_types,
+                    )
+
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
@@ -1043,17 +1052,19 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
                 detrend=None,
                 verbose=True,
             )
-            
-            # Apply custom baseline correction if needed
-            if self.baseline_correction != "xSecondsBefore":
-                corrector = baselineCorrection(self.baseline_correction)
-                epochs = corrector.apply_correction(
-                    self.baseline_correction,
-                    epochs,
-                    data_types=self.data_types,
-                )
+
+            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
 
             if len(epochs) != 0:
+                # Apply custom baseline correction if needed
+                if self.baseline_correction != "xSecondsBefore":
+                    corrector = baselineCorrection(self.baseline_correction)
+                    epochs = corrector.apply_correction(
+                        self.baseline_correction,
+                        epochs,
+                        data_types=self.data_types,
+                    )
+
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
@@ -1241,17 +1252,19 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
                 detrend=None,
                 verbose=True,
             )
-            
-            # Apply custom baseline correction if needed
-            if self.baseline_correction != "xSecondsBefore":
-                corrector = baselineCorrection(self.baseline_correction)
-                epochs = corrector.apply_correction(
-                    self.baseline_correction,
-                    epochs,
-                    data_types=self.data_types,
-                )
+
+            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
 
             if len(epochs) != 0:
+                # Apply custom baseline correction if needed
+                if self.baseline_correction != "xSecondsBefore":
+                    corrector = baselineCorrection(self.baseline_correction)
+                    epochs = corrector.apply_correction(
+                        self.baseline_correction,
+                        epochs,
+                        data_types=self.data_types,
+                    )
+
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
@@ -1442,17 +1455,19 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
                 detrend=None,
                 verbose=True,
             )
-            
-            # Apply custom baseline correction if needed
-            if self.baseline_correction != "xSecondsBefore":
-                corrector = baselineCorrection(self.baseline_correction)
-                epochs = corrector.apply_correction(
-                    self.baseline_correction,
-                    epochs,
-                    data_types=self.data_types,
-                )
+
+            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
 
             if len(epochs) != 0:
+                # Apply custom baseline correction if needed
+                if self.baseline_correction != "xSecondsBefore":
+                    corrector = baselineCorrection(self.baseline_correction)
+                    epochs = corrector.apply_correction(
+                        self.baseline_correction,
+                        epochs,
+                        data_types=self.data_types,
+                    )
+
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
             
@@ -1622,17 +1637,19 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
                 detrend=None,
                 verbose=True,
             )
-            
-            # Apply custom baseline correction if needed
-            if self.baseline_correction != "xSecondsBefore":
-                corrector = baselineCorrection(self.baseline_correction)
-                epochs = corrector.apply_correction(
-                    self.baseline_correction,
-                    epochs,
-                    data_types=self.data_types,
-                )
+
+            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
 
             if len(epochs) != 0:
+                # Apply custom baseline correction if needed
+                if self.baseline_correction != "xSecondsBefore":
+                    corrector = baselineCorrection(self.baseline_correction)
+                    epochs = corrector.apply_correction(
+                        self.baseline_correction,
+                        epochs,
+                        data_types=self.data_types,
+                    )
+
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
@@ -1785,17 +1802,19 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                 detrend=None,
                 verbose=True,
             )
-            
-            # Apply custom baseline correction if needed
-            if self.baseline_correction != "xSecondsBefore":
-                corrector = baselineCorrection(self.baseline_correction)
-                epochs = corrector.apply_correction(
-                    self.baseline_correction,
-                    epochs,
-                    data_types=self.data_types,
-                )
+
+            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
 
             if len(epochs) != 0:
+                # Apply custom baseline correction if needed
+                if self.baseline_correction != "xSecondsBefore":
+                    corrector = baselineCorrection(self.baseline_correction)
+                    epochs = corrector.apply_correction(
+                        self.baseline_correction,
+                        epochs,
+                        data_types=self.data_types,
+                    )
+
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
@@ -1890,6 +1909,15 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.annotation_names = {"1": "TongueMI",
                                  "Rest": "Control",
                                 }
+        self.standard_event_ids = {
+        np.str_('Control'): 1,
+        np.str_('End'): 2,
+        np.str_('Introduction'): 3,
+        np.str_('Outro'): 4,
+        np.str_('Pause'): 5,
+        np.str_('Resting state'): 6,
+        np.str_('TongueMI'): 7
+        }
         self.file_path = Path(os.getenv('Melika_tongue_long_data'))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
@@ -1972,7 +2000,14 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
 
             events, event_dict = mne.events_from_annotations(raw_haemo)
-
+            
+            # Standardize event IDs
+            reversed_event_dict = {value: key for key, value in event_dict.items()}
+            for event in events:
+                event[2] = self.standard_event_ids[reversed_event_dict[event[2]]]
+            for key in list(event_dict.keys()):
+                event_dict[key] = self.standard_event_ids[key]
+                    
             # Set baseline parameter based on correction method
             baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
 
@@ -1990,17 +2025,18 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 detrend=None,
                 verbose=True,
             )
-            
-            # Apply custom baseline correction if needed
-            if self.baseline_correction != "xSecondsBefore":
-                corrector = baselineCorrection(self.baseline_correction)
-                epochs = corrector.apply_correction(
-                    self.baseline_correction,
-                    epochs,
-                    data_types=self.data_types,
-                )
+
+            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
 
             if len(epochs) != 0:
+                # Apply custom baseline correction if needed
+                if self.baseline_correction != "xSecondsBefore":
+                    corrector = baselineCorrection(self.baseline_correction)
+                    epochs = corrector.apply_correction(
+                        self.baseline_correction,
+                        epochs,
+                        data_types=self.data_types,
+                    )
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
@@ -2219,17 +2255,19 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
                     detrend=None,
                     verbose=True,
                 )
-                
-                # Apply custom baseline correction if needed
-                if self.baseline_correction != "xSecondsBefore":
-                    corrector = baselineCorrection(self.baseline_correction)
-                    epochs = corrector.apply_correction(
-                        self.baseline_correction,
-                        epochs,
-                        data_types=self.data_types,
-                    )
+
+                epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
 
                 if len(epochs) != 0:
+                    # Apply custom baseline correction if needed
+                    if self.baseline_correction != "xSecondsBefore":
+                        corrector = baselineCorrection(self.baseline_correction)
+                        epochs = corrector.apply_correction(
+                            self.baseline_correction,
+                            epochs,
+                            data_types=self.data_types,
+                        )
+
                     self.all_epochs.append(epochs)
                     self.all_control.append(epochs["Control"].get_data(copy=True))
                     
@@ -2426,17 +2464,19 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                     detrend=None,
                     verbose=True,
                 )
-                
-                # Apply custom baseline correction if needed
-                if self.baseline_correction != "xSecondsBefore":
-                    corrector = baselineCorrection(self.baseline_correction)
-                    epochs = corrector.apply_correction(
-                        self.baseline_correction,
-                        epochs,
-                        data_types=self.data_types,
-                    )
-                    
+
+                epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
+
                 if len(epochs) != 0:
+                    # Apply custom baseline correction if needed
+                    if self.baseline_correction != "xSecondsBefore":
+                        corrector = baselineCorrection(self.baseline_correction)
+                        epochs = corrector.apply_correction(
+                            self.baseline_correction,
+                            epochs,
+                            data_types=self.data_types,
+                        )
+
                     self.all_epochs.append(epochs)
                     self.all_control.append(epochs["Control"].get_data(copy=True))
                     

@@ -94,10 +94,14 @@ def update_epoch_types(*args):
                 epoch_type_var.set(data_types[0])  # Select first available type
                 settings["epoch_type"] = data_types[0]  # Ensure internal setting is updated
 
-            # This is where we'll modify for paradigm_plot
-            individuals_menu["values"] = ["All Individuals"] + [getattr(ind, "name", f"Participant_{i+1}") 
-                                                           for i, ind in enumerate(all_individuals)]
-            Individual_var.set("All Individuals")  # Default to "All Individuals"
+            individual_names = [getattr(ind, "name", f"Participant_{i+1}") for i, ind in enumerate(all_individuals)]
+            individuals_menu["values"] = ["All Individuals"] + individual_names if individual_names else ["All Individuals"]
+
+            # Default to first actual individual if available, else fallback to "All Individuals"
+            default_individual = individual_names[0] if individual_names else "All Individuals"
+            Individual_var.set(default_individual)
+            settings["individual"] = default_individual
+
             previous_dataset = dataset  # Update stored dataset
             start_up = False
             first_data_load = False
@@ -184,11 +188,11 @@ def toggle_individual_menu(*args):
         # Show epoch type selection
         epoch_type_label.pack(anchor="w")
         epoch_type_menu.pack(pady=5)
-        # Show individual selection dropdown with "All Individuals" option
-        individual_label.pack(anchor="w")
-        individuals_menu["values"] = ["All Individuals"] + [getattr(ind, "name", f"Participant_{i+1}") 
-                                                       for i, ind in enumerate(all_individuals)]
-        individuals_menu.pack(pady=5)
+        
+        # Show individual selection checkboxes
+        individual_selection_label.pack(anchor="w")
+        individual_selection_frame.pack(fill="x", expand=False)
+        populate_individuals()
         
         # Show channel selection
         channel_selection_label.pack(anchor="w")

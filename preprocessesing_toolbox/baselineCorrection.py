@@ -28,35 +28,59 @@ class baselineCorrection:
         
         return method(*args, **kwargs)
     
-    def useFirstBaseline(self, epochs, raw_haemo):
+    def useFirstBaseline(self, epochs, data_types):
         """
         Apply baseline correction using the first resting period.
-
+        
         Parameters
         ----------
-        resting_baseline : array-like
-            Baseline values per channel.
         epochs : mne.Epochs
             Epoch data to be corrected.
-        raw_haemo : mne.io.Raw
-            Raw fNIRS data used for channel referencing.
-
+        data_types : list
+            Data types (currently unused).
+            
         Returns
         -------
         epochs : mne.Epochs
             Baseline-corrected epochs.
-        """
+        """        
         self.name = "First Baseline available"
+        sfreq_before = epochs.info["sfreq"]
+        
+        # Get potential resting baseline event IDs
+        resting_baseline_id = [
+            epochs.event_id.get("Rest"), 
+            epochs.event_id.get("Control"), 
+            epochs.event_id.get("Resting state"), 
+            epochs.event_id.get("Pause")
+        ]
+        # Remove None values safely
+        resting_baseline_id = [id for id in resting_baseline_id if id is not None]
+        
+        # Find first baseline epoch
+        first_baseline_idx = None
+        for epoch_idx in range(len(epochs.events)):
+            if epochs.events[epoch_idx][2] in resting_baseline_id:
+                first_baseline_idx = epoch_idx
+                break
+        
+        # Validate that a baseline was found
+        if first_baseline_idx is None:
+            raise ValueError("No resting baseline epoch found")
+        
+        # Get epochs data - shape is (n_epochs, n_channels, n_times)
+        epochs_data = epochs.get_data()
+        baseline_data = epochs_data[first_baseline_idx]
+        baseline_mean = baseline_data.mean(axis=1)
+        
+        # Apply baseline correction
         for epoch_idx in range(len(epochs)):
-                for ch_name in epochs.ch_names:
-                    try:
-                        epochs_ch_idx = epochs.ch_names.index(ch_name)
-                        raw_ch_idx = raw_haemo.ch_names.index(ch_name)
-                        epochs._data[epoch_idx, epochs_ch_idx, :] -= resting_baseline[raw_ch_idx]
-                    except ValueError:
-                        # Channel was removed during preprocessing - skip it
-                        print(f"Skipping channel {ch_name}: not found in baseline data")
-                        continue
+            epochs_data[epoch_idx] -= baseline_mean[:, np.newaxis]
+        
+        # Update epochs with corrected data
+        epochs._data = epochs_data
+        assert epochs.info["sfreq"] == sfreq_before, "Sampling frequency changed during baseline correction"
+        
         return epochs
     
     def usePreviousRest(self, epochs, data_types):
