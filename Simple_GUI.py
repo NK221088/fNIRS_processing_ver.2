@@ -92,7 +92,6 @@ def update_epoch_types(*args):
             epoch_type_menu["values"] = data_types
             if data_types:
                 epoch_type_var.set(data_types[0])  # Select first available type
-            # Update individuals dropdown
             # This is where we'll modify for paradigm_plot
             individuals_menu["values"] = ["All Individuals"] + [getattr(ind, "name", f"Participant_{i+1}") 
                                                            for i, ind in enumerate(all_individuals)]
@@ -173,15 +172,11 @@ def toggle_individual_menu(*args):
         # Show individual selection checkboxes
         individual_selection_label.pack(anchor="w")
         individual_selection_frame.pack(fill="x", expand=False)
-        
-        # Populate the individual checkboxes
         populate_individuals()
         
         # Show channel selection
         channel_selection_label.pack(anchor="w")
         channel_frame.pack(fill="x", expand=True)
-        
-        # Populate channel checkboxes
         populate_channels()
         
     # Force the UI to update
@@ -327,26 +322,28 @@ def run_analysis():
         figures = []
         
         if settings["plot_type"] == "Epoch Plot":
-            selected_individual = settings["individual"]
-            
-            if selected_individual == "All Individuals":
+            selected_individuals = [name for name, var in individual_selection_vars.items() if var.get()]
+            selected_all_epochs = []
+
+            for name in selected_individuals:
+                individual = next((ind for ind in all_individuals if getattr(ind, "name", "") == name), None)
+                if individual is not None:
+                    selected_all_epochs.append(individual.epochs)
+
+            if selected_all_epochs:
                 figures = [epoch_plot(
-                    all_epochs, picks=picks, epoch_type=settings["epoch_type"], 
+                    selected_all_epochs,
+                    picks=picks,
+                    epoch_type=settings["epoch_type"],
                     combine_strategy=settings["combine_strategy"],
-                    save=False, bad_channels_strategy=settings["bad_channels_strategy"],
-                    threshold=settings["threshold"], data_set=data_name
+                    save=False,
+                    bad_channels_strategy=settings["bad_channels_strategy"],
+                    threshold=settings["threshold"],
+                    data_set=data_name
                 )]
             else:
-                individual_index = next((i for i, ind in enumerate(all_individuals) 
-                                    if getattr(ind, "name", f"Participant_{i+1}") == selected_individual), None)
-                if individual_index is not None:
-                    individual_data = all_individuals[individual_index]
-                    figures = [epoch_plot(
-                        [individual_data.epochs], picks=picks, epoch_type=settings["epoch_type"], 
-                        combine_strategy=settings["combine_strategy"],
-                        save=False, bad_channels_strategy=settings["bad_channels_strategy"],
-                        threshold=settings["threshold"], data_set=data_name
-                    )]
+                print("No individuals selected or found.")
+
         elif settings["plot_type"] == "Standard fNIRS Response Plot":
             selected_individuals = [ind_name for ind_name, var in individual_selection_vars.items() if var.get()]
             selected_all_epochs = []
