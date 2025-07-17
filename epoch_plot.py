@@ -4,6 +4,8 @@ import os
 from collections import Counter
 from datetime import datetime
 import re
+import numpy as np
+
 
 def epoch_plot(epochs, picks: list, epoch_type: str, bad_channels_strategy: str, save : bool, combine_strategy: str = "mean", threshold = None, data_set : str = "data_name"):
 
@@ -33,7 +35,34 @@ def epoch_plot(epochs, picks: list, epoch_type: str, bad_channels_strategy: str,
     # Check if save is a boolean
     if not isinstance(save, bool):
         raise ValueError("Invalid value for save. Please use True or False.")
-    
+
+    # Force all epochs to exactly 10.172526041666668 Hz
+    target_sfreq = 10.172526041666668
+    for i in range(len(epochs)):
+        current_sfreq = epochs[i].info["sfreq"]
+        if current_sfreq != target_sfreq:
+            # Store original data for comparison
+            original_data = epochs[i].get_data().copy()
+            
+            # Resample to a slightly different frequency first, then to target
+            temp_sfreq = target_sfreq * 1.0001  # slightly different
+            epochs[i] = epochs[i].resample(temp_sfreq)
+            epochs[i] = epochs[i].resample(target_sfreq)
+            
+            # Compare original vs resampled data
+            resampled_data = epochs[i].get_data()
+            max_diff = np.max(np.abs(original_data - resampled_data))
+            mean_diff = np.mean(np.abs(original_data - resampled_data))
+            relative_diff = max_diff / np.max(np.abs(original_data)) * 100
+            
+            print(f"Epoch {i}:")
+            print(f"  Original sfreq: {current_sfreq}")
+            print(f"  New sfreq: {epochs[i].info['sfreq']}")
+            print(f"  Max absolute difference: {max_diff:.2e}")
+            print(f"  Mean absolute difference: {mean_diff:.2e}")
+            print(f"  Relative difference: {relative_diff:.4f}%")
+            print(f"  Data shape: {original_data.shape}")
+            print()
     # Function implementation:
     if bad_channels_strategy == "delete":
         for i in range(len(epochs)):
