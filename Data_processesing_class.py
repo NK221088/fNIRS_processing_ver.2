@@ -316,7 +316,11 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
             number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
-            unwanted = self.unwanted)
+            unwanted = self.unwanted,
+            filter_lower_value = self.filter_lower_value,
+            filter_upper_value = self.filter_upper_value,
+            l_trans_bandwidth=self.l_trans_bandwidth,
+            h_trans_bandwidth=self.h_trans_bandwidth)
 
     def define_raw_intensity(self, sub_id):
         raw_intensity = mne.io.read_raw_snirf(f"Dataset/rob-luke/rob-luke-BIDS-NIRS-Tapping-e262df8/sub-{sub_id}/nirs/sub-{sub_id}_task-tapping_nirs.snirf", verbose=True)
@@ -1785,7 +1789,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
 
             raw_haemo_unfiltered = raw_haemo.copy()
-            raw_haemo.filter(self.filter_lower_value, self.filter_upper_value7, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
+            raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
             if self.negative_correlation_enhancement:
                 raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
@@ -2333,7 +2337,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                                  "2": "Control",
                                  "3": "TongueIM"
                                 }
-        self.file_path = rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Arbejde_Rigshospitalet\HC_ICU_TongueMI\Data\HC\Follow-up"
+        self.file_path = Path(os.getenv('Pardis_HC_data'))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 15

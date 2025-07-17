@@ -38,6 +38,10 @@ settings = {
     "scalp_coupling_threshold": 0.8,
     "reject_criteria": dict(hbo=80e-6),
     "unwanted": ["15.0"],
+    "filter_lower_value": 0.05,
+    "filter_upper_value": 0.7,
+    "h_trans_bandwidth": 0.2,           
+    "l_trans_bandwidth": 0.02,       
 }
 
 first_data_load = True
@@ -59,7 +63,10 @@ previous_stimulus_duration = settings["stimulus_duration"]
 previous_scalp_coupling_threshold = settings["scalp_coupling_threshold"]
 previous_reject_criteria = settings["reject_criteria"]
 previous_unwanted = settings["unwanted"]
-
+previous_filter_lower_value = settings["filter_lower_value"]
+previous_filter_upper_value = settings["filter_upper_value"]
+previous_h_trans_bandwidth = settings["h_trans_bandwidth"]
+previous_l_trans_bandwidth = settings["l_trans_bandwidth"]
 
 def update_epoch_types(*args):
     """Load data and update epoch type dropdown based on dataset selection."""
@@ -70,12 +77,16 @@ def update_epoch_types(*args):
     if dataset != previous_dataset or start_up:
         try:
             all_epochs, data_name, all_data, freq, data_types, all_individuals = load_data(
-                data_set=dataset,
-                short_channel_correction=settings["short_channel_correction"],
-                negative_correlation_enhancement=settings["negative_correlation_enhancement"],
-                interpolate_bad_channels=settings["interpolate_bad_channels"],
+                data_set = dataset,
+                short_channel_correction = settings["short_channel_correction"],
+                negative_correlation_enhancement = settings["negative_correlation_enhancement"],
+                interpolate_bad_channels = settings["interpolate_bad_channels"],
                 baseline_correction = settings["baseline_correction"],
-                tmin=settings["tmin"],
+                tmin = settings["tmin"],
+                filter_lower_value = settings["filter_lower_value"],
+                filter_upper_value = settings["filter_upper_value"],
+                l_trans_bandwidth = settings["l_trans_bandwidth"],
+                h_trans_bandwidth = settings["h_trans_bandwidth"],
             )
             # Update dropdown options
             epoch_type_menu["values"] = data_types
@@ -201,6 +212,10 @@ def run_analysis():
         or settings["interpolate_bad_channels"] != previous_interpolate_bad_channels
         or settings["baseline_correction"] != previous_baseline_correction
         or settings["tmin"] != previous_tmin
+        or settings["filter_lower_value"] != previous_filter_lower_value
+        or settings["filter_upper_value"] != previous_filter_upper_value
+        or settings["l_trans_bandwidth"] != previous_l_trans_bandwidth
+        or settings["h_trans_bandwidth"] != previous_h_trans_bandwidth
     )
     if reload_data:
         all_epochs, data_name, all_data, freq, data_types, all_individuals = load_data(
@@ -209,7 +224,11 @@ def run_analysis():
             negative_correlation_enhancement=settings["negative_correlation_enhancement"],
             interpolate_bad_channels=settings["interpolate_bad_channels"],
             baseline_correction=settings["baseline_correction"],
-            tmin=settings["tmin"]
+            tmin=settings["tmin"],
+            filter_lower_value=settings["filter_lower_value"],
+            filter_upper_value=settings["filter_upper_value"],
+            l_trans_bandwidth= settings["l_trans_bandwidth"],
+            h_trans_bandwidth= settings["h_trans_bandwidth"],
         )
         previous_epoch_type = settings["epoch_type"]
         previous_short_channel_correction = settings["short_channel_correction"]
@@ -486,7 +505,11 @@ def open_preprocessing_dialog():
         "short_channel_correction": settings["short_channel_correction"],
         "negative_correlation_enhancement": settings["negative_correlation_enhancement"],
         "baseline_correction": settings["baseline_correction"],
-        "tmin": settings["tmin"]
+        "tmin": settings["tmin"],
+        "filter_lower_value": settings["filter_lower_value"],
+        "filter_upper_value": settings["filter_upper_value"],
+        "h_trans_bandwidth": settings["h_trans_bandwidth"],
+        "l_trans_bandwidth": settings["l_trans_bandwidth"],
     }
     
     result = show_preprocessing_dialog(root, current_preprocessing_settings)
@@ -497,12 +520,21 @@ def open_preprocessing_dialog():
         settings["negative_correlation_enhancement"] = result["negative_correlation_enhancement"]
         settings["baseline_correction"] = result["baseline_correction"]
         settings["tmin"] = result["tmin"]
+        settings["filter_lower_value"] = result["filter_lower_value"]
+        settings["filter_upper_value"] = result["filter_upper_value"]
+        settings["h_trans_bandwidth"] = result["h_trans_bandwidth"]
+        settings["l_trans_bandwidth"] = result["l_trans_bandwidth"]
         
         # Mark that data needs to be reloaded
-        global previous_short_channel_correction, previous_negative_correlation_enhancement
+        global previous_short_channel_correction, previous_negative_correlation_enhancement, previous_tmin, previous_filter_lower_value, previous_filter_upper_value, previous_h_trans_bandwidth, previous_l_trans_bandwidth
         previous_short_channel_correction = None  # Force reload
-        previous_negative_correlation_enhancement = None  # Force reload
-        previous_baseline_correction = None  # Force reload
+        previous_negative_correlation_enhancement = None  
+        previous_baseline_correction = None 
+        previous_tmin = None
+        previous_filter_lower_value = None
+        previous_filter_upper_value = None
+        previous_h_trans_bandwidth = None
+        previous_l_trans_bandwidth = None
 
 preprocessing_button = tk.Button(
     preprocessing_frame, 

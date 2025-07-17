@@ -18,8 +18,16 @@ data_loaders = {
     "Pardis: HC data": fNIRS_Pardis_HC_data_load,
 }
 
-def load_data(data_set : str, short_channel_correction : bool = None, negative_correlation_enhancement : bool = None, interpolate_bad_channels:bool=False, baseline_correction: str = "Previous rest period", tmin : int = 0):
+def load_data(data_set : str, short_channel_correction : bool = None, negative_correlation_enhancement : bool = None, interpolate_bad_channels:bool=False, baseline_correction: str = "Previous rest period", tmin : int = 0, filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):
     if data_set not in data_loaders:
         raise ValueError("Dataset does not exist.")
-    loader = data_loaders[data_set](short_channel_correction = short_channel_correction, negative_correlation_enhancement = negative_correlation_enhancement, interpolate_bad_channels=interpolate_bad_channels, baseline_correction = baseline_correction, tmin = tmin)
+    loader = data_loaders[data_set](short_channel_correction = short_channel_correction,
+                                    negative_correlation_enhancement = negative_correlation_enhancement,
+                                    interpolate_bad_channels=interpolate_bad_channels,
+                                    baseline_correction = baseline_correction,
+                                    tmin = tmin,
+                                    filter_lower_value = filter_lower_value,
+                                    filter_upper_value = filter_upper_value,
+                                    h_trans_bandwidth = h_trans_bandwidth,
+                                    l_trans_bandwidth = l_trans_bandwidth)
     return loader.load_data()
