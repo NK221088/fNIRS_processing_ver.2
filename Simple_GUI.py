@@ -114,6 +114,10 @@ def toggle_individual_menu(*args):
     
     # First hide all specialized widgets
     for widget in [
+        # Individual selection
+        individual_label, individuals_menu,
+        # Individual checkboxes
+        individual_selection_label, individual_selection_frame,
         # Epoch type
         epoch_type_label, epoch_type_menu,
         # Channel selection
@@ -125,8 +129,7 @@ def toggle_individual_menu(*args):
         time_window_label, time_window_frame,
         dataset1_label, dataset1_menu,
         dataset2_label, dataset2_menu,
-        # Individual checkboxes
-        individual_selection_label, individual_selection_frame,
+        
     ]:
         widget.pack_forget()
     
@@ -159,6 +162,17 @@ def toggle_individual_menu(*args):
         if plot_type == "paradigm_plot":
             haemo_type_label.pack(anchor="w")
             haemo_type_menu.pack(pady=5)
+            
+        # Show individual selection dropdown
+        individual_label.pack(anchor="w") 
+        individuals_menu.pack(pady=5)
+        
+        # Update to show only individual participants for paradigm_plot
+        individuals_menu["values"] = [getattr(ind, "name", f"Participant_{i+1}") 
+                                     for i, ind in enumerate(all_individuals)]
+        # If "All Individuals" was previously selected, change to first individual
+        if Individual_var.get() == "All Individuals" and individuals_menu["values"]:
+            Individual_var.set(individuals_menu["values"][0])
         
         # Show channel selection for paradigm_plot
         if plot_type == "paradigm_plot":
@@ -170,11 +184,11 @@ def toggle_individual_menu(*args):
         # Show epoch type selection
         epoch_type_label.pack(anchor="w")
         epoch_type_menu.pack(pady=5)
-        
-        # Show individual selection checkboxes
-        individual_selection_label.pack(anchor="w")
-        individual_selection_frame.pack(fill="x", expand=False)
-        populate_individuals()
+        # Show individual selection dropdown with "All Individuals" option
+        individual_label.pack(anchor="w")
+        individuals_menu["values"] = ["All Individuals"] + [getattr(ind, "name", f"Participant_{i+1}") 
+                                                       for i, ind in enumerate(all_individuals)]
+        individuals_menu.pack(pady=5)
         
         # Show channel selection
         channel_selection_label.pack(anchor="w")
@@ -466,10 +480,6 @@ def create_combobox_with_label(parent, label_text, values=None, default_value=""
 def adjust_combobox_width(combobox):
     combobox["width"] = max(len(item) for item in combobox["values"])
 
-# Dataset selection
-# dataset_label, dataset_var, dataset_menu = create_combobox_with_label(
-#     top_left_frame, "Select Dataset:", dataSetList, settings["data_set"], 40)
-# dataset_menu["postcommand"] = lambda: adjust_combobox_width(dataset_menu)
 # Dataset selection with info button
 dataset_frame = tk.Frame(top_left_frame)
 dataset_frame.pack(fill="x", pady=5)
