@@ -21,7 +21,7 @@ plotTypesList = ["Epoch Plot",
 
 # Default settings (add hemoglobin type to settings)
 settings = {
-    "data_set": dataSetList[11],  # Default to first dataset
+    "data_set": dataSetList[0],  # Default to first dataset
     "epoch_type": "Tapping",
     "individual": "All Individuals",
     "combine_strategy": "mean",
@@ -565,7 +565,6 @@ def open_plot_settings_dialog():
     """Open the plot settings dialog."""
     current_plot_settings = {
         "epoch_type": settings["epoch_type"],
-        "individual": settings["individual"],
         "combine_strategy": settings["combine_strategy"],
         "bad_channels_strategy": settings["bad_channels_strategy"],
         "interpolate_bad_channels": settings["interpolate_bad_channels"],
@@ -575,9 +574,7 @@ def open_plot_settings_dialog():
     result = show_plot_settings_dialog(
         parent=root,
         current_settings=current_plot_settings,
-        data_types=data_types if 'data_types' in globals() else [],
-        all_individuals=all_individuals if 'all_individuals' in globals() else []
-    )
+        )
     
     if result:  # If user clicked OK
         # Update the global settings
