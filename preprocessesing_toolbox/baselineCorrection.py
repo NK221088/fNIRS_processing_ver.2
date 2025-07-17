@@ -1,4 +1,5 @@
 from preprocessesing_toolbox.extractEpochDataFromTime import ExtractRawDataFromAbsoluteTime
+import numpy as np
 
 class baselineCorrection:
     """Class for baseline correction of fNIRS data."""
@@ -70,10 +71,10 @@ class baselineCorrection:
                 current_row = events[i]
                 
                 startSamplePrevious = previous_row[0]
-                endSamplePrevious = startSamplePrevious + int(stimulusDuration * raw_haemo.info["sfreq"])
+                endSamplePrevious = startSamplePrevious + int(np.round(stimulusDuration * raw_haemo.info["sfreq"]))
                 
                 startSampleCurrent = current_row[0]
-                endSampleCurrent = startSampleCurrent + int(stimulusDuration * raw_haemo.info["sfreq"])
+                endSampleCurrent = startSampleCurrent + int(np.round(stimulusDuration * raw_haemo.info["sfreq"]))
                 
                 # Extract data from previous epoch
                 tminPrevious = ExtractRawDataFromAbsoluteTime.convert_sample_to_absolute_time(startSamplePrevious, raw_haemo.info["sfreq"])

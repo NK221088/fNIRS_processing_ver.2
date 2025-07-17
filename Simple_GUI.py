@@ -92,6 +92,8 @@ def update_epoch_types(*args):
             epoch_type_menu["values"] = data_types
             if data_types:
                 epoch_type_var.set(data_types[0])  # Select first available type
+                settings["epoch_type"] = data_types[0]  # Ensure internal setting is updated
+
             # This is where we'll modify for paradigm_plot
             individuals_menu["values"] = ["All Individuals"] + [getattr(ind, "name", f"Participant_{i+1}") 
                                                            for i, ind in enumerate(all_individuals)]
@@ -591,23 +593,16 @@ def open_plot_settings_dialog():
     
     if result:  # If user clicked OK
         # Update the global settings
-        settings["epoch_type"] = result["epoch_type"]
-        settings["individual"] = result["individual"]
         settings["combine_strategy"] = result["combine_strategy"]
         settings["bad_channels_strategy"] = result["bad_channels_strategy"]
         settings["interpolate_bad_channels"] = result["interpolate_bad_channels"]
         settings["threshold"] = result["threshold"]
         
         # Mark that data needs to be reloaded if certain settings changed
-        global previous_epoch_type, previous_individual, previous_combine_strategy
-        global previous_bad_channels_strategy, previous_interpolate_bad_channels, previous_threshold
-        
-        # Force reload if epoch type changed
-        if settings["epoch_type"] != previous_epoch_type:
-            previous_epoch_type = None
+        global previous_combine_strategy, previous_bad_channels_strategy, previous_interpolate_bad_channels, previous_threshold
+    
         
         # Update other tracking variables
-        previous_individual = settings["individual"]
         previous_combine_strategy = settings["combine_strategy"]
         previous_bad_channels_strategy = settings["bad_channels_strategy"]
         previous_interpolate_bad_channels = settings["interpolate_bad_channels"]
