@@ -113,7 +113,8 @@ def toggle_individual_menu(*args):
     
     # First hide all specialized widgets
     for widget in [
-        # Individual selection - REMOVED (now in dialog)
+        # Epoch type
+        epoch_type_label, epoch_type_menu,
         # Channel selection
         channel_selection_label, channel_frame,
         # Hemoglobin type
@@ -165,8 +166,23 @@ def toggle_individual_menu(*args):
             populate_channels()
         
     elif plot_type == "Epoch Plot":
-        # No additional UI needed - all settings are in dialog
-        pass
+        # Show epoch type selection
+        epoch_type_label.pack(anchor="w")
+        epoch_type_menu.pack(pady=5)
+        
+        # Show individual selection checkboxes
+        individual_selection_label.pack(anchor="w")
+        individual_selection_frame.pack(fill="x", expand=False)
+        
+        # Populate the individual checkboxes
+        populate_individuals()
+        
+        # Show channel selection
+        channel_selection_label.pack(anchor="w")
+        channel_frame.pack(fill="x", expand=True)
+        
+        # Populate channel checkboxes
+        populate_channels()
         
     # Force the UI to update
     root.update_idletasks()

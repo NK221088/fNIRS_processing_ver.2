@@ -60,25 +60,8 @@ class PlotSettingsInfo:
         """Show information about saving plots."""
         info_text = (
             "Save Plot to File:\n\n"
-            "When enabled, the generated plot will be automatically saved to a file "
-            "in the specified format.\n\n"
-            "Available formats:\n"
-            "• PNG: Portable Network Graphics (best for web/screen)\n"
-            "• JPG: JPEG format (smaller file size, lossy compression)\n"
-            "• PDF: Portable Document Format (vector format, scalable)\n"
-            "• SVG: Scalable Vector Graphics (vector format, web-friendly)"
+            "When enabled, the generated plot will be automatically saved to a file.\n\n"
+            "The plot will be saved in PNG format with an automatically generated filename "
+            "based on the current timestamp and settings used."
         )
         tkinter.messagebox.showinfo("Save Plot", info_text)
-    
-    @staticmethod
-    def show_file_format_info():
-        """Show information about file format options."""
-        info_text = (
-            "File Format:\n\n"
-            "• PNG: Best for digital display and web use. Lossless compression.\n"
-            "• JPG: Smaller file size but lossy compression. Good for photos.\n"
-            "• PDF: Vector format, perfect for printing and publications.\n"
-            "• SVG: Vector format, excellent for web and scalable graphics.\n\n"
-            "Choose PNG for general use, PDF for publications, or SVG for web integration."
-        )
-        tkinter.messagebox.showinfo("File Format", info_text)

@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import tkinter.messagebox
-from plot_settings_info import PlotSettingsInfo
+from preprocessesing_toolbox.plot_settings_info import PlotSettingsInfo
 
 
 class PlotSettingsDialog:
@@ -13,7 +13,7 @@ class PlotSettingsDialog:
         # Create the dialog window
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Plot Settings")
-        self.dialog.geometry("450x500")
+        self.dialog.geometry("450x450")  # Reduced height since we removed file format section
         self.dialog.resizable(False, False)
         
         # Make dialog modal
@@ -42,7 +42,7 @@ class PlotSettingsDialog:
         
         # Calculate center position
         dialog_width = 450
-        dialog_height = 500
+        dialog_height = 450  # Updated height
         x = parent_x + (parent_width - dialog_width) // 2
         y = parent_y + (parent_height - dialog_height) // 2
         
@@ -271,7 +271,7 @@ class PlotSettingsDialog:
         
         # Save Plot Checkbox
         save_plot_frame = tk.Frame(save_frame)
-        save_plot_frame.pack(fill="x", padx=10, pady=5)
+        save_plot_frame.pack(fill="x", padx=10, pady=10)
         
         self.save_plot_var = tk.BooleanVar(value=self.settings.get("save_plot", False))
         self.save_plot_checkbox = tk.Checkbutton(
@@ -292,35 +292,6 @@ class PlotSettingsDialog:
             font=("Arial", 8)
         )
         save_info_btn.pack(side="right")
-        
-        # File Format Selection
-        format_frame = tk.Frame(save_frame)
-        format_frame.pack(fill="x", padx=10, pady=5)
-        
-        format_label = tk.Label(format_frame, text="File Format:", font=("Arial", 11))
-        format_label.pack(side="left")
-        
-        format_info_btn = tk.Button(
-            format_frame, 
-            text="?", 
-            command=PlotSettingsInfo.show_file_format_info,
-            width=2,
-            height=1,
-            bg="lightblue",
-            font=("Arial", 8)
-        )
-        format_info_btn.pack(side="right")
-        
-        self.file_format_var = tk.StringVar(value=self.settings.get("file_format", "png"))
-        self.file_format_combo = ttk.Combobox(
-            save_frame, 
-            textvariable=self.file_format_var, 
-            values=["png", "jpg", "pdf", "svg"], 
-            state="readonly",
-            width=10,
-            font=("Arial", 10)
-        )
-        self.file_format_combo.pack(fill="x", padx=10, pady=(0, 10))
     
     def reset_to_defaults(self):
         """Reset all settings to their default values."""
@@ -329,7 +300,6 @@ class PlotSettingsDialog:
         self.interpolate_bad_channels_var.set(False)
         self.threshold_var.set("3")
         self.save_plot_var.set(False)
-        self.file_format_var.set("png")
     
     def validate_inputs(self):
         """Validate all input fields before accepting."""
@@ -361,8 +331,7 @@ class PlotSettingsDialog:
             "bad_channels_strategy": self.bad_channels_strategy_var.get(),
             "interpolate_bad_channels": self.interpolate_bad_channels_var.get(),
             "threshold": float(self.threshold_var.get().strip()),
-            "save_plot": self.save_plot_var.get(),
-            "file_format": self.file_format_var.get()
+            "save_plot": self.save_plot_var.get()
         }
         
         self.dialog.unbind_all("<MouseWheel>")  # Cleanup mousewheel binding
