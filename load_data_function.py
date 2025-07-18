@@ -18,7 +18,18 @@ data_loaders = {
     "Pardis: HC data": fNIRS_Pardis_HC_data_load,
 }
 
-def load_data(data_set : str, short_channel_correction : bool = None, negative_correlation_enhancement : bool = None, interpolate_bad_channels:bool=False, baseline_correction: str = "Previous rest period", tmin : int = 0, filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):
+def load_data(data_set : str,
+              short_channel_correction : bool = None,
+              negative_correlation_enhancement : bool = None,
+              interpolate_bad_channels:bool=False,
+              baseline_correction: str = "Previous rest period",
+              tmin : int = 0,
+              filter_lower_value: float = 0.05,
+              filter_upper_value: float = 0.7,
+              h_trans_bandwidth: float = 0.2,
+              l_trans_bandwidth: float = 0.02,
+              reject_criteria: dict = dict(hbo=80e-6),
+              scalp_coupling_threshold: float = 0.8):
     if data_set not in data_loaders:
         raise ValueError("Dataset does not exist.")
     loader = data_loaders[data_set](short_channel_correction = short_channel_correction,
@@ -29,5 +40,7 @@ def load_data(data_set : str, short_channel_correction : bool = None, negative_c
                                     filter_lower_value = filter_lower_value,
                                     filter_upper_value = filter_upper_value,
                                     h_trans_bandwidth = h_trans_bandwidth,
-                                    l_trans_bandwidth = l_trans_bandwidth)
+                                    l_trans_bandwidth = l_trans_bandwidth,
+                                    reject_criteria = reject_criteria,
+                                    scalp_coupling_threshold = scalp_coupling_threshold)
     return loader.load_data()

@@ -16,9 +16,9 @@ load_dotenv()
 class fNIRS_data_load:
     def __init__(self, file_path, number_of_participants=1, annotation_names=None, stimulus_duration=5,
                  short_channel_correction=True, negative_correlation_enhancement=True, scalp_coupling_threshold=0.8,
-                 reject_criteria=dict(hbo=80e-6), tmin=0, tmax=15, baseline=(None, 0), data_types=[], number_of_data_types=2,
+                 reject_criteria: dict = dict(hbo=80e-6), tmin=0, tmax=15, baseline=(None, 0), data_types=[], number_of_data_types=2,
                  data_name="None", interpolate_bad_channels=False, unwanted = ["15.0"], baseline_correction: str = "Previous rest period",
-                 filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):        
+                 filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,):        
         self.number_of_participants = number_of_participants
         self.file_path = file_path
         self.annotation_names = annotation_names
@@ -154,7 +154,7 @@ class fNIRS_data_load:
 ###############################################################################################################################################################################################
 
 class AudioSpeechNoise_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction : bool, negative_correlation_enhancement : bool, interpolate_bad_channels:bool=False, tmin:int = -5,baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):
+    def __init__(self, short_channel_correction : bool, negative_correlation_enhancement : bool, interpolate_bad_channels:bool=False, tmin:int = -5,baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8):
         self.number_of_participants = 17
         self.all_speech = []
         self.all_noise = []
@@ -165,8 +165,8 @@ class AudioSpeechNoise_data_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 5
-        self.scalp_coupling_threshold = 0.5
-        self.reject_criteria = dict(hbo=80e-6)
+        self.scalp_coupling_threshold = scalp_coupling_threshold
+        self.reject_criteria = reject_criteria
         self.tmin = tmin
         self.tmax = 15
         self.baseline = (None, 0)
@@ -213,7 +213,7 @@ class AudioSpeechNoise_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_motor_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8):
         self.number_of_participants = 1
         self.all_tapping = []
         self.all_control = []
@@ -224,8 +224,8 @@ class fNIRS_motor_data_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 5
-        self.scalp_coupling_threshold = 0.5  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)
+        self.scalp_coupling_threshold = scalp_coupling_threshold
+        self.reject_criteria =  reject_criteria
         self.tmin = tmin
         self.tmax = 15
         self.baseline = (None, 0)
@@ -272,7 +272,7 @@ class fNIRS_motor_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_full_motor_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8):
         self.number_of_participants = 5
         self.all_tapping = []
         self.all_control = []
@@ -283,8 +283,8 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 5
-        self.scalp_coupling_threshold = 0.5  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)
+        self.scalp_coupling_threshold = scalp_coupling_threshold
+        self.reject_criteria = reject_criteria
         self.tmin = tmin
         self.tmax = 15
         self.baseline = (None, 0)
@@ -328,7 +328,7 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8):
         self.number_of_participants = 4
         self.all_tapping = []
         self.all_control = []
@@ -339,8 +339,8 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 15
-        self.scalp_coupling_threshold = 0.5  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)
+        self.scalp_coupling_threshold = scalp_coupling_threshold
+        self.reject_criteria = reject_criteria
         self.tmin = tmin
         self.tmax = 15
         self.baseline = (None, 0)
@@ -498,7 +498,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8):
         self.number_of_participants = 7
         self.all_tapping = []
         self.all_control = []
@@ -510,8 +510,8 @@ class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 15
-        self.scalp_coupling_threshold = 0.5  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)
+        self.scalp_coupling_threshold = scalp_coupling_threshold
+        self.reject_criteria = reject_criteria
         self.tmin = tmin
         self.tmax = 15
         self.baseline = (None, 0)
@@ -558,7 +558,7 @@ class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_CUH_patient_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8):
         self.number_of_participants = 48
         self.all_tapping = []
         self.all_control = []
@@ -569,8 +569,8 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 15
-        self.scalp_coupling_threshold = 0.5  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)
+        self.scalp_coupling_threshold = scalp_coupling_threshold
+        self.reject_criteria = reject_criteria
         self.tmin = tmin
         self.tmax = 15
         self.baseline = (None, 0)
@@ -737,7 +737,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8):
         self.number_of_participants = 4
         self.all_tapping = []
         self.all_control = []
@@ -746,11 +746,10 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
                                 }
         self.file_path = Path(os.getenv('Melika_hand_data_5Hz'))
         self.short_channel_correction = short_channel_correction
-        self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 28
-        self.scalp_coupling_threshold = 0.8  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
+        self.scalp_coupling_threshold = scalp_coupling_threshold
+        self.reject_criteria = reject_criteria
         self.tmin = tmin
         self.tmax = 28
         self.baseline = (None, 0)
@@ -942,7 +941,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8):
         self.number_of_participants = 4
         self.all_tapping = []
         self.all_control = []
@@ -953,8 +952,8 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 28
-        self.scalp_coupling_threshold = 0.8  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
+        self.scalp_coupling_threshold = scalp_coupling_threshold
+        self.reject_criteria = reject_criteria
         self.tmin = tmin
         self.tmax = 28
         self.baseline = (None, 0)
@@ -1147,7 +1146,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8):
         self.number_of_participants = 9
         self.all_tapping = []
         self.all_control = []
@@ -1158,8 +1157,8 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 28
-        self.scalp_coupling_threshold = 0.8  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
+        self.scalp_coupling_threshold = scalp_coupling_threshold
+        self.reject_criteria = reject_criteria
         self.tmin = tmin
         self.tmax = 28
         self.baseline = (None, 0)
@@ -1347,7 +1346,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8):
         self.number_of_participants = 9
         self.all_tapping = []
         self.all_control = []
@@ -1358,8 +1357,8 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 28
-        self.scalp_coupling_threshold = 0.8  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
+        self.scalp_coupling_threshold = scalp_coupling_threshold
+        self.reject_criteria = reject_criteria
         self.tmin = tmin
         self.tmax = 28
         self.baseline = (None, 0)
@@ -1529,7 +1528,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_old_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8):
         self.number_of_participants = 11
         self.all_tapping = []
         self.all_control = []
@@ -1541,8 +1540,8 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 20
-        self.scalp_coupling_threshold = 0.8  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
+        self.scalp_coupling_threshold = scalp_coupling_threshold
+        self.reject_criteria = reject_criteria
         self.tmin = tmin
         self.tmax = 15
         self.baseline = (None, 0)
@@ -1696,7 +1695,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8):
         self.number_of_participants = 7
         self.all_tapping = []
         self.all_control = []
@@ -1707,8 +1706,8 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 21
-        self.scalp_coupling_threshold = 0.8  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
+        self.scalp_coupling_threshold = scalp_coupling_threshold
+        self.reject_criteria = reject_criteria
         self.tmin = tmin
         self.tmax = 21
         self.baseline = (None, 0)
@@ -1902,7 +1901,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8):
         self.number_of_participants = 6
         self.all_tapping = []
         self.all_control = []
@@ -1922,8 +1921,8 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 21
-        self.scalp_coupling_threshold = 0.8  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
+        self.scalp_coupling_threshold = scalp_coupling_threshold
+        self.reject_criteria = reject_criteria
         self.tmin = tmin
         self.tmax = 21
         self.baseline = (None, 0)
@@ -2125,7 +2124,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8):
         self.number_of_participants = 68
         self.all_tapping = []
         self.all_control = []
@@ -2136,8 +2135,8 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 15
-        self.scalp_coupling_threshold = 0.8  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
+        self.scalp_coupling_threshold = scalp_coupling_threshold
+        self.reject_criteria = reject_criteria
         self.tmin = tmin
         self.tmax = 21
         self.baseline = (None, 0)
@@ -2327,7 +2326,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8):
         self.number_of_participants = 68
         self.all_tapping = []
         self.all_control = []
@@ -2339,8 +2338,8 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 15
-        self.scalp_coupling_threshold = 0.8  # Change this value if needed
-        self.reject_criteria = dict(hbo=80e-6)  # Change this value if needed
+        self.scalp_coupling_threshold = scalp_coupling_threshold
+        self.reject_criteria = reject_criteria
         self.tmin = tmin
         self.tmax = 20
         self.baseline = (None, 0)

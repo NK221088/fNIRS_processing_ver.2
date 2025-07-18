@@ -87,6 +87,8 @@ def update_epoch_types(*args):
                 filter_upper_value = settings["filter_upper_value"],
                 l_trans_bandwidth = settings["l_trans_bandwidth"],
                 h_trans_bandwidth = settings["h_trans_bandwidth"],
+                scalp_coupling_threshold = settings["scalp_coupling_threshold"],
+                reject_criteria = settings["reject_criteria"],
             )
             # Update dropdown options
             epoch_type_menu["values"] = data_types
@@ -249,6 +251,8 @@ def run_analysis():
         or settings["filter_upper_value"] != previous_filter_upper_value
         or settings["l_trans_bandwidth"] != previous_l_trans_bandwidth
         or settings["h_trans_bandwidth"] != previous_h_trans_bandwidth
+        or settings["scalp_coupling_threshold"] != previous_scalp_coupling_threshold
+        or settings["reject_criteria"] != previous_reject_criteria
     )
     if reload_data:
         all_epochs, data_name, all_data, freq, data_types, all_individuals = load_data(
@@ -262,6 +266,8 @@ def run_analysis():
             filter_upper_value=settings["filter_upper_value"],
             l_trans_bandwidth= settings["l_trans_bandwidth"],
             h_trans_bandwidth= settings["h_trans_bandwidth"],
+            scalp_coupling_threshold=settings["scalp_coupling_threshold"],
+            reject_criteria=settings["reject_criteria"]
         )
         previous_epoch_type = settings["epoch_type"]
         previous_short_channel_correction = settings["short_channel_correction"]
@@ -269,6 +275,8 @@ def run_analysis():
         previous_interpolate_bad_channels = settings["interpolate_bad_channels"]
         previous_baseline_correction = settings["baseline_correction"]
         previous_tmin = settings["tmin"]
+        previous_scalp_coupling_threshold = settings["scalp_coupling_threshold"]
+        previous_reject_criteria = settings["reject_criteria"]
         toggle_individual_menu()
     
     first_data_load = False
@@ -541,6 +549,8 @@ def open_preprocessing_dialog():
         "filter_upper_value": settings["filter_upper_value"],
         "h_trans_bandwidth": settings["h_trans_bandwidth"],
         "l_trans_bandwidth": settings["l_trans_bandwidth"],
+        "scalp_coupling_threshold": settings["scalp_coupling_threshold"],
+        "reject_criteria": settings["reject_criteria"]
     }
     
     result = show_preprocessing_dialog(root, current_preprocessing_settings)
@@ -555,6 +565,8 @@ def open_preprocessing_dialog():
         settings["filter_upper_value"] = result["filter_upper_value"]
         settings["h_trans_bandwidth"] = result["h_trans_bandwidth"]
         settings["l_trans_bandwidth"] = result["l_trans_bandwidth"]
+        settings["scalp_coupling_threshold"] = result["scalp_coupling_threshold"]
+        settings["reject_criteria"] = result["reject_criteria"]
         
         # Mark that data needs to be reloaded
         global previous_short_channel_correction, previous_negative_correlation_enhancement, previous_tmin, previous_filter_lower_value, previous_filter_upper_value, previous_h_trans_bandwidth, previous_l_trans_bandwidth
@@ -566,6 +578,8 @@ def open_preprocessing_dialog():
         previous_filter_upper_value = None
         previous_h_trans_bandwidth = None
         previous_l_trans_bandwidth = None
+        previous_scalp_coupling_threshold = None
+        previous_reject_criteria = None
 
 preprocessing_button = tk.Button(
     preprocessing_frame, 
