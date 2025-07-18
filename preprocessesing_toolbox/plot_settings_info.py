@@ -54,14 +54,21 @@ class PlotSettingsInfo:
             "Typical range: 1-5, default is 3."
         )
         tkinter.messagebox.showinfo("Threshold", info_text)
-    
+
     @staticmethod
     def show_save_plot_info():
         """Show information about saving plots."""
         info_text = (
             "Save Plot to File:\n\n"
-            "When enabled, the generated plot will be automatically saved to a file.\n\n"
-            "The plot will be saved in PNG format with an automatically generated filename "
-            "based on the current timestamp and settings used."
+            "When enabled, each generated plot will be automatically saved as a PDF file.\n\n"
+            "Saved plots are stored in the 'Plots' directory. Filenames are automatically generated using:\n"
+            "- The epoch type\n"
+            "- The plot type (e.g., 'power', 'topomap')\n"
+            "- The bad channel handling strategy\n"
+            "- The dataset name\n"
+            "- The current timestamp\n\n"
+            "Example filename:\n"
+            "'stimulus_epochs_plot_power_interpolate_datasetA_20250718_153000.pdf'\n\n"
+            "This makes it easy to track plots generated under different analysis conditions."
         )
         tkinter.messagebox.showinfo("Save Plot", info_text)

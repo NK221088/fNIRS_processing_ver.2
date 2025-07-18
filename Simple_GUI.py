@@ -24,13 +24,8 @@ settings = {
     "data_set": dataSetList[12],  # Default to first dataset
     "epoch_type": "HandMI",
     "individual": "All Individuals",
-    "combine_strategy": "mean",
     "short_channel_correction": True,
     "negative_correlation_enhancement": False,
-    "interpolate_bad_channels": False,
-    "bad_channels_strategy": "all",
-    "threshold": 3,
-    "plot_type": "Epoch Plot",
     "haemo_type": "hbo",
     "baseline_correction": "Previous rest period",
     "tmin": 0,
@@ -41,7 +36,15 @@ settings = {
     "filter_lower_value": 0.05,
     "filter_upper_value": 0.7,
     "h_trans_bandwidth": 0.2,           
-    "l_trans_bandwidth": 0.02,       
+    "l_trans_bandwidth": 0.02,
+
+    # Plot settings
+    "save_plot": False,
+    "plot_type": "Epoch Plot",
+    "combine_strategy": "mean",
+    "interpolate_bad_channels": False,
+    "bad_channels_strategy": "all",
+    "threshold": 3,       
 }
 
 first_data_load = True
@@ -230,8 +233,9 @@ def run_analysis():
     global previous_epoch_type, all_epochs, data_name, all_data, freq, data_types, all_individuals, first_data_load
     global previous_short_channel_correction, previous_negative_correlation_enhancement, previous_interpolate_bad_channels
     global previous_baseline_correction, previous_tmin, previous_individual, previous_combine_strategy
-    global previous_bad_channels_strategy, previous_threshold
-    
+    global previous_bad_channels_strategy, previous_threshold, previous_scalp_coupling_threshold, previous_reject_criteria
+    global previous_filter_lower_value, previous_filter_upper_value, previous_l_trans_bandwidth, previous_h_trans_bandwidth
+
     settings["data_set"] = dataset_var.get()
     settings["plot_type"] = plot_type_var.get()
     settings["haemo_type"] = haemo_type_var.get()
@@ -366,7 +370,7 @@ def run_analysis():
                     picks=picks,
                     epoch_type=settings["epoch_type"],
                     combine_strategy=settings["combine_strategy"],
-                    save=False,
+                    save=settings["save_plot"],
                     bad_channels_strategy=settings["bad_channels_strategy"],
                     threshold=settings["threshold"],
                     data_set=data_name
@@ -413,7 +417,7 @@ def run_analysis():
                     selected_all_epochs.append(individual.epochs)
             
             figures = [standard_fNIRS_response_plot(selected_all_epochs, data_types, bad_channels_strategy=settings["bad_channels_strategy"],
-                                                    save=False, combine_strategy=settings["combine_strategy"],
+                                                    save=settings["save_plot"], combine_strategy=settings["combine_strategy"],
                                                     threshold=settings["threshold"], data_set=data_name, picks_=picks)]
         elif settings["plot_type"] == "paradigm_plot":
             selected_individual = settings["individual"]
@@ -613,7 +617,8 @@ def open_plot_settings_dialog():
         "combine_strategy": settings["combine_strategy"],
         "bad_channels_strategy": settings["bad_channels_strategy"],
         "interpolate_bad_channels": settings["interpolate_bad_channels"],
-        "threshold": settings["threshold"]
+        "threshold": settings["threshold"],
+        "save_plot": settings["save_plot"]
     }
     
     result = show_plot_settings_dialog(
@@ -627,6 +632,7 @@ def open_plot_settings_dialog():
         settings["bad_channels_strategy"] = result["bad_channels_strategy"]
         settings["interpolate_bad_channels"] = result["interpolate_bad_channels"]
         settings["threshold"] = result["threshold"]
+        settings["save_plot"] = result["save_plot"]
         
         # Mark that data needs to be reloaded if certain settings changed
         global previous_combine_strategy, previous_bad_channels_strategy, previous_interpolate_bad_channels, previous_threshold
