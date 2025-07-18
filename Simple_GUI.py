@@ -279,6 +279,10 @@ def run_analysis():
         previous_interpolate_bad_channels = settings["interpolate_bad_channels"]
         previous_baseline_correction = settings["baseline_correction"]
         previous_tmin = settings["tmin"]
+        previous_filter_lower_value = settings["filter_lower_value"]  
+        previous_filter_upper_value = settings["filter_upper_value"]  
+        previous_h_trans_bandwidth = settings["h_trans_bandwidth"]  
+        previous_l_trans_bandwidth = settings["l_trans_bandwidth"]
         previous_scalp_coupling_threshold = settings["scalp_coupling_threshold"]
         previous_reject_criteria = settings["reject_criteria"]
         toggle_individual_menu()

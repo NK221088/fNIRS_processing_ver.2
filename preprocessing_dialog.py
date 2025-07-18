@@ -656,7 +656,7 @@ class PreprocessingDialog:
         """Reset all settings to their default values."""
         self.short_channel_var.set(True)
         self.negative_corr_var.set(False)
-        self.baseline_correction_var.set("usePreviousRest")
+        self.baseline_correction_var.set("Previous rest period")
         self.tmin_var.set("-5")
         self.filter_lower_var.set("0.05")  
         self.filter_upper_var.set("0.7")   
