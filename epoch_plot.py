@@ -36,8 +36,8 @@ def epoch_plot(epochs, picks: list, epoch_type: str, bad_channels_strategy: str,
     if not isinstance(save, bool):
         raise ValueError("Invalid value for save. Please use True or False.")
 
-    # Force all epochs to exactly 10.172526041666668 Hz
-    target_sfreq = 10.172526041666668
+    # Force all epochs to exactly the first epochs frequency (Hz)
+    target_sfreq = epochs[0].info['sfreq']
     for i in range(len(epochs)):
         current_sfreq = epochs[i].info["sfreq"]
         if current_sfreq != target_sfreq:

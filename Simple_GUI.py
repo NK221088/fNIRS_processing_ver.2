@@ -233,6 +233,8 @@ def run_analysis():
     settings["data_set"] = dataset_var.get()
     settings["plot_type"] = plot_type_var.get()
     settings["haemo_type"] = haemo_type_var.get()
+    settings["individual"] = Individual_var.get()
+    settings["epoch_type"] = epoch_type_var.get()
     # Determine if data needs to be reloaded
     reload_data = (
         (settings["plot_type"] not in ["individual frequency plot","paradigm_plot", "Epoch Plot", "Standard fNIRS Response Plot"])
