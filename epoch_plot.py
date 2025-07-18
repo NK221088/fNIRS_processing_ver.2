@@ -63,6 +63,12 @@ def epoch_plot(epochs, picks: list, epoch_type: str, bad_channels_strategy: str,
             print(f"  Relative difference: {relative_diff:.4f}%")
             print(f"  Data shape: {original_data.shape}")
             print()
+    
+    # Use the baseline from the first epoch
+    common_baseline = epochs[0].baseline
+    for epoch in epochs:
+        epoch.baseline = common_baseline
+
     # Function implementation:
     if bad_channels_strategy == "delete":
         for i in range(len(epochs)):

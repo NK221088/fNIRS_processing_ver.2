@@ -287,15 +287,29 @@ def run_analysis():
     # Clear previous plots
     for widget in right_frame.winfo_children():
         widget.destroy()
-    
-    # If paradigm_plot, we need to handle picks differently
+
+    # Get selected base channels (without hbo/hbr endings)
+    selected_base_channels = [channel for channel, var in channel_vars.items() if var.get()]
+
+    # Handle channel selection based on plot type
     if settings["plot_type"] == "paradigm_plot":
-        selected_channels = [channel for channel, var in channel_vars.items() if var.get()]
+        # For paradigm plot, add the selected hemoglobin type to base channels
         selected_haemo_type = settings["haemo_type"]
-        picks = [f"{channel} {selected_haemo_type}" for channel in selected_channels]
+        picks = [f"{channel} {selected_haemo_type}" for channel in selected_base_channels]
+        
+    elif settings["plot_type"] in ["Epoch Plot", "Standard fNIRS Response Plot"]:
+        # For these plot types, expand base channels to include both hbo and hbr
+        picks = []
+        for base_channel in selected_base_channels:
+            picks.extend([f"{base_channel} hbo", f"{base_channel} hbr"])
+        
+        # If no channels selected, use "all"
+        if not picks:
+            picks = "all"
+            
     else:
-        selected_channels = [channel for channel, var in channel_vars.items() if var.get()]
-        picks = selected_channels if len(selected_channels) < len(channel_vars) else "all"
+        # For other plot types, use the original logic
+        picks = selected_base_channels if len(selected_base_channels) < len(channel_vars) else "all"
     
     # Add hemoglobin type to settings
     settings["haemo_type"] = haemo_type_var.get()
@@ -743,35 +757,80 @@ def populate_channels():
                 break
         
         if selected_individual and hasattr(selected_individual, 'epochs'):
-            # Get channels for this individual
-            current_haemo_type = haemo_type_var.get()
-            
             try:
                 # Get bad channels for this individual
                 bad_channels = selected_individual.epochs.info.get("bads", [])
                 
-                # Filter channels by hemoglobin type and exclude bad channels
-                filtered_channels = [
-                    channel for channel in selected_individual.epochs.ch_names 
-                    if current_haemo_type in channel.lower() and channel not in bad_channels
-                ]
+                # Get all channels and extract unique base channel names
+                all_channels = selected_individual.epochs.ch_names
+                unique_base_channels = set()
                 
-                # Create a list of unique channel names without the hemoglobin type suffix
-                unique_channels = []
-                for channel in filtered_channels:
-                    # Remove the hemoglobin type suffix (" hbo" or " hbr")
-                    base_channel = channel.rsplit(' ', 1)[0] if ' ' in channel else channel
-                    if base_channel not in unique_channels:
-                        unique_channels.append(base_channel)
+                for channel in all_channels:
+                    if channel not in bad_channels:
+                        # Remove the hemoglobin type suffix (" hbo" or " hbr")
+                        base_channel = channel.rsplit(' ', 1)[0] if ' ' in channel else channel
+                        unique_base_channels.add(base_channel)
                 
-                # Create checkboxes for unique channels
-                for i, channel in enumerate(unique_channels):
+                # Create checkboxes for unique base channels
+                for i, base_channel in enumerate(sorted(unique_base_channels)):
                     is_checked = (i == 0)  # Default: first one checked
-                    channel_vars[channel] = tk.BooleanVar(value=is_checked)
-                    cb = tk.Checkbutton(channel_container, text=channel, variable=channel_vars[channel])
+                    channel_vars[base_channel] = tk.BooleanVar(value=is_checked)
+                    cb = tk.Checkbutton(channel_container, text=base_channel, variable=channel_vars[base_channel])
                     cb.grid(row=i // 3, column=i % 3, sticky="w")
+                    
+                # Update the canvas scroll region after adding new widgets
+                update_canvas_scroll(channel_container, channel_canvas)
             except Exception as e:
                 print(f"Error accessing channels for {selected_individual_name}: {e}")
+    
+    elif current_plot_type == "Epoch Plot":
+        # Show channel selection
+        channel_selection_label.pack(anchor="w")
+        channel_frame.pack(fill="x", expand=False)
+
+        # Clear previous checkboxes
+        clear_container(channel_container)
+        channel_vars.clear()
+
+        # Get selected individuals from checkboxes
+        selected_names = [name for name, var in individual_selection_vars.items() if var.get()]
+        
+        if selected_names:
+            # Get channels that are common to ALL selected individuals
+            common_channels = None
+            
+            for name in selected_names:
+                individual = next((ind for ind in all_individuals if getattr(ind, "name", "") == name), None)
+                if individual and hasattr(individual, "epochs"):
+                    individual_channels = set(individual.epochs.ch_names)
+                    if common_channels is None:
+                        common_channels = individual_channels
+                    else:
+                        common_channels = common_channels.intersection(individual_channels)
+            
+            # If we found common channels, extract unique base channel names
+            if common_channels:
+                # Extract unique base channel names (without hbo/hbr endings)
+                unique_base_channels = set()
+                for channel in common_channels:
+                    base_channel = channel.rsplit(' ', 1)[0] if ' ' in channel else channel
+                    unique_base_channels.add(base_channel)
+                
+                # Force update the container to ensure all widgets are destroyed
+                channel_container.update_idletasks()
+                
+                for i, base_channel in enumerate(sorted(unique_base_channels)):
+                    is_checked = (i == 0)  # Optional: first channel pre-checked
+                    channel_vars[base_channel] = tk.BooleanVar(value=is_checked)
+                    cb = tk.Checkbutton(channel_container, text=base_channel, variable=channel_vars[base_channel])
+                    cb.grid(row=i // 3, column=i % 3, sticky="w")
+                
+                # Update the canvas scroll region after adding new widgets
+                update_canvas_scroll(channel_container, channel_canvas)
+            else:
+                # If no common channels, ensure container is empty
+                update_canvas_scroll(channel_container, channel_canvas)
+    
     elif current_plot_type == "Standard fNIRS Response Plot":
         # Show channel selection
         channel_selection_label.pack(anchor="w")
@@ -797,15 +856,21 @@ def populate_channels():
                     else:
                         common_channels = common_channels.intersection(individual_channels)
             
-            # If we found common channels, create checkboxes
+            # If we found common channels, extract unique base channel names
             if common_channels:
+                # Extract unique base channel names (without hbo/hbr endings)
+                unique_base_channels = set()
+                for channel in common_channels:
+                    base_channel = channel.rsplit(' ', 1)[0] if ' ' in channel else channel
+                    unique_base_channels.add(base_channel)
+                
                 # Force update the container to ensure all widgets are destroyed
                 channel_container.update_idletasks()
                 
-                for i, ch in enumerate(sorted(common_channels)):
+                for i, base_channel in enumerate(sorted(unique_base_channels)):
                     is_checked = (i == 0)  # Optional: first channel pre-checked
-                    channel_vars[ch] = tk.BooleanVar(value=is_checked)
-                    cb = tk.Checkbutton(channel_container, text=ch, variable=channel_vars[ch])
+                    channel_vars[base_channel] = tk.BooleanVar(value=is_checked)
+                    cb = tk.Checkbutton(channel_container, text=base_channel, variable=channel_vars[base_channel])
                     cb.grid(row=i // 3, column=i % 3, sticky="w")
                 
                 # Update the canvas scroll region after adding new widgets
@@ -813,6 +878,11 @@ def populate_channels():
             else:
                 # If no common channels, ensure container is empty
                 update_canvas_scroll(channel_container, channel_canvas)
+    
+    # For other plot types that don't need channel selection, hide the channel frame
+    else:
+        channel_selection_label.pack_forget()
+        channel_frame.pack_forget()
 
 def update_channels_on_haemo_type_change(*args):
     """Update channel selections when hemoglobin type changes."""
