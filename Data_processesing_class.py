@@ -10,6 +10,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from preprocessesing_toolbox.baselineCorrection import baselineCorrection
 from preprocessesing_toolbox.post_rejection import reject_if_single_event_type
+from preprocessesing_toolbox.SNR_rejection import snr_rejection
 
 load_dotenv()
 
@@ -18,7 +19,9 @@ class fNIRS_data_load:
                  short_channel_correction=True, negative_correlation_enhancement=True, scalp_coupling_threshold=0.8,
                  reject_criteria: dict = dict(hbo=80e-6), tmin=0, tmax=15, baseline=(None, 0), data_types=[], number_of_data_types=2,
                  data_name="None", interpolate_bad_channels=False, unwanted = ["15.0"], baseline_correction: str = "Previous rest period",
-                 filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,):        
+                 filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
+                 snr_rejection: bool = True, snr_threshold : int = 8):    
+            
         self.number_of_participants = number_of_participants
         self.file_path = file_path
         self.annotation_names = annotation_names
@@ -42,6 +45,8 @@ class fNIRS_data_load:
         self.filter_upper_value = filter_upper_value
         self.h_trans_bandwidth = h_trans_bandwidth
         self.l_trans_bandwidth = l_trans_bandwidth
+        self.snr_rejection = snr_rejection
+        self.snr_threshold = snr_threshold
         setattr(self, 'Individual_participants', [])
         for name in self.data_types:
             setattr(self, f'all_{name}', [])
@@ -64,6 +69,13 @@ class fNIRS_data_load:
                     unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
                     raw_intensity.annotations.delete(unwanted)
 
+            if self.snr_rejection:
+                snr = snr_rejection(raw_intensity)
+                snr_bad_channels = list(compress(raw_intensity.ch_names, snr < self.snr_threshold))
+                raw_intensity.info["bads"] = snr_bad_channels
+            else:
+                snr_bad_channels = []
+
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
             
             if self.short_channel_correction:
@@ -72,7 +84,12 @@ class fNIRS_data_load:
 
             sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
 
-            raw_od.info["bads"] = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
+            sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
+            
+            # Combine bad channels from all preprocessing
+            all_bad_channels = list(set(snr_bad_channels + sci_bad_channels))            
+            raw_od.info["bads"] = all_bad_channels
+            
             if self.interpolate_bad_channels:
                 raw_od.interpolate_bads()
 
@@ -154,7 +171,8 @@ class fNIRS_data_load:
 ###############################################################################################################################################################################################
 
 class AudioSpeechNoise_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction : bool, negative_correlation_enhancement : bool, interpolate_bad_channels:bool=False, tmin:int = -5,baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8):
+    def __init__(self, short_channel_correction : bool, negative_correlation_enhancement : bool, interpolate_bad_channels:bool=False, tmin:int = -5,baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
+                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: bool = True, snr_threshold: int = 8):
         self.number_of_participants = 17
         self.all_speech = []
         self.all_noise = []
@@ -180,6 +198,8 @@ class AudioSpeechNoise_data_load(fNIRS_data_load):
         self.filter_upper_value = filter_upper_value
         self.h_trans_bandwidth = h_trans_bandwidth
         self.l_trans_bandwidth = l_trans_bandwidth
+        self.snr_rejection = snr_rejection
+        self.snr_threshold = snr_threshold
         super().__init__(
                         number_of_participants = self.number_of_participants,
                         file_path = self.file_path,
@@ -201,7 +221,9 @@ class AudioSpeechNoise_data_load(fNIRS_data_load):
                         filter_lower_value = self.filter_lower_value,
                         filter_upper_value = self.filter_upper_value,
                         h_trans_bandwidth = self.h_trans_bandwidth,
-                        l_trans_bandwidth = self.l_trans_bandwidth
+                        l_trans_bandwidth = self.l_trans_bandwidth,
+                        snr_rejection = self.snr_rejection,
+                        snr_threshold = self.snr_threshold
                     )
 
     def define_raw_intensity(self, sub_id):
@@ -298,6 +320,8 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
         self.filter_upper_value = filter_upper_value
         self.h_trans_bandwidth = h_trans_bandwidth
         self.l_trans_bandwidth = l_trans_bandwidth
+        self.snr_rejection = True
+        self.snr_threshold = 8
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
