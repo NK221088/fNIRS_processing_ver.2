@@ -171,3 +171,56 @@ class PreprocessingInfo:
             "during preprocessing to focus on the conditions of interest."
         )
         messagebox.showinfo("Unwanted Labels", info_text)
+    
+    @staticmethod
+    def show_snr_rejection_info():
+        """Display information about SNR rejection methods."""
+        info_text = """
+        SNR Rejection Method Information:
+        
+        Signal quality-based rejection helps remove channels with poor signal characteristics.
+        
+        Available Methods:
+        • None: No signal quality rejection
+        • SNR: Signal-to-Noise Ratio based rejection
+          - Removes channels with SNR below threshold
+          - Default threshold: 8
+          - Higher values = stricter rejection
+        • CV: Coefficient of Variation based rejection
+          - Removes channels with CV above threshold
+          - Default threshold: 0.15 (but uses same setting as SNR)
+          - Lower values = stricter rejection
+        
+        Default: None
+        
+        Note: Quality rejection is typically applied after preprocessing 
+        but before statistical analysis.
+        """
+        
+        messagebox.showinfo("SNR Rejection Method", info_text)
+    
+    @staticmethod
+    def show_snr_threshold_info():
+        """Display information about SNR/CV threshold values."""
+        info_text = """
+        Threshold Value Information:
+        
+        The threshold value determines the sensitivity of quality rejection:
+        
+        For SNR Method:
+        • Range: Typically 3-15
+        • Default: 8
+        • Higher values = stricter rejection (fewer channels kept)
+        • Lower values = more lenient (more channels kept)
+        
+        For CV Method:
+        • Range: Typically 0.05-0.3
+        • Default: 0.15
+        • Lower values = stricter rejection (fewer channels kept)
+        • Higher values = more lenient (more channels kept)
+        
+        Note: The optimal threshold depends on your data quality 
+        and experimental requirements.
+        """
+
+        messagebox.showinfo("Threshold Value", info_text)

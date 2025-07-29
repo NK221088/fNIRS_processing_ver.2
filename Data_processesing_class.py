@@ -10,7 +10,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from preprocessesing_toolbox.baselineCorrection import baselineCorrection
 from preprocessesing_toolbox.post_rejection import reject_if_single_event_type
-from preprocessesing_toolbox.SNR_rejection import snr_rejection
+from preprocessesing_toolbox.SNR_rejection import snr_rejection, get_bad_channels_by_pairs
 
 load_dotenv()
 
@@ -69,17 +69,21 @@ class fNIRS_data_load:
                     unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
                     raw_intensity.annotations.delete(unwanted)
 
-            if self.snr_rejection != None:
+            if self.snr_rejection != "None":
                 snr = snr_rejection(raw_intensity, self.snr_rejection)
+                
+                # Validation
                 if self.snr_rejection == "SNR" and self.snr_threshold < 1:
                     raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
                 if self.snr_rejection == "CV" and self.snr_threshold > 1:
                     raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
-                snr_bad_channels = list(compress(raw_intensity.ch_names, snr < self.snr_threshold))
+                
+                # Get bad channels based on pair logic
+                snr_bad_channels = get_bad_channels_by_pairs(raw_intensity.ch_names, snr, self.snr_threshold, self.snr_rejection)
                 raw_intensity.info["bads"] = snr_bad_channels
             else:
                 snr_bad_channels = []
-                
+
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
             
             # Check channel name consistency
@@ -94,8 +98,11 @@ class fNIRS_data_load:
 
             sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
             
+            # Filter SNR bad channels to only include those that still exist in the long channels dataset
+            snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
+            
             # Combine bad channels from all preprocessing
-            all_bad_channels = list(set(snr_bad_channels + sci_bad_channels))            
+            all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))            
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
@@ -439,17 +446,21 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
                     unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
                     raw_intensity.annotations.delete(unwanted)
 
-            if self.snr_rejection != None:
+            if self.snr_rejection != "None":
                 snr = snr_rejection(raw_intensity, self.snr_rejection)
+                
+                # Validation
                 if self.snr_rejection == "SNR" and self.snr_threshold < 1:
                     raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
                 if self.snr_rejection == "CV" and self.snr_threshold > 1:
                     raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
-                snr_bad_channels = list(compress(raw_intensity.ch_names, snr < self.snr_threshold))
+                
+                # Get bad channels based on pair logic
+                snr_bad_channels = get_bad_channels_by_pairs(raw_intensity.ch_names, snr, self.snr_threshold, self.snr_rejection)
                 raw_intensity.info["bads"] = snr_bad_channels
             else:
                 snr_bad_channels = []
-                
+
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
 
             # Check channel name consistency
@@ -464,8 +475,11 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
 
             sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
             
+            # Filter SNR bad channels to only include those that still exist in the long channels dataset
+            snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
+            
             # Combine bad channels from all preprocessing
-            all_bad_channels = list(set(snr_bad_channels + sci_bad_channels))            
+            all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
@@ -705,17 +719,21 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
                     unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
                     raw_intensity.annotations.delete(unwanted)
 
-            if self.snr_rejection != None:
+            if self.snr_rejection != "None":
                 snr = snr_rejection(raw_intensity, self.snr_rejection)
+                
+                # Validation
                 if self.snr_rejection == "SNR" and self.snr_threshold < 1:
                     raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
                 if self.snr_rejection == "CV" and self.snr_threshold > 1:
                     raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
-                snr_bad_channels = list(compress(raw_intensity.ch_names, snr < self.snr_threshold))
+                
+                # Get bad channels based on pair logic
+                snr_bad_channels = get_bad_channels_by_pairs(raw_intensity.ch_names, snr, self.snr_threshold, self.snr_rejection)
                 raw_intensity.info["bads"] = snr_bad_channels
             else:
                 snr_bad_channels = []
-                
+
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
 
             # Check channel name consistency
@@ -730,8 +748,11 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
 
             sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
             
+            # Filter SNR bad channels to only include those that still exist in the long channels dataset
+            snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
+            
             # Combine bad channels from all preprocessing
-            all_bad_channels = list(set(snr_bad_channels + sci_bad_channels))            
+            all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
             raw_od.info["bads"] = all_bad_channels
 
             if self.interpolate_bad_channels:
@@ -906,17 +927,21 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
                     unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
                     raw_intensity.annotations.delete(unwanted)
 
-            if self.snr_rejection != None:
+            if self.snr_rejection != "None":
                 snr = snr_rejection(raw_intensity, self.snr_rejection)
+                
+                # Validation
                 if self.snr_rejection == "SNR" and self.snr_threshold < 1:
                     raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
                 if self.snr_rejection == "CV" and self.snr_threshold > 1:
                     raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
-                snr_bad_channels = list(compress(raw_intensity.ch_names, snr < self.snr_threshold))
+                
+                # Get bad channels based on pair logic
+                snr_bad_channels = get_bad_channels_by_pairs(raw_intensity.ch_names, snr, self.snr_threshold, self.snr_rejection)
                 raw_intensity.info["bads"] = snr_bad_channels
             else:
                 snr_bad_channels = []
-                
+
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
 
             # Check channel name consistency
@@ -931,8 +956,11 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
 
             sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
             
+            # Filter SNR bad channels to only include those that still exist in the long channels dataset
+            snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
+            
             # Combine bad channels from all preprocessing
-            all_bad_channels = list(set(snr_bad_channels + sci_bad_channels))            
+            all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
@@ -1135,17 +1163,21 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
                     unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
                     raw_intensity.annotations.delete(unwanted)
 
-            if self.snr_rejection != None:
+            if self.snr_rejection != "None":
                 snr = snr_rejection(raw_intensity, self.snr_rejection)
+                
+                # Validation
                 if self.snr_rejection == "SNR" and self.snr_threshold < 1:
                     raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
                 if self.snr_rejection == "CV" and self.snr_threshold > 1:
                     raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
-                snr_bad_channels = list(compress(raw_intensity.ch_names, snr < self.snr_threshold))
+                
+                # Get bad channels based on pair logic
+                snr_bad_channels = get_bad_channels_by_pairs(raw_intensity.ch_names, snr, self.snr_threshold, self.snr_rejection)
                 raw_intensity.info["bads"] = snr_bad_channels
             else:
                 snr_bad_channels = []
-                
+
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
 
             # Check channel name consistency
@@ -1160,8 +1192,11 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
 
             sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
             
+            # Filter SNR bad channels to only include those that still exist in the long channels dataset
+            snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
+            
             # Combine bad channels from all preprocessing
-            all_bad_channels = list(set(snr_bad_channels + sci_bad_channels))            
+            all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
@@ -1363,17 +1398,21 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
                     unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
                     raw_intensity.annotations.delete(unwanted)
 
-            if self.snr_rejection != None:
+            if self.snr_rejection != "None":
                 snr = snr_rejection(raw_intensity, self.snr_rejection)
+                
+                # Validation
                 if self.snr_rejection == "SNR" and self.snr_threshold < 1:
                     raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
                 if self.snr_rejection == "CV" and self.snr_threshold > 1:
                     raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
-                snr_bad_channels = list(compress(raw_intensity.ch_names, snr < self.snr_threshold))
+                
+                # Get bad channels based on pair logic
+                snr_bad_channels = get_bad_channels_by_pairs(raw_intensity.ch_names, snr, self.snr_threshold, self.snr_rejection)
                 raw_intensity.info["bads"] = snr_bad_channels
             else:
                 snr_bad_channels = []
-                
+
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
 
             # Check channel name consistency
@@ -1384,12 +1423,13 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
                 raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
             raw_od = mne_nirs.channels.get_long_channels(raw_od)
 
-            sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
-
             sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
             
+            # Filter SNR bad channels to only include those that still exist in the long channels dataset
+            snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
+            
             # Combine bad channels from all preprocessing
-            all_bad_channels = list(set(snr_bad_channels + sci_bad_channels))            
+            all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
@@ -1591,17 +1631,21 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
                     unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
                     raw_intensity.annotations.delete(unwanted)
 
-            if self.snr_rejection != None:
+            if self.snr_rejection != "None":
                 snr = snr_rejection(raw_intensity, self.snr_rejection)
+                
+                # Validation
                 if self.snr_rejection == "SNR" and self.snr_threshold < 1:
                     raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
                 if self.snr_rejection == "CV" and self.snr_threshold > 1:
                     raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
-                snr_bad_channels = list(compress(raw_intensity.ch_names, snr < self.snr_threshold))
+                
+                # Get bad channels based on pair logic
+                snr_bad_channels = get_bad_channels_by_pairs(raw_intensity.ch_names, snr, self.snr_threshold, self.snr_rejection)
                 raw_intensity.info["bads"] = snr_bad_channels
             else:
                 snr_bad_channels = []
-                
+
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
 
             # Check channel name consistency
@@ -1616,8 +1660,11 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
 
             sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
             
+            # Filter SNR bad channels to only include those that still exist in the long channels dataset
+            snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
+            
             # Combine bad channels from all preprocessing
-            all_bad_channels = list(set(snr_bad_channels + sci_bad_channels))            
+            all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
@@ -1801,17 +1848,21 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
                     unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
                     raw_intensity.annotations.delete(unwanted)
 
-            if self.snr_rejection != None:
+            if self.snr_rejection != "None":
                 snr = snr_rejection(raw_intensity, self.snr_rejection)
+                
+                # Validation
                 if self.snr_rejection == "SNR" and self.snr_threshold < 1:
                     raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
                 if self.snr_rejection == "CV" and self.snr_threshold > 1:
                     raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
-                snr_bad_channels = list(compress(raw_intensity.ch_names, snr < self.snr_threshold))
+                
+                # Get bad channels based on pair logic
+                snr_bad_channels = get_bad_channels_by_pairs(raw_intensity.ch_names, snr, self.snr_threshold, self.snr_rejection)
                 raw_intensity.info["bads"] = snr_bad_channels
             else:
                 snr_bad_channels = []
-                
+
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
 
             # Check channel name consistency
@@ -1826,8 +1877,11 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
 
             sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
             
+            # Filter SNR bad channels to only include those that still exist in the long channels dataset
+            snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
+            
             # Combine bad channels from all preprocessing
-            all_bad_channels = list(set(snr_bad_channels + sci_bad_channels))            
+            all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
@@ -1993,17 +2047,21 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                     unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
                     raw_intensity.annotations.delete(unwanted)
 
-            if self.snr_rejection != None:
+            if self.snr_rejection != "None":
                 snr = snr_rejection(raw_intensity, self.snr_rejection)
+                
+                # Validation
                 if self.snr_rejection == "SNR" and self.snr_threshold < 1:
                     raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
                 if self.snr_rejection == "CV" and self.snr_threshold > 1:
                     raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
-                snr_bad_channels = list(compress(raw_intensity.ch_names, snr < self.snr_threshold))
+                
+                # Get bad channels based on pair logic
+                snr_bad_channels = get_bad_channels_by_pairs(raw_intensity.ch_names, snr, self.snr_threshold, self.snr_rejection)
                 raw_intensity.info["bads"] = snr_bad_channels
             else:
                 snr_bad_channels = []
-                
+
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
 
             # Check channel name consistency
@@ -2018,8 +2076,11 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
 
             sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
             
+            # Filter SNR bad channels to only include those that still exist in the long channels dataset
+            snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
+            
             # Combine bad channels from all preprocessing
-            all_bad_channels = list(set(snr_bad_channels + sci_bad_channels))            
+            all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
@@ -2235,17 +2296,21 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                     unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
                     raw_intensity.annotations.delete(unwanted)
 
-            if self.snr_rejection != None:
+            if self.snr_rejection != "None":
                 snr = snr_rejection(raw_intensity, self.snr_rejection)
+                
+                # Validation
                 if self.snr_rejection == "SNR" and self.snr_threshold < 1:
                     raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
                 if self.snr_rejection == "CV" and self.snr_threshold > 1:
                     raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
-                snr_bad_channels = list(compress(raw_intensity.ch_names, snr < self.snr_threshold))
+                
+                # Get bad channels based on pair logic
+                snr_bad_channels = get_bad_channels_by_pairs(raw_intensity.ch_names, snr, self.snr_threshold, self.snr_rejection)
                 raw_intensity.info["bads"] = snr_bad_channels
             else:
                 snr_bad_channels = []
-                
+
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
 
             # Check channel name consistency
@@ -2260,8 +2325,11 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
 
             sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
             
+            # Filter SNR bad channels to only include those that still exist in the long channels dataset
+            snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
+            
             # Combine bad channels from all preprocessing
-            all_bad_channels = list(set(snr_bad_channels + sci_bad_channels))            
+            all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
@@ -2502,17 +2570,21 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
                     unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
                     raw_intensity.annotations.delete(unwanted)
 
-                if self.snr_rejection != None:
+                if self.snr_rejection != "None":
                     snr = snr_rejection(raw_intensity, self.snr_rejection)
+                    
+                    # Validation
                     if self.snr_rejection == "SNR" and self.snr_threshold < 1:
                         raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
                     if self.snr_rejection == "CV" and self.snr_threshold > 1:
                         raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
-                    snr_bad_channels = list(compress(raw_intensity.ch_names, snr < self.snr_threshold))
+                    
+                    # Get bad channels based on pair logic
+                    snr_bad_channels = get_bad_channels_by_pairs(raw_intensity.ch_names, snr, self.snr_threshold, self.snr_rejection)
                     raw_intensity.info["bads"] = snr_bad_channels
                 else:
                     snr_bad_channels = []
-                    
+
                 raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
 
                 # Check channel name consistency
@@ -2527,8 +2599,11 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
 
                 sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
                 
+                # Filter SNR bad channels to only include those that still exist in the long channels dataset
+                snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
+                
                 # Combine bad channels from all preprocessing
-                all_bad_channels = list(set(snr_bad_channels + sci_bad_channels))            
+                all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
                 raw_od.info["bads"] = all_bad_channels
             
                 if self.interpolate_bad_channels:
@@ -2736,17 +2811,21 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                     unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
                     raw_intensity.annotations.delete(unwanted)
 
-                if self.snr_rejection != None:
+                if self.snr_rejection != "None":
                     snr = snr_rejection(raw_intensity, self.snr_rejection)
+                    
+                    # Validation
                     if self.snr_rejection == "SNR" and self.snr_threshold < 1:
                         raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
                     if self.snr_rejection == "CV" and self.snr_threshold > 1:
                         raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
-                    snr_bad_channels = list(compress(raw_intensity.ch_names, snr < self.snr_threshold))
+                    
+                    # Get bad channels based on pair logic
+                    snr_bad_channels = get_bad_channels_by_pairs(raw_intensity.ch_names, snr, self.snr_threshold, self.snr_rejection)
                     raw_intensity.info["bads"] = snr_bad_channels
                 else:
                     snr_bad_channels = []
-                    
+
                 raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
 
                 # Check channel name consistency
@@ -2761,8 +2840,11 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
 
                 sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
                 
+                # Filter SNR bad channels to only include those that still exist in the long channels dataset
+                snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
+                
                 # Combine bad channels from all preprocessing
-                all_bad_channels = list(set(snr_bad_channels + sci_bad_channels))            
+                all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
                 raw_od.info["bads"] = all_bad_channels
             
                 if self.interpolate_bad_channels:

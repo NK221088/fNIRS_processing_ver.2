@@ -116,6 +116,26 @@ class PreprocessingDialog:
             # Hide tmin input field
             self.tmin_frame.pack_forget()
     
+    def on_snr_rejection_change(self, event=None):
+        """Handle changes in SNR rejection method selection."""
+        selected_method = self.snr_rejection_var.get()
+        
+        if selected_method in ["SNR", "CV"]:
+            # Show threshold input field and update default value based on method
+            self.snr_threshold_frame.pack(fill="x", pady=5, after=self.snr_rejection_frame)
+            
+            # Set appropriate default value based on method
+            current_value = self.snr_threshold_var.get()
+            if selected_method == "SNR" and current_value == "0.15":
+                # Switching from CV to SNR
+                self.snr_threshold_var.set("8")
+            elif selected_method == "CV" and current_value == "8":
+                # Switching from SNR to CV
+                self.snr_threshold_var.set("0.15")
+        else:
+            # Hide threshold input field
+            self.snr_threshold_frame.pack_forget()
+            
     def create_widgets(self):
         """Create the dialog widgets."""
         # Main frame with scrollbar
@@ -144,6 +164,89 @@ class PreprocessingDialog:
         options_frame = tk.Frame(scrollable_frame)
         options_frame.pack(fill="x", pady=10)
         
+        # SNR rejection method
+        snr_options = ["None", "SNR", "CV"]
+        self.snr_rejection_var = tk.StringVar(value=self.settings.get("snr_rejection", "None"))
+        
+        # Create frame for the feature
+        self.snr_rejection_frame = tk.Frame(options_frame)
+        self.snr_rejection_frame.pack(fill="x", pady=5)
+        
+        snr_rejection_label = tk.Label(
+            self.snr_rejection_frame,
+            text="SNR Rejection Method:",
+            font=("Arial", 11)
+        )
+        snr_rejection_label.pack(side="left")
+        
+        # Add the dropdown widget
+        self.snr_rejection_dropdown = ttk.Combobox(
+            self.snr_rejection_frame,
+            textvariable=self.snr_rejection_var,
+            values=snr_options,
+            state="readonly",
+            width=15,
+            font=("Arial", 10)
+        )
+        self.snr_rejection_dropdown.pack(side="left", padx=(10, 0))
+        self.snr_rejection_dropdown.set(self.snr_rejection_var.get())
+
+        # Bind the change event to the dropdown
+        self.snr_rejection_dropdown.bind('<<ComboboxSelected>>', self.on_snr_rejection_change)
+        
+        # Add info button
+        snr_rejection_info_btn = tk.Button(
+            self.snr_rejection_frame,
+            text="?",
+            command=self.show_snr_rejection_info,
+            width=2,
+            height=1,
+            bg="lightblue",
+            font=("Arial", 8)
+        )
+        snr_rejection_info_btn.pack(side="right")
+        
+        # SNR/CV threshold input frame (initially hidden)
+        self.snr_threshold_frame = tk.Frame(options_frame)
+        
+        # Label for threshold
+        snr_threshold_label = tk.Label(
+            self.snr_threshold_frame,
+            text="Threshold Value:",
+            font=("Arial", 11)
+        )
+        snr_threshold_label.pack(side="left")
+        
+        # Register validation function for positive numeric input
+        vcmd_snr_threshold = (self.dialog.register(self.validate_positive_numeric_input), '%P')
+        
+        # Threshold input field - use single threshold value
+        self.snr_threshold_var = tk.StringVar(value=str(self.settings.get("snr_threshold", 8)))
+        self.snr_threshold_entry = tk.Entry(
+            self.snr_threshold_frame,
+            textvariable=self.snr_threshold_var,
+            width=10,
+            font=("Arial", 10),
+            validate='key',
+            validatecommand=vcmd_snr_threshold
+        )
+        self.snr_threshold_entry.pack(side="left", padx=(10, 0))
+        
+        # Info button for threshold
+        snr_threshold_info_btn = tk.Button(
+            self.snr_threshold_frame,
+            text="?",
+            command=self.show_snr_threshold_info,
+            width=2,
+            height=1,
+            bg="lightblue",
+            font=("Arial", 8)
+        )
+        snr_threshold_info_btn.pack(side="right")
+        
+        # Show/hide threshold field based on initial selection
+        self.on_snr_rejection_change()
+
         # Short Channel Correction
         self.short_channel_var = tk.BooleanVar(value=self.settings.get("short_channel_correction", True))
         short_channel_frame = tk.Frame(options_frame)
@@ -651,6 +754,14 @@ class PreprocessingDialog:
     def show_l_trans_info(self):
         """Show information about low transition bandwidth."""
         PreprocessingInfo.show_l_trans_info()
+    
+    def show_snr_rejection_info(self):
+        """Show information about SNR rejection methods."""
+        PreprocessingInfo.show_snr_rejection_info()
+    
+    def show_snr_threshold_info(self):
+        """Show information about SNR/CV threshold values."""
+        PreprocessingInfo.show_snr_threshold_info()
 
     def reset_to_defaults(self):
         """Reset all settings to their default values."""
@@ -665,6 +776,8 @@ class PreprocessingDialog:
         self.coupling_threshold_var.set("0.8")
         self.reject_criteria_var.set("80")
         self.unwanted_labels_var.set("15.0")
+        self.snr_rejection_var.set("None")
+        self.snr_threshold_var.set("8")  # Default for SNR method
         # Update UI based on default baseline method
         self.on_baseline_method_change()
     
@@ -689,6 +802,22 @@ class PreprocessingDialog:
     
     def validate_inputs(self):
         """Validate all input fields before accepting."""
+        # Validate SNR/CV threshold if SNR or CV method is selected
+        if self.snr_rejection_var.get() in ["SNR", "CV"]:
+            threshold_str = self.snr_threshold_var.get().strip()
+            if not threshold_str:
+                method_name = self.snr_rejection_var.get()
+                tk.messagebox.showerror("Invalid Input", f"Please enter a threshold value for {method_name} rejection.")
+                return False
+            try:
+                threshold_value = float(threshold_str)
+                if threshold_value <= 0:
+                    tk.messagebox.showerror("Invalid Input", "Threshold value must be positive.")
+                    return False
+            except ValueError:
+                tk.messagebox.showerror("Invalid Input", "Threshold value must be a valid number.")
+                return False
+            
         # Validate tmin if xSecondsBefore is selected
         if self.baseline_correction_var.get() == "xSecondsBefore":
             tmin_str = self.tmin_var.get().strip()
@@ -802,6 +931,9 @@ class PreprocessingDialog:
         if not self.validate_inputs():
             return
         
+        # Get threshold value
+        snr_threshold = float(self.snr_threshold_var.get().strip()) if self.snr_rejection_var.get() in ["SNR", "CV"] else self.settings.get("snr_threshold", 8)
+
         # Get tmin value
         if self.baseline_correction_var.get() == "xSecondsBefore":
             tmin_value = int(self.tmin_var.get().strip())
@@ -825,7 +957,10 @@ class PreprocessingDialog:
         "l_trans_bandwidth": float(self.l_trans_var.get().strip()),           
         "scalp_coupling_threshold": float(self.coupling_threshold_var.get().strip()),
         "reject_criteria": {"hbo": reject_criteria_value},
-        "unwanted": unwanted_labels
+        "unwanted": unwanted_labels,
+        "snr_rejection": self.snr_rejection_var.get(),
+        "snr_threshold": snr_threshold,
+        
         }
         
         self.dialog.unbind_all("<MouseWheel>") # Cleanup mousewheel binding
