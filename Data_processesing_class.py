@@ -20,7 +20,7 @@ class fNIRS_data_load:
                  reject_criteria: dict = dict(hbo=80e-6), tmin=0, tmax=15, baseline=(None, 0), data_types=[], number_of_data_types=2,
                  data_name="None", interpolate_bad_channels=False, unwanted = ["15.0"], baseline_correction: str = "Previous rest period",
                  filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
-                 snr_rejection: bool = True, snr_threshold : int = 8):    
+                 snr_rejection: str = None, snr_threshold : int = 8):    
             
         self.number_of_participants = number_of_participants
         self.file_path = file_path
@@ -70,13 +70,23 @@ class fNIRS_data_load:
                     raw_intensity.annotations.delete(unwanted)
 
             if self.snr_rejection:
-                snr = snr_rejection(raw_intensity)
+                snr = snr_rejection(raw_intensity, self.snr_rejection)
+                if self.snr_rejection == "SNR" and self.snr_threshold < 1:
+                    raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
+                if self.snr_rejection == "CV" and self.snr_threshold > 1:
+                    raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
                 snr_bad_channels = list(compress(raw_intensity.ch_names, snr < self.snr_threshold))
                 raw_intensity.info["bads"] = snr_bad_channels
             else:
                 snr_bad_channels = []
-
+                
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+            
+            raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+
+            # Check channel name consistency
+            assert raw_intensity.ch_names == raw_od.ch_names, \
+                f"Channel names mismatch!\nraw_intensity: {len(raw_intensity.ch_names)} channels\nraw_od: {len(raw_od.ch_names)} channels"
             
             if self.short_channel_correction:
                 raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
