@@ -303,3 +303,4 @@ yarn-error.log*
 # MATLAB files
 *.asv
 *.m~
+env
