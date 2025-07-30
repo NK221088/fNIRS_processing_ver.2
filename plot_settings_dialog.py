@@ -13,7 +13,7 @@ class PlotSettingsDialog:
         # Create the dialog window
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Plot Settings")
-        self.dialog.geometry("450x450")  # Reduced height since we removed file format section
+        self.dialog.geometry("450x400")  # Reduced height since we removed interpolate bad channels
         self.dialog.resizable(False, False)
         
         # Make dialog modal
@@ -42,7 +42,7 @@ class PlotSettingsDialog:
         
         # Calculate center position
         dialog_width = 450
-        dialog_height = 450  # Updated height
+        dialog_height = 400  # Updated height
         x = parent_x + (parent_width - dialog_width) // 2
         y = parent_y + (parent_height - dialog_height) // 2
         
@@ -207,30 +207,6 @@ class PlotSettingsDialog:
         )
         self.bad_channels_strategy_combo.pack(fill="x", padx=10, pady=(0, 10))
         
-        # Interpolate Bad Channels
-        interpolate_frame = tk.Frame(processing_frame)
-        interpolate_frame.pack(fill="x", padx=10, pady=5)
-        
-        self.interpolate_bad_channels_var = tk.BooleanVar(value=self.settings.get("interpolate_bad_channels", False))
-        self.interpolate_checkbox = tk.Checkbutton(
-            interpolate_frame,
-            text="Interpolate Bad Channels",
-            variable=self.interpolate_bad_channels_var,
-            font=("Arial", 11)
-        )
-        self.interpolate_checkbox.pack(side="left")
-        
-        info_button3 = tk.Button(
-            interpolate_frame, 
-            text="?", 
-            command=PlotSettingsInfo.show_interpolate_info,
-            width=2,
-            height=1,
-            bg="lightblue",
-            font=("Arial", 8)
-        )
-        info_button3.pack(side="right")
-        
         # Threshold
         threshold_frame = tk.Frame(processing_frame)
         threshold_frame.pack(fill="x", padx=10, pady=5)
@@ -297,7 +273,6 @@ class PlotSettingsDialog:
         """Reset all settings to their default values."""
         self.combine_strategy_var.set("mean")
         self.bad_channels_strategy_var.set("all")
-        self.interpolate_bad_channels_var.set(False)
         self.threshold_var.set("3")
         self.save_plot_var.set(False)
     
@@ -329,7 +304,6 @@ class PlotSettingsDialog:
         self.result = {
             "combine_strategy": self.combine_strategy_var.get(),
             "bad_channels_strategy": self.bad_channels_strategy_var.get(),
-            "interpolate_bad_channels": self.interpolate_bad_channels_var.get(),
             "threshold": float(self.threshold_var.get().strip()),
             "save_plot": self.save_plot_var.get()
         }

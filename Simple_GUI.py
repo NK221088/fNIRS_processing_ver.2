@@ -578,6 +578,7 @@ def open_preprocessing_dialog():
     current_preprocessing_settings = {
         "short_channel_correction": settings["short_channel_correction"],
         "negative_correlation_enhancement": settings["negative_correlation_enhancement"],
+        "interpolate_bad_channels": settings["interpolate_bad_channels"],
         "baseline_correction": settings["baseline_correction"],
         "tmin": settings["tmin"],
         "filter_lower_value": settings["filter_lower_value"],
@@ -596,6 +597,7 @@ def open_preprocessing_dialog():
         # Update the global settings
         settings["short_channel_correction"] = result["short_channel_correction"]
         settings["negative_correlation_enhancement"] = result["negative_correlation_enhancement"]
+        settings["interpolate_bad_channels"] = result["interpolate_bad_channels"]
         settings["baseline_correction"] = result["baseline_correction"]
         settings["tmin"] = result["tmin"]
         settings["filter_lower_value"] = result["filter_lower_value"]
@@ -608,11 +610,12 @@ def open_preprocessing_dialog():
         settings["snr_threshold"] = result["snr_threshold"]
 
         # Mark that data needs to be reloaded
-        global previous_short_channel_correction, previous_negative_correlation_enhancement, previous_tmin, previous_filter_lower_value, previous_filter_upper_value
+        global previous_short_channel_correction, previous_negative_correlation_enhancement, previous_interpolate_bad_channels,previous_tmin, previous_filter_lower_value, previous_filter_upper_value
         global previous_h_trans_bandwidth, previous_l_trans_bandwidth, previous_scalp_coupling_threshold, previous_reject_criteria, previous_snr_rejection, previous_snr_threshold
         previous_short_channel_correction = None  # Force reload
-        previous_negative_correlation_enhancement = None  
-        previous_baseline_correction = None 
+        previous_negative_correlation_enhancement = None
+        previous_baseline_correction = None
+        previous_interpolate_bad_channels = None
         previous_tmin = None
         previous_filter_lower_value = None
         previous_filter_upper_value = None
@@ -654,7 +657,6 @@ def open_plot_settings_dialog():
         "epoch_type": settings["epoch_type"],
         "combine_strategy": settings["combine_strategy"],
         "bad_channels_strategy": settings["bad_channels_strategy"],
-        "interpolate_bad_channels": settings["interpolate_bad_channels"],
         "threshold": settings["threshold"],
         "save_plot": settings["save_plot"]
     }
@@ -668,18 +670,16 @@ def open_plot_settings_dialog():
         # Update the global settings
         settings["combine_strategy"] = result["combine_strategy"]
         settings["bad_channels_strategy"] = result["bad_channels_strategy"]
-        settings["interpolate_bad_channels"] = result["interpolate_bad_channels"]
         settings["threshold"] = result["threshold"]
         settings["save_plot"] = result["save_plot"]
         
         # Mark that data needs to be reloaded if certain settings changed
-        global previous_combine_strategy, previous_bad_channels_strategy, previous_interpolate_bad_channels, previous_threshold
-    
+        global previous_combine_strategy, previous_bad_channels_strategy, previous_threshold
+
         
         # Update other tracking variables
         previous_combine_strategy = settings["combine_strategy"]
         previous_bad_channels_strategy = settings["bad_channels_strategy"]
-        previous_interpolate_bad_channels = settings["interpolate_bad_channels"]
         previous_threshold = settings["threshold"]
 
 plot_settings_button = tk.Button(

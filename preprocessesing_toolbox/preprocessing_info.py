@@ -224,3 +224,30 @@ class PreprocessingInfo:
         """
 
         messagebox.showinfo("Threshold Value", info_text)
+    
+    @staticmethod
+    def show_interpolate_info():
+        """Display information about interpolation of bad channels."""
+        info_text = """
+        Interpolate Bad Channels:
+        
+        Interpolation is used to estimate and replace data in channels 
+        that have been marked as 'bad' due to excessive noise or signal loss.
+        
+        Key Points:
+        • Only channels marked as bad (raw.info['bads']) are interpolated.
+        • Uses neighboring good channels to estimate the missing signal.
+        • Helps preserve spatial consistency in the data.
+        
+        When to Use:
+        • After identifying bad channels (e.g., from visual inspection or metrics)
+        • Before further analysis like averaging or source localization
+        
+        MNE Method Used:
+        • raw.interpolate_bads()
+
+        Note:
+        • Interpolation is not a substitute for good data quality.
+        • Should be used with care, especially if many channels are bad.
+        """
+        messagebox.showinfo("Interpolate Bad Channels", info_text)

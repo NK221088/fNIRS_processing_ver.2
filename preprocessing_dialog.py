@@ -11,7 +11,7 @@ class PreprocessingDialog:
         # Create the dialog window
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Preprocessing Options")
-        self.dialog.geometry("450x550")  # Increased height for additional fields
+        self.dialog.geometry("450x600")  # Increased height for additional fields including interpolate bad channels
         self.dialog.resizable(False, False)
         
         # Make dialog modal
@@ -46,7 +46,7 @@ class PreprocessingDialog:
         
         # Calculate center position
         dialog_width = 450
-        dialog_height = 550  # Updated height
+        dialog_height = 600  # Updated height
         x = parent_x + (parent_width - dialog_width) // 2
         y = parent_y + (parent_height - dialog_height) // 2
         
@@ -296,6 +296,30 @@ class PreprocessingDialog:
             font=("Arial", 8)
         )
         negative_info_btn.pack(side="right")
+        
+        # Interpolate Bad Channels (moved from plot settings)
+        interpolate_frame = tk.Frame(options_frame)
+        interpolate_frame.pack(fill="x", pady=5)
+        
+        self.interpolate_bad_channels_var = tk.BooleanVar(value=self.settings.get("interpolate_bad_channels", False))
+        self.interpolate_checkbox = tk.Checkbutton(
+            interpolate_frame,
+            text="Interpolate Bad Channels",
+            variable=self.interpolate_bad_channels_var,
+            font=("Arial", 11)
+        )
+        self.interpolate_checkbox.pack(side="left")
+        
+        info_button_interpolate = tk.Button(
+            interpolate_frame, 
+            text="?", 
+            command=self.show_interpolate_info,
+            width=2,
+            height=1,
+            bg="lightblue",
+            font=("Arial", 8)
+        )
+        info_button_interpolate.pack(side="right")
         
         # Baseline Correction
         self.baseline_correction_frame = tk.Frame(options_frame)
@@ -718,6 +742,10 @@ class PreprocessingDialog:
         """Show information about negative correlation enhancement."""
         PreprocessingInfo.show_negative_corr_info()
     
+    def show_interpolate_info(self):
+        """Show information about interpolate bad channels."""
+        PreprocessingInfo.show_interpolate_info()
+    
     def show_baseline_correction_info(self):
         """Show information about baseline correction."""
         available_methods = self.get_baseline_correction_methods()
@@ -767,6 +795,7 @@ class PreprocessingDialog:
         """Reset all settings to their default values."""
         self.short_channel_var.set(True)
         self.negative_corr_var.set(False)
+        self.interpolate_bad_channels_var.set(False)
         self.baseline_correction_var.set("Previous rest period")
         self.tmin_var.set("-5")
         self.filter_lower_var.set("0.05")  
@@ -949,6 +978,7 @@ class PreprocessingDialog:
         self.result = {
         "short_channel_correction": self.short_channel_var.get(),
         "negative_correlation_enhancement": self.negative_corr_var.get(),
+        "interpolate_bad_channels": self.interpolate_bad_channels_var.get(),
         "baseline_correction": self.baseline_correction_var.get(),
         "tmin": tmin_value,
         "filter_lower_value": float(self.filter_lower_var.get().strip()),      
