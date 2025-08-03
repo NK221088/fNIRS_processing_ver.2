@@ -251,3 +251,21 @@ class PreprocessingInfo:
         • Should be used with care, especially if many channels are bad.
         """
         messagebox.showinfo("Interpolate Bad Channels", info_text)
+    
+    @staticmethod
+    def show_tddr_info():
+        """Display information about TDDR (Time-Domain Deconvolution Regression)."""
+        info_text = (
+            "TDDR (Time-Domain Deconvolution Regression):\n\n"
+            "TDDR is a method used to enhance the temporal resolution of fNIRS data "
+            "by deconvolving the hemodynamic response function (HRF) from the raw signal.\n\n"
+            "Key Features:\n"
+            "• Improves detection of rapid changes in brain activity\n"
+            "• Reduces the effects of slow drifts and noise\n"
+            "• Can be applied after preprocessing steps like filtering and baseline correction\n\n"
+            "When to Use:\n"
+            "• When high temporal resolution is required for analysis\n"
+            "• In studies focusing on fast neural dynamics or transient events\n\n"
+            "Note: TDDR may require careful parameter tuning based on the specific dataset."
+        )
+        messagebox.showinfo("TDDR Information", info_text)

@@ -20,7 +20,7 @@ class fNIRS_data_load:
                  reject_criteria: dict = dict(hbo=80e-6), tmin=0, tmax=15, baseline=(None, 0), data_types=[], number_of_data_types=2,
                  data_name="None", interpolate_bad_channels=False, unwanted = ["15.0"], baseline_correction: str = "Previous rest period",
                  filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
-                 snr_rejection: str = None, snr_threshold : int = 8):    
+                 snr_rejection: str = None, snr_threshold : int = 8, apply_tddr: bool = False):    
             
         self.number_of_participants = number_of_participants
         self.file_path = file_path
@@ -47,6 +47,7 @@ class fNIRS_data_load:
         self.l_trans_bandwidth = l_trans_bandwidth
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
+        self.apply_tddr = apply_tddr
         setattr(self, 'Individual_participants', [])
         for name in self.data_types:
             setattr(self, f'all_{name}', [])
@@ -93,6 +94,9 @@ class fNIRS_data_load:
             if self.short_channel_correction:
                 raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
             raw_od = mne_nirs.channels.get_long_channels(raw_od)
+            
+            if self.apply_tddr:
+                raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
 
             sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
 
@@ -109,6 +113,7 @@ class fNIRS_data_load:
                 raw_od.interpolate_bads()
 
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
+    
 
             raw_haemo_unfiltered = raw_haemo.copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
@@ -187,7 +192,7 @@ class fNIRS_data_load:
 
 class AudioSpeechNoise_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction : bool, negative_correlation_enhancement : bool, interpolate_bad_channels:bool=False, tmin:int = -5,baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
-                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold : int = 8):
+                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold : int = 8, apply_tddr: bool = False):
         self.number_of_participants = 17
         self.all_speech = []
         self.all_noise = []
@@ -215,6 +220,7 @@ class AudioSpeechNoise_data_load(fNIRS_data_load):
         self.l_trans_bandwidth = l_trans_bandwidth
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
+        self.apply_tddr = apply_tddr
         super().__init__(
                         number_of_participants = self.number_of_participants,
                         file_path = self.file_path,
@@ -238,7 +244,8 @@ class AudioSpeechNoise_data_load(fNIRS_data_load):
                         h_trans_bandwidth = self.h_trans_bandwidth,
                         l_trans_bandwidth = self.l_trans_bandwidth,
                         snr_rejection = self.snr_rejection,
-                        snr_threshold = self.snr_threshold
+                        snr_threshold = self.snr_threshold,
+                        apply_tddr = self.apply_tddr
                     )
 
     def define_raw_intensity(self, sub_id):
@@ -251,7 +258,7 @@ class AudioSpeechNoise_data_load(fNIRS_data_load):
 
 class fNIRS_motor_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
-                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold: int = 8):
+                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 1
         self.all_tapping = []
         self.all_control = []
@@ -279,6 +286,7 @@ class fNIRS_motor_data_load(fNIRS_data_load):
         self.l_trans_bandwidth = l_trans_bandwidth
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
+        self.apply_tddr = apply_tddr
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -301,7 +309,8 @@ class fNIRS_motor_data_load(fNIRS_data_load):
             h_trans_bandwidth = self.h_trans_bandwidth,
             l_trans_bandwidth = self.l_trans_bandwidth,
             snr_rejection = self.snr_rejection,
-            snr_threshold = self.snr_threshold
+            snr_threshold = self.snr_threshold,
+            apply_tddr = self.apply_tddr
         )
 
     def define_raw_intensity(self, sub_id):
@@ -315,7 +324,7 @@ class fNIRS_motor_data_load(fNIRS_data_load):
 
 class fNIRS_full_motor_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
-                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold: int = 8):
+                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 5
         self.all_tapping = []
         self.all_control = []
@@ -343,6 +352,7 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
         self.l_trans_bandwidth = l_trans_bandwidth
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
+        self.apply_tddr = apply_tddr
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -365,7 +375,9 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
             l_trans_bandwidth=self.l_trans_bandwidth,
             h_trans_bandwidth=self.h_trans_bandwidth,
             snr_rejection=self.snr_rejection,
-            snr_threshold=self.snr_threshold)
+            snr_threshold=self.snr_threshold,
+            apply_tddr=self.apply_tddr
+        )
 
     def define_raw_intensity(self, sub_id):
         raw_intensity = mne.io.read_raw_snirf(f"Dataset/rob-luke/rob-luke-BIDS-NIRS-Tapping-e262df8/sub-{sub_id}/nirs/sub-{sub_id}_task-tapping_nirs.snirf", verbose=True)
@@ -376,7 +388,7 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
 
 class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
-                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold: int = 8):
+                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 4
         self.all_tapping = []
         self.all_control = []
@@ -404,6 +416,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
         self.l_trans_bandwidth = l_trans_bandwidth
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
+        self.apply_tddr = apply_tddr
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -427,7 +440,8 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
             h_trans_bandwidth = self.h_trans_bandwidth,
             l_trans_bandwidth = self.l_trans_bandwidth,
             snr_rejection = self.snr_rejection,
-            snr_threshold = self.snr_threshold
+            snr_threshold = self.snr_threshold,
+            apply_tddr = self.apply_tddr
         )
 
     def define_raw_intensity(self, sub_id):
@@ -471,6 +485,9 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
                 raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
             raw_od = mne_nirs.channels.get_long_channels(raw_od)
 
+            if self.apply_tddr:
+                raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
+                
             sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
 
             sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
@@ -578,7 +595,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
 
 class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
-                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold: int = 8):
+                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 7
         self.all_tapping = []
         self.all_control = []
@@ -607,6 +624,7 @@ class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
         self.l_trans_bandwidth = l_trans_bandwidth
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
+        self.apply_tddr = apply_tddr
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -627,7 +645,8 @@ class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
             filter_lower_value=self.filter_lower_value,
             filter_upper_value=self.filter_upper_value,
             h_trans_bandwidth=self.h_trans_bandwidth,
-            l_trans_bandwidth=self.l_trans_bandwidth
+            l_trans_bandwidth=self.l_trans_bandwidth,
+            apply_tddr=self.apply_tddr
         )
 
     def define_raw_intensity(self, sub_id):
@@ -641,7 +660,7 @@ class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
 
 class fNIRS_CUH_patient_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
-                reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold: int = 8):
+                reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 48
         self.all_tapping = []
         self.all_control = []
@@ -669,6 +688,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
         self.l_trans_bandwidth = l_trans_bandwidth
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
+        self.apply_tddr = apply_tddr
 
         super().__init__(
             number_of_participants=self.number_of_participants,
@@ -693,7 +713,8 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
             h_trans_bandwidth = self.h_trans_bandwidth,
             l_trans_bandwidth = self.l_trans_bandwidth,
             snr_rejection = self.snr_rejection,
-            snr_threshold = self.snr_threshold
+            snr_threshold = self.snr_threshold,
+            apply_tddr = self.apply_tddr
         )
 
     def define_raw_intensity(self, sub_id):
@@ -744,6 +765,9 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
                 raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
             raw_od = mne_nirs.channels.get_long_channels(raw_od)
 
+            if self.apply_tddr:
+                raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
+                
             sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
 
             sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
@@ -852,7 +876,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
 
 class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
-                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold: int = 8):
+                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 4
         self.all_tapping = []
         self.all_control = []
@@ -880,6 +904,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
         self.l_trans_bandwidth = l_trans_bandwidth
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
+        self.apply_tddr = apply_tddr
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -903,7 +928,8 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
             h_trans_bandwidth = self.h_trans_bandwidth,
             l_trans_bandwidth = self.l_trans_bandwidth,
             snr_rejection = self.snr_rejection,
-            snr_threshold = self.snr_threshold
+            snr_threshold = self.snr_threshold,
+            apply_tddr = self.apply_tddr
         )
 
     def define_raw_intensity(self, sub_id):
@@ -951,7 +977,10 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
             if self.short_channel_correction:
                 raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
             raw_od = mne_nirs.channels.get_long_channels(raw_od)
-
+            
+            if self.apply_tddr:
+                raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
+                
             sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
 
             sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
@@ -1090,7 +1119,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None,
-                 snr_threshold: int = 8):
+                 snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 4
         self.all_tapping = []
         self.all_control = []
@@ -1118,6 +1147,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         self.l_trans_bandwidth = l_trans_bandwidth
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
+        self.apply_tddr = apply_tddr
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -1141,7 +1171,8 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
             h_trans_bandwidth = self.h_trans_bandwidth,
             l_trans_bandwidth = self.l_trans_bandwidth,
             snr_rejection = self.snr_rejection,
-            snr_threshold = self.snr_threshold
+            snr_threshold = self.snr_threshold,
+            apply_tddr = self.apply_tddr
         )
 
     def define_raw_intensity(self, sub_id):
@@ -1187,6 +1218,9 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
             if self.short_channel_correction:
                 raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
             raw_od = mne_nirs.channels.get_long_channels(raw_od)
+            
+            if self.apply_tddr:
+                raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
 
             sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
 
@@ -1327,7 +1361,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None,
-                 snr_threshold: int = 8):
+                 snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 9
         self.all_tapping = []
         self.all_control = []
@@ -1355,6 +1389,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
         self.l_trans_bandwidth = l_trans_bandwidth
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
+        self.apply_tddr = apply_tddr
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -1378,7 +1413,8 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
             h_trans_bandwidth = self.h_trans_bandwidth,
             l_trans_bandwidth = self.l_trans_bandwidth,
             snr_rejection = self.snr_rejection,
-            snr_threshold = self.snr_threshold
+            snr_threshold = self.snr_threshold,
+            apply_tddr = self.apply_tddr
         )
 
     def define_raw_intensity(self, sub_id):
@@ -1560,7 +1596,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None,
-                 snr_threshold: int = 8):
+                 snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 9
         self.all_tapping = []
         self.all_control = []
@@ -1588,6 +1624,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
         self.l_trans_bandwidth = l_trans_bandwidth
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
+        self.apply_tddr = apply_tddr
 
         super().__init__(
             number_of_participants=self.number_of_participants,
@@ -1612,7 +1649,8 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
             h_trans_bandwidth = self.h_trans_bandwidth,
             l_trans_bandwidth = self.l_trans_bandwidth,
             snr_rejection = self.snr_rejection,
-            snr_threshold = self.snr_threshold
+            snr_threshold = self.snr_threshold,
+            apply_tddr = self.apply_tddr
             )
 
     def define_raw_intensity(self, sub_id):
@@ -1655,6 +1693,9 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
             if self.short_channel_correction:
                 raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
             raw_od = mne_nirs.channels.get_long_channels(raw_od)
+            
+            if self.apply_tddr:
+                raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
 
             sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
 
@@ -1774,7 +1815,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None,
-                 snr_threshold: int = 8):
+                 snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 11
         self.all_tapping = []
         self.all_control = []
@@ -1803,6 +1844,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
         self.l_trans_bandwidth = l_trans_bandwidth
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
+        self.apply_tddr = apply_tddr
         
         super().__init__(
             number_of_participants=self.number_of_participants,
@@ -1827,7 +1869,8 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
             h_trans_bandwidth = self.h_trans_bandwidth,
             l_trans_bandwidth = self.l_trans_bandwidth,
             snr_rejection = self.snr_rejection,
-            snr_threshold = self.snr_threshold
+            snr_threshold = self.snr_threshold,
+            apply_tddr = self.apply_tddr
         )
 
     def define_raw_intensity(self, sub_id):
@@ -1872,6 +1915,9 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
             if self.short_channel_correction:
                 raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
             raw_od = mne_nirs.channels.get_long_channels(raw_od)
+            
+            if self.apply_tddr:
+                raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
 
             sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
 
@@ -1976,7 +2022,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None,
-                 snr_threshold: int = 8):
+                 snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 7
         self.all_tapping = []
         self.all_control = []
@@ -2027,7 +2073,8 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
             h_trans_bandwidth = self.h_trans_bandwidth,
             l_trans_bandwidth = self.l_trans_bandwidth,
             snr_rejection = self.snr_rejection,
-            snr_threshold = self.snr_threshold
+            snr_threshold = self.snr_threshold,
+            apply_tddr = self.apply_tddr
         )
 
     def define_raw_intensity(self, sub_id):
@@ -2071,6 +2118,9 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
             if self.short_channel_correction:
                 raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
             raw_od = mne_nirs.channels.get_long_channels(raw_od)
+            
+            if self.apply_tddr:
+                raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
 
             sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
 
@@ -2216,7 +2266,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None,
-                 snr_threshold: int = 8):
+                 snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 6
         self.all_tapping = []
         self.all_control = []
@@ -2253,7 +2303,8 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.l_trans_bandwidth = l_trans_bandwidth
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
-        
+        self.apply_tddr = apply_tddr
+
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -2277,7 +2328,8 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             h_trans_bandwidth = self.h_trans_bandwidth,
             l_trans_bandwidth = self.l_trans_bandwidth,
             snr_rejection = self.snr_rejection,
-            snr_threshold = self.snr_threshold
+            snr_threshold = self.snr_threshold,
+            apply_tddr = self.apply_tddr
         )
 
     def define_raw_intensity(self, sub_id):
@@ -2320,6 +2372,9 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             if self.short_channel_correction:
                 raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
             raw_od = mne_nirs.channels.get_long_channels(raw_od)
+            
+            if self.apply_tddr:
+                raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
 
             sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
 
@@ -2472,7 +2527,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None,
-                 snr_threshold: int = 8):
+                 snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 68
         self.all_tapping = []
         self.all_control = []
@@ -2500,6 +2555,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
         self.l_trans_bandwidth = l_trans_bandwidth
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
+        self.apply_tddr = apply_tddr
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -2523,7 +2579,8 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
             h_trans_bandwidth = self.h_trans_bandwidth,
             l_trans_bandwidth = self.l_trans_bandwidth,
             snr_rejection = self.snr_rejection,
-            snr_threshold = self.snr_threshold
+            snr_threshold = self.snr_threshold,
+            apply_tddr = self.apply_tddr
         )
 
     def find_snirf_file(self, p_folder_path):
@@ -2594,6 +2651,9 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
                 if self.short_channel_correction:
                     raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
                 raw_od = mne_nirs.channels.get_long_channels(raw_od)
+                
+                if self.apply_tddr:
+                    raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
 
                 sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
 
@@ -2711,7 +2771,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: bool = False,
-                 snr_threshold: float = 3.0):
+                 snr_threshold: float = 8.0, apply_tddr: bool = False):
         self.number_of_participants = 68
         self.all_tapping = []
         self.all_control = []
@@ -2740,6 +2800,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
         self.l_trans_bandwidth = l_trans_bandwidth
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
+        self.apply_tddr = apply_tddr
         super().__init__(
             number_of_participants=self.number_of_participants,
             file_path=self.file_path,
@@ -2763,7 +2824,8 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
             h_trans_bandwidth = self.h_trans_bandwidth,
             l_trans_bandwidth = self.l_trans_bandwidth,
             snr_rejection = self.snr_rejection,
-            snr_threshold = self.snr_threshold
+            snr_threshold = self.snr_threshold,
+            apply_tddr = self.apply_tddr
             )
 
     def find_snirf_file(self, folder_path):
@@ -2835,6 +2897,9 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                 if self.short_channel_correction:
                     raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
                 raw_od = mne_nirs.channels.get_long_channels(raw_od)
+                
+                if self.apply_tddr:
+                    raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
 
                 sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
 
