@@ -408,7 +408,7 @@ class PreprocessingDialog:
         
         # tmin input field - convert stored negative value to positive for display
         stored_tmin = self.settings.get("tmin", -5)
-        display_tmin = abs(stored_tmin) if stored_tmin < 0 else stored_tmin
+        display_tmin = abs(stored_tmin) if stored_tmin < 0 else (stored_tmin if stored_tmin != 0 else 5)
         self.tmin_var = tk.StringVar(value=str(display_tmin))
         self.tmin_entry = tk.Entry(
             self.tmin_frame,
