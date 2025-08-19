@@ -47,7 +47,8 @@ settings = {
     "combine_strategy": "mean",
     "interpolate_bad_channels": False,
     "bad_channels_strategy": "all",
-    "threshold": 3,       
+    "threshold": 3,
+    "compare_with_raw": False, 
 }
 
 first_data_load = True
@@ -451,11 +452,15 @@ def run_analysis():
                 
                 # If found, append their epochs to our list
                 if individual is not None:
-                    selected_all_epochs.append(individual.epochs)
-            
+                    if settings["compare_with_raw"]:
+                        # If comparing with raw, append both epochs and raw epochs
+                        selected_all_epochs.append(individual.raw_epochs)
+                    else:
+                        selected_all_epochs.append(individual.epochs)            
             figures = [standard_fNIRS_response_plot(selected_all_epochs, data_types, bad_channels_strategy=settings["bad_channels_strategy"],
                                                     save=settings["save_plot"], combine_strategy=settings["combine_strategy"],
                                                     threshold=settings["threshold"], data_set=data_name, picks_=picks)]
+            
         elif settings["plot_type"] == "paradigm_plot":
             selected_individual = settings["individual"]
             selected_channels = [channel for channel, var in channel_vars.items() if var.get()]
@@ -663,6 +668,7 @@ plot_settings_label.pack(anchor="w")
 def open_plot_settings_dialog():
     """Open the plot settings dialog."""
     current_plot_settings = {
+        "plot_type": settings["plot_type"],
         "epoch_type": settings["epoch_type"],
         "combine_strategy": settings["combine_strategy"],
         "bad_channels_strategy": settings["bad_channels_strategy"],
@@ -681,6 +687,8 @@ def open_plot_settings_dialog():
         settings["bad_channels_strategy"] = result["bad_channels_strategy"]
         settings["threshold"] = result["threshold"]
         settings["save_plot"] = result["save_plot"]
+        if "compare_with_raw" in result.keys():
+            settings["compare_with_raw"] = result["compare_with_raw"]
         
         # Mark that data needs to be reloaded if certain settings changed
         global previous_combine_strategy, previous_bad_channels_strategy, previous_threshold

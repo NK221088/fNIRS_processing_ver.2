@@ -9,11 +9,12 @@ class PlotSettingsDialog:
         self.parent = parent
         self.result = None
         self.settings = current_settings.copy()
+        self.plot_type = current_settings.get("plot_type", "")
         
         # Create the dialog window
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Plot Settings")
-        self.dialog.geometry("450x400")  # Reduced height since we removed interpolate bad channels
+        self.dialog.geometry("450x450")  # Increased height to accommodate new option
         self.dialog.resizable(False, False)
         
         # Make dialog modal
@@ -42,7 +43,7 @@ class PlotSettingsDialog:
         
         # Calculate center position
         dialog_width = 450
-        dialog_height = 400  # Updated height
+        dialog_height = 450  # Updated height
         x = parent_x + (parent_width - dialog_width) // 2
         y = parent_y + (parent_height - dialog_height) // 2
         
@@ -57,6 +58,11 @@ class PlotSettingsDialog:
             return num >= 0
         except ValueError:
             return False
+    
+    def should_show_compare_option(self):
+        """Determine if the 'Compare with raw data' option should be shown."""
+        excluded_types = ["individual frequency plot", "Statistical Analysis"]
+        return self.plot_type.lower() not in [t.lower() for t in excluded_types]
     
     def create_widgets(self):
         """Create the dialog widgets."""
@@ -84,6 +90,7 @@ class PlotSettingsDialog:
         
         # Create sections
         self.create_processing_section(scrollable_frame)
+        self.create_visualization_section(scrollable_frame)
         self.create_save_section(scrollable_frame)
         
         # Separator
@@ -239,6 +246,40 @@ class PlotSettingsDialog:
         )
         self.threshold_entry.pack(side="left", padx=(10, 0))
     
+    def create_visualization_section(self, parent):
+        """Create visualization settings section."""
+        # Only show this section if compare option should be visible
+        if not self.should_show_compare_option():
+            return
+            
+        # Visualization Settings Frame
+        viz_frame = tk.LabelFrame(parent, text="Visualization Options", font=("Arial", 12, "bold"))
+        viz_frame.pack(fill="x", pady=(0, 15))
+        
+        # Compare with Raw Data Checkbox
+        compare_frame = tk.Frame(viz_frame)
+        compare_frame.pack(fill="x", padx=10, pady=10)
+        
+        self.compare_with_raw_var = tk.BooleanVar(value=self.settings.get("compare_with_raw", False))
+        self.compare_with_raw_checkbox = tk.Checkbutton(
+            compare_frame,
+            text="Compare with Raw Data",
+            variable=self.compare_with_raw_var,
+            font=("Arial", 11)
+        )
+        self.compare_with_raw_checkbox.pack(side="left")
+        
+        compare_info_btn = tk.Button(
+            compare_frame, 
+            text="?", 
+            command=PlotSettingsInfo.show_compare_with_raw_info,
+            width=2,
+            height=1,
+            bg="lightblue",
+            font=("Arial", 8)
+        )
+        compare_info_btn.pack(side="right")
+    
     def create_save_section(self, parent):
         """Create save plot settings section."""
         # Save Settings Frame
@@ -275,6 +316,8 @@ class PlotSettingsDialog:
         self.bad_channels_strategy_var.set("all")
         self.threshold_var.set("3")
         self.save_plot_var.set(False)
+        if hasattr(self, 'compare_with_raw_var'):
+            self.compare_with_raw_var.set(False)
     
     def validate_inputs(self):
         """Validate all input fields before accepting."""
@@ -307,6 +350,10 @@ class PlotSettingsDialog:
             "threshold": float(self.threshold_var.get().strip()),
             "save_plot": self.save_plot_var.get()
         }
+        
+        # Add compare_with_raw setting only if the option was shown
+        if self.should_show_compare_option():
+            self.result["compare_with_raw"] = self.compare_with_raw_var.get()
         
         self.dialog.unbind_all("<MouseWheel>")  # Cleanup mousewheel binding
         self.dialog.destroy()

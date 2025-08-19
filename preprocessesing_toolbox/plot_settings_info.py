@@ -1,74 +1,93 @@
-import tkinter.messagebox
+"""
+Information dialogs for plot settings options.
+Contains all help text and info functions for the plot settings dialog.
+"""
+
+import tkinter.messagebox as messagebox
 
 
 class PlotSettingsInfo:
     """Container for all plot settings-related information dialogs."""
-
+    
     @staticmethod
     def show_combine_strategy_info():
-        """Show information about combine strategy options."""
+        """Show information about combine strategy."""
         info_text = (
             "Combine Strategy:\n\n"
-            "• Mean: Averages all epochs for each channel\n"
-            "• Median: Uses the median value across epochs (more robust to outliers)\n"
-            "• Sum: Sums the values across epochs\n"
-            "• GFP: Global Field Power – calculates the standard deviation across channels\n\n"
-            "Choose 'mean' for standard averaging, 'median' for outlier-resistant averaging, "
-            "'sum' for cumulative signal strength, or 'gfp' to analyze global activity."
+            "Determines how multiple data channels are combined for visualization:\n\n"
+            "• Mean: Average all selected channels\n"
+            "• Median: Use median value of selected channels\n"
+            "• GFP: Global Field Power - root mean square across channels\n\n"
+            "The mean strategy is most commonly used for standard fNIRS analysis."
         )
-        tkinter.messagebox.showinfo("Combine Strategy", info_text)
-
+        messagebox.showinfo("Combine Strategy", info_text)
+    
     @staticmethod
     def show_bad_channels_info():
         """Show information about bad channels strategy."""
         info_text = (
             "Bad Channels Strategy:\n\n"
-            "• All: Combines all bad channels across all subjects and applies to each\n"
-            "• Delete: Removes all channels marked as bad from each subject individually\n"
-            "• Threshold: Removes channels marked bad in more than a certain number of epochs\n\n"
-            "This affects which channels are retained for evoked response plots."
+            "Defines how channels with poor signal quality are handled:\n\n"
+            "• All: Include all channels regardless of quality\n"
+            "• Delete: Remove bad channels from analysis entirely\n"
+            "• Threshold: Apply quality threshold to determine inclusion\n\n"
+            "Bad channels are typically identified based on signal-to-noise ratio "
+            "or other quality metrics during preprocessing."
         )
-        tkinter.messagebox.showinfo("Bad Channels Strategy", info_text)
-
-    @staticmethod
-    def show_interpolate_info():
-        """Show information about channel interpolation."""
-        info_text = (
-            "Interpolate Bad Channels:\n\n"
-            "When enabled, bad channels are reconstructed using data from neighboring channels "
-            "rather than being removed.\n\n"
-            "This can preserve spatial consistency, but should be used cautiously depending on analysis goals."
-        )
-        tkinter.messagebox.showinfo("Interpolate Bad Channels", info_text)
-
+        messagebox.showinfo("Bad Channels Strategy", info_text)
+    
     @staticmethod
     def show_threshold_info():
-        """Show information about threshold setting."""
+        """Show information about threshold parameter."""
         info_text = (
             "Threshold:\n\n"
-            "Used only with the 'threshold' bad channel strategy.\n"
-            "Channels that appear as bad more than the specified number of times "
-            "across subjects will be excluded.\n\n"
-            "Higher thresholds are more lenient; lower thresholds are stricter.\n"
-            "Example: threshold = 3 means a channel must be marked bad in more than 3 epochs to be removed."
+            "Quality threshold value used when 'threshold' bad channels strategy "
+            "is selected.\n\n"
+            "• Higher values: More stringent quality requirements\n"
+            "• Lower values: More lenient quality requirements\n"
+            "• Typical range: 1-10\n\n"
+            "Channels with quality metrics below this threshold will be "
+            "excluded from the analysis."
         )
-        tkinter.messagebox.showinfo("Threshold", info_text)
-
+        messagebox.showinfo("Threshold", info_text)
+    
+    @staticmethod
+    def show_compare_with_raw_info():
+        """Show information about comparing with raw data."""
+        info_text = (
+            "Compare with Raw Data:\n\n"
+            "When enabled, this option displays both the preprocessed fNIRS data "
+            "and the original raw data side by side in the same plot.\n\n"
+            "Benefits:\n"
+            "• Visual inspection of preprocessing effects\n"
+            "• Quality assessment of signal cleaning\n"
+            "• Identification of artifact removal effectiveness\n"
+            "• Validation of preprocessing pipeline performance\n\n"
+            "The raw data appears in a lighter color or different line style, "
+            "while the preprocessed data is highlighted as the primary signal.\n\n"
+            "This comparison is particularly useful for:\n"
+            "• Motion artifact correction evaluation\n"
+            "• Filter effects visualization\n"
+            "• Baseline correction assessment\n"
+            "• Overall preprocessing validation"
+        )
+        messagebox.showinfo("Compare with Raw Data", info_text)
+    
     @staticmethod
     def show_save_plot_info():
         """Show information about saving plots."""
         info_text = (
             "Save Plot to File:\n\n"
-            "When enabled, each generated plot is saved as a PDF file in the 'Plots' directory.\n\n"
-            "For standard fNIRS response plots, the filename will look like:\n"
-            "  'standard_fNIRS_response_plot_<timestamp>.pdf'\n\n"
-            "For other plots, the filename includes:\n"
-            "  - Epoch type\n"
-            "  - Plot type (e.g., 'topomap', 'power')\n"
-            "  - Bad channel strategy\n"
-            "  - Dataset name\n"
-            "  - Timestamp\n\n"
-            "Example:\n"
-            "  'stimulus_epochs_plot_power_threshold_datasetX_2025-07-18_15-30-00.pdf'"
+            "When enabled, the generated plot will be automatically saved "
+            "to a file in addition to being displayed.\n\n"
+            "File Details:\n"
+            "• Format: High-resolution PNG or PDF\n"
+            "• Location: Same directory as the data file\n"
+            "• Naming: Based on plot type and timestamp\n\n"
+            "Useful for:\n"
+            "• Documentation and reporting\n"
+            "• Publication preparation\n"
+            "• Batch processing workflows\n"
+            "• Creating analysis records"
         )
-        tkinter.messagebox.showinfo("Save Plot", info_text)
+        messagebox.showinfo("Save Plot", info_text)

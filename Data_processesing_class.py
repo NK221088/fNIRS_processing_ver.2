@@ -126,6 +126,8 @@ class fNIRS_data_load:
 
             # Set baseline parameter based on correction method
             baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
+            
+            raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
             epochs = mne.Epochs(
                 raw_haemo,
@@ -163,6 +165,7 @@ class fNIRS_data_load:
                 Participant_i.raw_od = raw_od_original
                 Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
                 Participant_i.raw_haemo = raw_haemo
+                Participant_i.raw_epochs = raw_epochs
                 Participant_i.epochs = epochs
                 
                 for name in self.data_types:

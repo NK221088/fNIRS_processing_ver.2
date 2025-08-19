@@ -6,6 +6,7 @@ class individual_participant_class:
         self.raw_od = None
         self.raw_haemo_unfiltered = None
         self.raw_haemo = None
+        self.raw_epochs = None
         self.epochs = None
     
     def get_name(self):
