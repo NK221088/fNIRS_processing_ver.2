@@ -251,3 +251,36 @@ class PreprocessingInfo:
         • Should be used with care, especially if many channels are bad.
         """
         messagebox.showinfo("Interpolate Bad Channels", info_text)
+    
+    @staticmethod
+    def show_tddr_info():
+        """Display information about TDDR (Temporal Derivative Distribution Repair)."""
+        info_text = (
+            "TDDR (Temporal Derivative Distribution Repair):\n\n"
+            "TDDR is a motion correction method for fNIRS that removes baseline shift "
+            "and spike artifacts without requiring any user-supplied parameters.\n\n"
+            "Key Features:\n"
+            "• Removes both spike and baseline shift motion artifacts\n"
+            "• No tuning parameters required (fully automatic)\n"
+            "• Based on robust regression using iterative reweighting\n"
+            "• Designed for optical density data (recommended by original authors)\n"
+            "• Fast computation with typical convergence in <20 iterations\n\n"
+            "How it Works:\n"
+            "• Computes temporal derivative of the signal\n"
+            "• Uses Tukey's biweight function to identify and reduce outliers\n"
+            "• Applies iterative reweighting to minimize motion artifact contributions\n"
+            "• Integrates corrected derivative back to produce clean signal\n\n"
+            "When to Use:\n"
+            "• Particularly effective for populations with high motion (children, infants)\n"
+            "• When automatic, parameter-free motion correction is desired\n"
+            "• Studies where both spike and baseline shift artifacts are present\n\n"
+            "Preprocessing Order:\n"
+            "• Apply to optical density data (after Beer-Lambert conversion from raw intensity)\n"
+            "• Use before bad channel detection and scalp coupling index calculation\n"
+            "• Can be combined with low-pass filtering for high sampling rates (>1 Hz)\n\n"
+            "Performance:\n"
+            "• Superior activation detection compared to other motion correction methods\n"
+            "• Particularly effective for high amplitude and/or short duration artifacts\n\n"
+            "Reference: Fishburn et al. (2019). NeuroImage, 184:171-179"
+        )
+        messagebox.showinfo("TDDR Information", info_text)

@@ -272,6 +272,30 @@ class PreprocessingDialog:
         )
         short_info_btn.pack(side="right")
         
+        # Apply Temporal Derivative Distribution Removal (TDDR)
+        tddr_frame = tk.Frame(options_frame)
+        tddr_frame.pack(fill="x", pady=5)
+
+        self.apply_tddr_var = tk.BooleanVar(value=self.settings.get("Apply_TDDR", False))
+        self.tddr_checkbox = tk.Checkbutton(
+            tddr_frame,
+            text="Apply TDDR",
+            variable=self.apply_tddr_var,
+            font=("Arial", 11)
+        )
+        self.tddr_checkbox.pack(side="left")
+
+        info_button_tddr = tk.Button(
+            tddr_frame,
+            text="?",
+            command=self.show_tddr_info,
+            width=2,
+            height=1,
+            bg="lightblue",
+            font=("Arial", 8)
+        )
+        info_button_tddr.pack(side="right")
+        
         # Negative Correlation Enhancement
         self.negative_corr_var = tk.BooleanVar(value=self.settings.get("negative_correlation_enhancement", False))
         negative_corr_frame = tk.Frame(options_frame)
@@ -297,7 +321,7 @@ class PreprocessingDialog:
         )
         negative_info_btn.pack(side="right")
         
-        # Interpolate Bad Channels (moved from plot settings)
+        # Interpolate Bad Channels
         interpolate_frame = tk.Frame(options_frame)
         interpolate_frame.pack(fill="x", pady=5)
         
@@ -738,6 +762,10 @@ class PreprocessingDialog:
         """Show information about short channel correction."""
         PreprocessingInfo.show_short_channel_info()
     
+    def show_tddr_info(self):
+        """Show information about TDDR."""
+        PreprocessingInfo.show_tddr_info()
+    
     def show_negative_corr_info(self):
         """Show information about negative correlation enhancement."""
         PreprocessingInfo.show_negative_corr_info()
@@ -807,6 +835,7 @@ class PreprocessingDialog:
         self.unwanted_labels_var.set("15.0")
         self.snr_rejection_var.set("None")
         self.snr_threshold_var.set("8")  # Default for SNR method
+        self.apply_tddr_var.set(False)
         # Update UI based on default baseline method
         self.on_baseline_method_change()
     
@@ -990,7 +1019,7 @@ class PreprocessingDialog:
         "unwanted": unwanted_labels,
         "snr_rejection": self.snr_rejection_var.get(),
         "snr_threshold": snr_threshold,
-        
+        "Apply_TDDR": self.apply_tddr_var.get()
         }
         
         self.dialog.unbind_all("<MouseWheel>") # Cleanup mousewheel binding

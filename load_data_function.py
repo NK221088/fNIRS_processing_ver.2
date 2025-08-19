@@ -31,7 +31,8 @@ def load_data(data_set : str,
               reject_criteria: dict = dict(hbo=80e-6),
               scalp_coupling_threshold: float = 0.8,
               snr_rejection: str = None,
-              snr_threshold: int = 8):
+              snr_threshold: int = 8,
+              apply_tddr: bool = False):
     if data_set not in data_loaders:
         raise ValueError("Dataset does not exist.")
     loader = data_loaders[data_set](short_channel_correction = short_channel_correction,
@@ -46,5 +47,6 @@ def load_data(data_set : str,
                                     reject_criteria = reject_criteria,
                                     scalp_coupling_threshold = scalp_coupling_threshold,
                                     snr_rejection = snr_rejection,
-                                    snr_threshold = snr_threshold)
+                                    snr_threshold = snr_threshold,
+                                    apply_tddr = apply_tddr)
     return loader.load_data()
