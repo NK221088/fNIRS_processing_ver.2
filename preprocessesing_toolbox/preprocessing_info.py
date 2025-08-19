@@ -56,15 +56,18 @@ class PreprocessingInfo:
     def show_tmin_info():
         """Show information about tmin parameter."""
         info_text = (
-            "tmin (Time Minimum):\n\n"
-            "This parameter defines the start time (in seconds) relative to the "
-            "event onset for baseline correction when using 'xSecondsBefore' method.\n\n"
-            "• Negative values: Time before the event (e.g., -5 means 5 seconds before)\n"
-            "• Positive values: Time after the event (e.g., 2 means 2 seconds after)\n"
-            "• Zero: Exactly at the event onset\n\n"
-            "Common usage: -5 to -2 seconds before stimulus onset for pre-stimulus baseline."
+            "Seconds Before Event:\n\n"
+            "This parameter defines how many seconds BEFORE the event onset "
+            "to use for baseline correction when using 'xSecondsBefore' method.\n\n"
+            "• Enter a POSITIVE value (e.g., 5 for 5 seconds before)\n"
+            "• The system will automatically use this as the pre-event baseline period\n"
+            "• Value must be greater than 0\n\n"
+            "Example: Enter '5' to use the 5-second period before stimulus onset "
+            "for baseline correction.\n\n"
+            "Note: This ensures the baseline is always calculated from the "
+            "pre-stimulus period, which is the standard approach in fNIRS analysis."
         )
-        messagebox.showinfo("tmin Parameter", info_text)
+        messagebox.showinfo("Seconds Before Event", info_text)
     
     @staticmethod
     def show_filter_lower_info():

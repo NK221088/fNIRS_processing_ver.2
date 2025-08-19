@@ -47,7 +47,7 @@ class PreprocessingDialog:
         # Calculate center position
         dialog_width = 450
         dialog_height = 600  # Updated height
-        x = parent_x + (parent_width - dialog_width) // 2
+        x = parent_x + (parent_width - dialog_height) // 2
         y = parent_y + (parent_height - dialog_height) // 2
         
         self.dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
@@ -63,8 +63,14 @@ class PreprocessingDialog:
             return False
     
     def validate_tmin_input(self, value):
-        """Validate that tmin input is a valid integer (positive or negative)."""
-        return self.validate_numeric_input(value, allow_negative=True)
+        """Validate that tmin input is a positive number for xSecondsBefore method."""
+        if value == "":
+            return True  # Allow empty string during typing
+        try:
+            num = float(value)
+            return num > 0  # Only allow positive values
+        except ValueError:
+            return False
     
     def validate_positive_numeric_input(self, value):
         """Validate that input is a positive number."""
@@ -389,19 +395,21 @@ class PreprocessingDialog:
         # tmin input frame (initially hidden)
         self.tmin_frame = tk.Frame(options_frame)
         
-        # Label for tmin
+        # Label for tmin - updated to reflect positive input requirement
         tmin_label = tk.Label(
             self.tmin_frame,
-            text="tmin (seconds):",
+            text="Seconds Before Event Onset:",
             font=("Arial", 11)
         )
         tmin_label.pack(side="left")
         
-        # Register validation function
+        # Register validation function for positive tmin input
         vcmd_tmin = (self.dialog.register(self.validate_tmin_input), '%P')
         
-        # tmin input field
-        self.tmin_var = tk.StringVar(value=str(self.settings.get("tmin", -5)))
+        # tmin input field - convert stored negative value to positive for display
+        stored_tmin = self.settings.get("tmin", -5)
+        display_tmin = abs(stored_tmin) if stored_tmin < 0 else stored_tmin
+        self.tmin_var = tk.StringVar(value=str(display_tmin))
         self.tmin_entry = tk.Entry(
             self.tmin_frame,
             textvariable=self.tmin_var,
@@ -825,7 +833,7 @@ class PreprocessingDialog:
         self.negative_corr_var.set(False)
         self.interpolate_bad_channels_var.set(False)
         self.baseline_correction_var.set("Previous rest period")
-        self.tmin_var.set("-5")
+        self.tmin_var.set("5")  # Display as positive value (represents 5 seconds before)
         self.filter_lower_var.set("0.05")  
         self.filter_upper_var.set("0.7")   
         self.h_trans_var.set("0.2")        
@@ -880,12 +888,15 @@ class PreprocessingDialog:
         if self.baseline_correction_var.get() == "xSecondsBefore":
             tmin_str = self.tmin_var.get().strip()
             if not tmin_str:
-                tk.messagebox.showerror("Invalid Input", "Please enter a value for tmin.")
+                tk.messagebox.showerror("Invalid Input", "Please enter a value for seconds before event onset.")
                 return False
             try:
-                int(tmin_str)
+                tmin_value = float(tmin_str)
+                if tmin_value <= 0:
+                    tk.messagebox.showerror("Invalid Input", "Seconds before event onset must be a positive value greater than zero.")
+                    return False
             except ValueError:
-                tk.messagebox.showerror("Invalid Input", "tmin must be a valid integer.")
+                tk.messagebox.showerror("Invalid Input", "Seconds before event onset must be a valid positive number.")
                 return False
         
         # Validate filter lower value
@@ -992,9 +1003,10 @@ class PreprocessingDialog:
         # Get threshold value
         snr_threshold = float(self.snr_threshold_var.get().strip()) if self.snr_rejection_var.get() in ["SNR", "CV"] else self.settings.get("snr_threshold", 8)
 
-        # Get tmin value
+        # Get tmin value and convert positive input to negative value
         if self.baseline_correction_var.get() == "xSecondsBefore":
-            tmin_value = int(self.tmin_var.get().strip())
+            tmin_input = float(self.tmin_var.get().strip())
+            tmin_value = -abs(tmin_input)  # Convert positive input to negative value
         else:
             tmin_value = self.settings.get("tmin", -5)  # Use existing or default value
         

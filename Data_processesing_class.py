@@ -17,7 +17,7 @@ load_dotenv()
 class fNIRS_data_load:
     def __init__(self, file_path, number_of_participants=1, annotation_names=None, stimulus_duration=5,
                  short_channel_correction=True, negative_correlation_enhancement=True, scalp_coupling_threshold=0.8,
-                 reject_criteria: dict = dict(hbo=80e-6), tmin=0, tmax=15, baseline=(None, 0), data_types=[], number_of_data_types=2,
+                 reject_criteria: dict = dict(hbo=80e-6), tmin=0, tmax=15, baseline=(None, 0), data_types=[],
                  data_name="None", interpolate_bad_channels=False, unwanted = ["15.0"], baseline_correction: str = "Previous rest period",
                  filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
                  snr_rejection: str = None, snr_threshold : int = 8, apply_tddr: bool = False):    
@@ -36,7 +36,6 @@ class fNIRS_data_load:
         self.all_epochs = []
         self.all_control = []
         self.data_types = data_types
-        self.number_of_data_types = len(data_types)
         self.data_name = data_name
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = unwanted
@@ -144,7 +143,7 @@ class fNIRS_data_load:
                 verbose=True,
             )
 
-            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
+            epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
@@ -213,7 +212,6 @@ class AudioSpeechNoise_data_load(fNIRS_data_load):
         self.tmax = 15
         self.baseline = (None, 0)
         self.data_types = ["Speech", "Noise"]
-        self.number_of_data_types = 2
         self.data_name = "AudioSpeechNoise"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["15.0"]
@@ -238,7 +236,6 @@ class AudioSpeechNoise_data_load(fNIRS_data_load):
                         tmin = self.tmin,
                         tmax = self.tmax,
                         data_types = self.data_types,
-                        number_of_data_types = self.number_of_data_types,
                         data_name = self.data_name,
                         interpolate_bad_channels = self.interpolate_bad_channels,
                         unwanted = self.unwanted,
@@ -279,7 +276,6 @@ class fNIRS_motor_data_load(fNIRS_data_load):
         self.tmax = 15
         self.baseline = (None, 0)
         self.data_types = ["Tapping"]
-        self.number_of_data_types = 2
         self.data_name = "fnirs_motor_plus_anti"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["15.0"]
@@ -304,7 +300,6 @@ class fNIRS_motor_data_load(fNIRS_data_load):
             tmin=self.tmin,
             tmax=self.tmax,
             data_types=self.data_types,
-            number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted,
@@ -345,7 +340,6 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
         self.tmax = 15
         self.baseline = (None, 0)
         self.data_types = ["Tapping"]
-        self.number_of_data_types = 2
         self.data_name = "Dr. Luke: full motor data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["15.0"]
@@ -370,7 +364,6 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
             tmin=self.tmin,
             tmax=self.tmax,
             data_types=self.data_types,
-            number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted,
@@ -409,7 +402,6 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
         self.tmax = 15
         self.baseline = (None, 0)
         self.data_types = ["Tongue"]
-        self.number_of_data_types = 2
         self.data_name = "fNIRS_Alexandros_DoC_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["15.0"]
@@ -434,7 +426,6 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
             tmin=self.tmin,
             tmax=self.tmax,
             data_types=self.data_types,
-            number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted,
@@ -538,7 +529,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
                 verbose=True,
             )
 
-            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
+            epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
@@ -622,7 +613,6 @@ class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
         self.tmax = 15
         self.baseline = (None, 0)
         self.data_types = ["Imagery"]
-        self.number_of_data_types = 2
         self.data_name = "fNIRS_Alexandros_Healthy_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["1"]
@@ -647,7 +637,6 @@ class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
             tmin=self.tmin,
             tmax=self.tmax,
             data_types=self.data_types,
-            number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted,
@@ -686,7 +675,6 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
         self.tmax = 15
         self.baseline = (None, 0)
         self.data_types = ["Imagery"]
-        self.number_of_data_types = 2
         self.data_name = "fNIRS_CUH_patient_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = "Pause"
@@ -712,7 +700,6 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
             tmin=self.tmin,
             tmax=self.tmax,
             data_types=self.data_types,
-            number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted,
@@ -823,7 +810,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
                 verbose=True,
             )
 
-            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
+            epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
@@ -907,7 +894,6 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
         self.tmax = 28
         self.baseline = (None, 0)
         self.data_types = ["HandMI"]
-        self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = [""]
@@ -932,7 +918,6 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
             tmin=self.tmin,
             tmax=self.tmax,
             data_types=self.data_types,
-            number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted,
@@ -1040,7 +1025,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
                 verbose=True,
             )
 
-            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
+            epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
@@ -1154,7 +1139,6 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         self.tmax = 28
         self.baseline = (None, 0)
         self.data_types = ["TongueMI"]
-        self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["2"]
@@ -1179,7 +1163,6 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
             tmin=self.tmin,
             tmax=self.tmax,
             data_types=self.data_types,
-            number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted,
@@ -1286,7 +1269,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
                 verbose=True,
             )
 
-            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
+            epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
@@ -1401,7 +1384,6 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
         self.tmax = 28
         self.baseline = (None, 0)
         self.data_types = ["HandMI"]
-        self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = [""]
@@ -1426,7 +1408,6 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
             tmin=self.tmin,
             tmax=self.tmax,
             data_types=self.data_types,
-            number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted,
@@ -1526,7 +1507,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
                 verbose=True,
             )
 
-            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
+            epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
@@ -1641,7 +1622,6 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
         self.tmax = 28
         self.baseline = (None, 0)
         self.data_types = ["TongueMI"]
-        self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["2"]
@@ -1667,7 +1647,6 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
             tmin=self.tmin,
             tmax=self.tmax,
             data_types=self.data_types,
-            number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted,
@@ -1770,7 +1749,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
                 verbose=True,
             )
 
-            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
+            epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
@@ -1865,7 +1844,6 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
         self.tmax = 15
         self.baseline = (None, 0)
         self.data_types = ["HandMI", "TongueMI"]
-        self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["0"]
@@ -1891,7 +1869,6 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
             tmin=self.tmin,
             tmax=self.tmax,
             data_types=self.data_types,
-            number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted,
@@ -1996,7 +1973,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
                 verbose=True,
             )
 
-            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
+            epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
@@ -2075,7 +2052,6 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         self.tmax = 21
         self.baseline = (None, 0)
         self.data_types = ["HandMI"]
-        self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = [""]
@@ -2100,7 +2076,6 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
             tmin=self.tmin,
             tmax=self.tmax,
             data_types=self.data_types,
-            number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted,
@@ -2205,7 +2180,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                 verbose=True,
             )
 
-            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
+            epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
@@ -2334,7 +2309,6 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.tmax = 21
         self.baseline = (None, 0)
         self.data_types = ["TongueMI"]
-        self.number_of_data_types = 2
         self.data_name = "fNIRS_Melika_tongue_long_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["2"]
@@ -2360,7 +2334,6 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             tmin=self.tmin,
             tmax=self.tmax,
             data_types=self.data_types,
-            number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted,
@@ -2384,6 +2357,11 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
             raw_intensity = self.make_annotations(raw_intensity)
+            
+            #Fix the coordinate frame
+            for dig_point in raw_intensity.info['dig']:
+                if dig_point['coord_frame'] == 0:  # FIFFV_COORD_UNKNOWN
+                    dig_point['coord_frame'] = 4   # FIFFV_COORD_HEAD
 
             raw_intensity.annotations.rename(self.annotation_names)
             for _unwanted in self.unwanted:
@@ -2470,7 +2448,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 verbose=True,
             )
 
-            epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
+            epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
@@ -2590,7 +2568,6 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
         self.tmax = 21
         self.baseline = (None, 0)
         self.data_types = ["TongueMI"]
-        self.number_of_data_types = 2
         self.data_name = "fNIRS_Pardis_DOC_data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = [""]
@@ -2615,7 +2592,6 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
             tmin=self.tmin,
             tmax=self.tmax,
             data_types=self.data_types,
-            number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted,
@@ -2746,7 +2722,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
                     verbose=True,
                 )
 
-                epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
+                epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
                 if len(epochs) != 0:
                     # Apply custom baseline correction if needed
@@ -2839,7 +2815,6 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
         self.tmax = 20
         self.baseline = (None, 0)
         self.data_types = ["TonguePhysical", "TongueIM"]
-        self.number_of_data_types = 2
         self.data_name = "fNIRS_Pardis_HC"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["5", "6", "7"]
@@ -2864,7 +2839,6 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
             tmin=self.tmin,
             tmax=self.tmax,
             data_types=self.data_types,
-            number_of_data_types=self.number_of_data_types,
             data_name=self.data_name,
             interpolate_bad_channels = self.interpolate_bad_channels,
             unwanted = self.unwanted,
@@ -2996,7 +2970,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                     verbose=True,
                 )
 
-                epochs = reject_if_single_event_type(epochs) # Reject all epochs if only one event type is present
+                epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
                 if len(epochs) != 0:
                     # Apply custom baseline correction if needed
