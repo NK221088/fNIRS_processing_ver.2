@@ -85,6 +85,7 @@ class fNIRS_data_load:
                 snr_bad_channels = []
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+            raw_od_original = raw_od.copy()
             
             # Check channel name consistency
             assert raw_intensity.ch_names == raw_od.ch_names, \
@@ -110,7 +111,7 @@ class fNIRS_data_load:
 
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
 
-            raw_haemo_unfiltered = raw_haemo.copy()
+            raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
             if self.negative_correlation_enhancement:
@@ -154,7 +155,7 @@ class fNIRS_data_load:
                 Participant_i = individual_participant_class(f"Participant_{i}")
                 Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
                 Participant_i.raw_intensity = raw_intensity
-                Participant_i.raw_od = raw_od
+                Participant_i.raw_od = raw_od_original
                 Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
                 Participant_i.raw_haemo = raw_haemo
                 Participant_i.epochs = epochs
@@ -462,6 +463,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
                 snr_bad_channels = []
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+            raw_od_original = raw_od.copy()
 
             # Check channel name consistency
             assert raw_intensity.ch_names == raw_od.ch_names, \
@@ -487,7 +489,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
 
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
 
-            raw_haemo_unfiltered = raw_haemo.copy()
+            raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
             if self.negative_correlation_enhancement:
@@ -735,6 +737,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
                 snr_bad_channels = []
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+            raw_od_original = raw_od.copy()
 
             # Check channel name consistency
             assert raw_intensity.ch_names == raw_od.ch_names, \
@@ -760,7 +763,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
 
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
 
-            raw_haemo_unfiltered = raw_haemo.copy()
+            raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
             if self.negative_correlation_enhancement:
@@ -943,6 +946,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
                 snr_bad_channels = []
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+            raw_od_original = raw_od.copy()
 
             # Check channel name consistency
             assert raw_intensity.ch_names == raw_od.ch_names, \
@@ -968,7 +972,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
 
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
 
-            raw_haemo_unfiltered = raw_haemo.copy()
+            raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
             if self.negative_correlation_enhancement:
@@ -1179,6 +1183,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
                 snr_bad_channels = []
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+            raw_od_original = raw_od.copy()
 
             # Check channel name consistency
             assert raw_intensity.ch_names == raw_od.ch_names, \
@@ -1204,7 +1209,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
 
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
 
-            raw_haemo_unfiltered = raw_haemo.copy()
+            raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
             if self.negative_correlation_enhancement:
@@ -1414,6 +1419,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
                 snr_bad_channels = []
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+            raw_od_original = raw_od.copy()
 
             # Check channel name consistency
             assert raw_intensity.ch_names == raw_od.ch_names, \
@@ -1437,7 +1443,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
 
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
 
-            raw_haemo_unfiltered = raw_haemo.copy()
+            raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
             if self.negative_correlation_enhancement:
@@ -1647,6 +1653,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
                 snr_bad_channels = []
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+            raw_od_original = raw_od.copy()
 
             # Check channel name consistency
             assert raw_intensity.ch_names == raw_od.ch_names, \
@@ -1672,7 +1679,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
 
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
 
-            raw_haemo_unfiltered = raw_haemo.copy()
+            raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
             if self.negative_correlation_enhancement:
@@ -1864,6 +1871,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
                 snr_bad_channels = []
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+            raw_od_original = raw_od.copy()
 
             # Check channel name consistency
             assert raw_intensity.ch_names == raw_od.ch_names, \
@@ -1889,7 +1897,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
 
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
 
-            raw_haemo_unfiltered = raw_haemo.copy()
+            raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
             if self.negative_correlation_enhancement:
@@ -2063,6 +2071,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                 snr_bad_channels = []
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+            raw_od_original = raw_od.copy()
 
             # Check channel name consistency
             assert raw_intensity.ch_names == raw_od.ch_names, \
@@ -2088,7 +2097,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
 
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
 
-            raw_haemo_unfiltered = raw_haemo.copy()
+            raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
             if self.negative_correlation_enhancement:
@@ -2312,6 +2321,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 snr_bad_channels = []
 
             raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+            raw_od_original = raw_od.copy()
 
             # Check channel name consistency
             assert raw_intensity.ch_names == raw_od.ch_names, \
@@ -2337,7 +2347,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
 
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
 
-            raw_haemo_unfiltered = raw_haemo.copy()
+            raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
             if self.negative_correlation_enhancement:
@@ -2586,6 +2596,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
                     snr_bad_channels = []
 
                 raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+                raw_od_original = raw_od.copy()
 
                 # Check channel name consistency
                 assert raw_intensity.ch_names == raw_od.ch_names, \
@@ -2611,7 +2622,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
 
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
 
-                raw_haemo_unfiltered = raw_haemo.copy()
+                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
                 if self.negative_correlation_enhancement:
@@ -2827,6 +2838,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                     snr_bad_channels = []
 
                 raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+                raw_od_original = raw_od.copy()
 
                 # Check channel name consistency
                 assert raw_intensity.ch_names == raw_od.ch_names, \
@@ -2852,7 +2864,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
 
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
 
-                raw_haemo_unfiltered = raw_haemo.copy()
+                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
                 if self.negative_correlation_enhancement:
