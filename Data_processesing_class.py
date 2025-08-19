@@ -932,7 +932,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
         )
 
     def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
+        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", preload=True, verbose=True)
             
         raw_intensity.load_data()
         return raw_intensity
@@ -1177,7 +1177,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         )
 
     def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
+        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", preload=True, verbose=True)
         raw_intensity.load_data()
         return raw_intensity
         
@@ -1422,7 +1422,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
         )
 
     def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
+        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", preload=True, verbose=True)
         raw_intensity.load_data()
         return raw_intensity
         
@@ -1661,7 +1661,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
             )
 
     def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
+        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", preload=True, verbose=True)
         raw_intensity.load_data()
         return raw_intensity
         
@@ -1883,7 +1883,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
         )
 
     def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
+        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", preload=True, verbose=True)
         raw_intensity.load_data()
         return raw_intensity
         
@@ -2090,7 +2090,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         )
 
     def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
+        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", preload=True, verbose=True)
         raw_intensity.load_data()
         return raw_intensity
         
@@ -2348,7 +2348,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         )
 
     def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", verbose=True)
+        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", preload=True, verbose=True)
         raw_intensity.load_data()
         return raw_intensity
         

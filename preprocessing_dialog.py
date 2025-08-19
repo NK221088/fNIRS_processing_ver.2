@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from preprocessesing_toolbox.baselineCorrection import baselineCorrection
 from preprocessesing_toolbox.preprocessing_info import PreprocessingInfo
+
 class PreprocessingDialog:
     def __init__(self, parent, current_settings):
         self.parent = parent
@@ -63,12 +64,12 @@ class PreprocessingDialog:
             return False
     
     def validate_tmin_input(self, value):
-        """Validate that tmin input is a positive number for xSecondsBefore method."""
+        """Validate that tmin input is a positive number greater than 0 for xSecondsBefore method."""
         if value == "":
             return True  # Allow empty string during typing
         try:
             num = float(value)
-            return num > 0  # Only allow positive values
+            return num > 0  # Only allow positive values greater than 0
         except ValueError:
             return False
     
@@ -111,16 +112,29 @@ class PreprocessingDialog:
                 return False 
         return True
     
+    def get_default_tmin_value(self, baseline_method):
+        """Get the default tmin value based on baseline method."""
+        if baseline_method == "xSecondsBefore":
+            return 5  # Default 5 seconds before for xSecondsBefore
+        else:
+            return 0  # Default 0 for other methods
+    
     def on_baseline_method_change(self, event=None):
         """Handle changes in baseline correction method selection."""
         selected_method = self.baseline_correction_var.get()
         
         if selected_method == "xSecondsBefore":
-            # Show tmin input field
+            # Show tmin input field and set appropriate default if currently 0
             self.tmin_frame.pack(fill="x", pady=5, after=self.baseline_correction_frame)
+            
+            # If current value is 0 (default for other methods), set to 5
+            current_value = self.tmin_var.get().strip()
+            if current_value == "" or current_value == "0":
+                self.tmin_var.set("5")
         else:
-            # Hide tmin input field
+            # Hide tmin input field and set to 0
             self.tmin_frame.pack_forget()
+            self.tmin_var.set("0")
     
     def on_snr_rejection_change(self, event=None):
         """Handle changes in SNR rejection method selection."""
@@ -365,7 +379,13 @@ class PreprocessingDialog:
         
         # Get available methods dynamically
         baseline_options = self.get_baseline_correction_methods()
-        self.baseline_correction_var = tk.StringVar(value=self.settings.get("baseline_correction"))
+        
+        # Set default baseline correction method if not in settings or invalid
+        default_baseline = self.settings.get("baseline_correction", "Previous rest period")
+        if default_baseline not in baseline_options:
+            default_baseline = "Previous rest period"
+        
+        self.baseline_correction_var = tk.StringVar(value=default_baseline)
         
         self.baseline_correction_dropdown = ttk.Combobox(
             self.baseline_correction_frame,
@@ -406,9 +426,21 @@ class PreprocessingDialog:
         # Register validation function for positive tmin input
         vcmd_tmin = (self.dialog.register(self.validate_tmin_input), '%P')
         
-        # tmin input field - convert stored negative value to positive for display
-        stored_tmin = self.settings.get("tmin", -5)
-        display_tmin = abs(stored_tmin) if stored_tmin < 0 else (stored_tmin if stored_tmin != 0 else 5)
+        # Initialize tmin value based on baseline method
+        current_baseline = self.baseline_correction_var.get()
+        if current_baseline == "xSecondsBefore":
+            # Convert stored negative value to positive for display, or use default
+            stored_tmin = self.settings.get("tmin", -5)
+            if stored_tmin < 0:
+                display_tmin = abs(stored_tmin)
+            elif stored_tmin == 0:
+                display_tmin = 5  # Default for xSecondsBefore
+            else:
+                display_tmin = stored_tmin
+        else:
+            # For other methods, default to 0 (which will be hidden anyway)
+            display_tmin = 0
+            
         self.tmin_var = tk.StringVar(value=str(display_tmin))
         self.tmin_entry = tk.Entry(
             self.tmin_frame,
@@ -833,7 +865,7 @@ class PreprocessingDialog:
         self.negative_corr_var.set(False)
         self.interpolate_bad_channels_var.set(False)
         self.baseline_correction_var.set("Previous rest period")
-        self.tmin_var.set("5")  # Display as positive value (represents 5 seconds before)
+        self.tmin_var.set("0")  # Will be updated by on_baseline_method_change
         self.filter_lower_var.set("0.05")  
         self.filter_upper_var.set("0.7")   
         self.h_trans_var.set("0.2")        
@@ -1003,12 +1035,12 @@ class PreprocessingDialog:
         # Get threshold value
         snr_threshold = float(self.snr_threshold_var.get().strip()) if self.snr_rejection_var.get() in ["SNR", "CV"] else self.settings.get("snr_threshold", 8)
 
-        # Get tmin value and convert positive input to negative value
+        # Get tmin value - handle based on baseline method
         if self.baseline_correction_var.get() == "xSecondsBefore":
             tmin_input = float(self.tmin_var.get().strip())
             tmin_value = -abs(tmin_input)  # Convert positive input to negative value
         else:
-            tmin_value = self.settings.get("tmin", -5)  # Use existing or default value
+            tmin_value = 0  # Set to 0 for other methods
         
         # Convert reject criteria back to scientific notation
         reject_criteria_value = float(self.reject_criteria_var.get().strip()) * 1e-6
