@@ -418,7 +418,6 @@ def run_analysis():
 
         elif settings["plot_type"] == "Standard fNIRS Response Plot":
             selected_individuals = [ind_name for ind_name, var in individual_selection_vars.items() if var.get()]
-            selected_all_epochs = []
             
             # Create the same filtered list as in populate_individuals()
             valid_individuals = []
@@ -445,21 +444,79 @@ def run_analysis():
                     if has_all_data_types:
                         valid_individuals.append(individual)
             
-            # Find the actual individual objects from their names and get their epochs
-            for ind_name in selected_individuals:
-                # Find the individual object that matches this name FROM THE FILTERED LIST
-                individual = next((ind for i, ind in enumerate(valid_individuals) if getattr(ind, "name", f"Participant_{i+1}") == ind_name), None)
+            if settings["compare_with_raw"]:
+                # Create two separate lists for raw and processed epochs
+                selected_raw_epochs = []
+                selected_processed_epochs = []
                 
-                # If found, append their epochs to our list
-                if individual is not None:
-                    if settings["compare_with_raw"]:
-                        # If comparing with raw, append both epochs and raw epochs
-                        selected_all_epochs.append(individual.raw_epochs)
-                    else:
-                        selected_all_epochs.append(individual.epochs)            
-            figures = [standard_fNIRS_response_plot(selected_all_epochs, data_types, bad_channels_strategy=settings["bad_channels_strategy"],
-                                                    save=settings["save_plot"], combine_strategy=settings["combine_strategy"],
-                                                    threshold=settings["threshold"], data_set=data_name, picks_=picks)]
+                # Find the actual individual objects from their names and get both types of epochs
+                for ind_name in selected_individuals:
+                    # Find the individual object that matches this name FROM THE FILTERED LIST
+                    individual = next((ind for i, ind in enumerate(valid_individuals) 
+                                    if getattr(ind, "name", f"Participant_{i+1}") == ind_name), None)
+                    
+                    # If found, append both raw and processed epochs to respective lists
+                    if individual is not None:
+                        if hasattr(individual, 'raw_epochs'):
+                            selected_raw_epochs.append(individual.raw_epochs)
+                        selected_processed_epochs.append(individual.epochs)
+                
+                # Create both plots
+                figures = []
+                
+                # Create raw epochs plot if raw epochs exist
+                if selected_raw_epochs:
+                    raw_figure = standard_fNIRS_response_plot(
+                        selected_raw_epochs, 
+                        data_types, 
+                        bad_channels_strategy=settings["bad_channels_strategy"],
+                        save=settings["save_plot"], 
+                        combine_strategy=settings["combine_strategy"],
+                        threshold=settings["threshold"], 
+                        data_set=f"{data_name} (Raw/Non-processed)", 
+                        picks_=picks
+                    )
+                    figures.append(raw_figure)
+                
+                # Create processed epochs plot
+                if selected_processed_epochs:
+                    processed_figure = standard_fNIRS_response_plot(
+                        selected_processed_epochs, 
+                        data_types, 
+                        bad_channels_strategy=settings["bad_channels_strategy"],
+                        save=settings["save_plot"], 
+                        combine_strategy=settings["combine_strategy"],
+                        threshold=settings["threshold"], 
+                        data_set=f"{data_name} (Processed)", 
+                        picks_=picks
+                    )
+                    figures.append(processed_figure)
+                    
+            else:
+                # Original behavior - only processed epochs
+                selected_processed_epochs = []
+                
+                # Find the actual individual objects from their names and get their processed epochs
+                for ind_name in selected_individuals:
+                    # Find the individual object that matches this name FROM THE FILTERED LIST
+                    individual = next((ind for i, ind in enumerate(valid_individuals) 
+                                    if getattr(ind, "name", f"Participant_{i+1}") == ind_name), None)
+                    
+                    # If found, append their processed epochs to our list
+                    if individual is not None:
+                        selected_processed_epochs.append(individual.epochs)
+                
+                # Create single plot with processed epochs
+                figures = [standard_fNIRS_response_plot(
+                    selected_processed_epochs, 
+                    data_types, 
+                    bad_channels_strategy=settings["bad_channels_strategy"],
+                    save=settings["save_plot"], 
+                    combine_strategy=settings["combine_strategy"],
+                    threshold=settings["threshold"], 
+                    data_set=data_name, 
+                    picks_=picks
+                )]
             
         elif settings["plot_type"] == "paradigm_plot":
             selected_individual = settings["individual"]
