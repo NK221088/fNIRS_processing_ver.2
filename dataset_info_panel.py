@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from tkinter import filedialog, messagebox
 import numpy as np
 import mne
 from collections import Counter
@@ -278,6 +279,7 @@ class DatasetInfoPanel:
     - Shows General Info (scrollable)
     - Shows Sensor Setup (click to zoom overlay)
     - Shows Paradigm overview with a scrollable timeline
+    - NEW: Drop Log summary in its own tab
     """
     def __init__(self, parent_container, all_epochs, data_name, all_data, freq, data_types, all_individuals=None):
         self.parent_container = parent_container
@@ -327,15 +329,24 @@ class DatasetInfoPanel:
         self.layout_frame = ttk.Frame(self.main)
         self.layout_frame.grid(row=0, column=1, sticky="nsew", pady=(0, 10))
 
-        # Right bottom: paradigm & timeline
+        # Right bottom: tabs for paradigm & drop log
         self.paradigm_frame = ttk.Frame(self.main)
         self.paradigm_frame.grid(row=1, column=1, sticky="nsew")
+
+        # Notebook to hold multiple plots on the bottom-right
+        self.plot_tabs = ttk.Notebook(self.paradigm_frame)
+        self.paradigm_tab = ttk.Frame(self.plot_tabs)
+        self.drop_tab = ttk.Frame(self.plot_tabs)
+        self.plot_tabs.add(self.paradigm_tab, text="Paradigm & Timeline")
+        self.plot_tabs.add(self.drop_tab, text="Drop Log")
+        self.plot_tabs.pack(fill=tk.BOTH, expand=True)
 
     # ---------- Data population ----------
     def _populate(self):
         self._populate_general_info()
         self._populate_sensor_layout()
         self._populate_paradigm()
+        self._populate_drop_log()
 
     def _populate_general_info(self):
         canvas = tk.Canvas(self.info_frame, highlightthickness=0)
@@ -365,11 +376,6 @@ class DatasetInfoPanel:
             first_epoch = self.all_epochs[0]
             ttk.Label(inner, text="Channel Information:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
             ttk.Label(inner, text=f"  • Total Channels: {len(first_epoch.ch_names)}").pack(anchor="w", pady=1)
-
-            hbo_channels = [ch for ch in first_epoch.ch_names if ch.lower().endswith('hbo')]
-            hbr_channels = [ch for ch in first_epoch.ch_names if ch.lower().endswith('hbr')]
-            ttk.Label(inner, text=f"  • HbO Channels: {len(hbo_channels)}").pack(anchor="w", pady=1)
-            ttk.Label(inner, text=f"  • HbR Channels: {len(hbr_channels)}").pack(anchor="w", pady=1)
 
             bads = []
             if hasattr(first_epoch, 'info') and 'bads' in first_epoch.info:
@@ -438,7 +444,7 @@ class DatasetInfoPanel:
     def _populate_paradigm(self):
         try:
             if not self.all_epochs:
-                ttk.Label(self.paradigm_frame, text="No epoch data available").pack(expand=True)
+                ttk.Label(self.paradigm_tab, text="No epoch data available").pack(expand=True)
                 return
 
             first_epoch = self.all_epochs[0]
@@ -446,16 +452,108 @@ class DatasetInfoPanel:
             event_mapping = {v: k for k, v in first_epoch.event_id.items()}
 
             fig, timeline_ax, total_duration_min = create_paradigm_plot(events, event_mapping, figure_size=(8, 6))
-            timeline_frame = ScrollableTimelineFrame(self.paradigm_frame, fig, timeline_ax, total_duration_min)
+            timeline_frame = ScrollableTimelineFrame(self.paradigm_tab, fig, timeline_ax, total_duration_min)
             timeline_frame.pack(fill=tk.BOTH, expand=True)
 
             ttk.Label(
-                self.paradigm_frame,
+                self.paradigm_tab,
                 text="Use the scrollbar or mouse wheel to navigate the timeline.",
                 font=("Arial", 9), foreground="gray"
             ).pack(pady=(5, 0))
         except Exception as e:
-            ttk.Label(self.paradigm_frame, text=f"Paradigm plot error: {e}").pack(expand=True)
+            ttk.Label(self.paradigm_tab, text=f"Paradigm plot error: {e}").pack(expand=True)
+
+    def _populate_drop_log(self):
+        """Create a drop log figure like mne.viz.plot_drop_log for all participants and embed it."""
+        container = self.drop_tab
+        for w in container.winfo_children():
+            w.destroy()
+
+        if not self.all_epochs:
+            ttk.Label(container, text="No epoch data available").pack(expand=True)
+            return
+
+        # Accumulate drop logs across all Epochs objects
+        total_drop_log = ()
+        try:
+            for epochs in self.all_epochs:
+                if hasattr(epochs, "drop_log") and epochs.drop_log is not None:
+                    total_drop_log += epochs.drop_log
+        except Exception as e:
+            ttk.Label(container, text=f"Error collecting drop logs: {e}").pack(expand=True)
+            return
+
+        if len(total_drop_log) == 0:
+            ttk.Label(container, text="No dropped epochs to display").pack(expand=True)
+            return
+
+        # Build figure using MNE's helper
+        try:
+            # Prefer not to open an external window; many MNE plotting functions accept show=False
+            try:
+                plot_ret = mne.viz.plot_drop_log(total_drop_log, show=False)
+            except TypeError:
+                plot_ret = mne.viz.plot_drop_log(total_drop_log)
+
+            # Handle possible return signatures
+            fig = plot_ret[0] if isinstance(plot_ret, (list, tuple)) and hasattr(plot_ret[0], "savefig") else plot_ret
+            if not hasattr(fig, "savefig"):
+                raise RuntimeError("mne.viz.plot_drop_log did not return a Figure as expected")
+
+            # Simple toolbar with Save-as (pinned at top and always visible)
+            toolbar = ttk.Frame(container)
+            toolbar.pack(side=tk.TOP, fill=tk.X)
+
+            def _save_as(ext):
+                default_name = f"total_drop_log.{ext}"
+                fpath = filedialog.asksaveasfilename(
+                    title="Save Drop Log Figure",
+                    defaultextension=f".{ext}",
+                    initialfile=default_name,
+                    filetypes=[(ext.upper(), f"*.{ext}"), ("PDF", "*.pdf"), ("PNG", "*.png"), ("All", "*.*")],
+                )
+                if fpath:
+                    try:
+                        fig.savefig(fpath, bbox_inches="tight")
+                    except Exception as save_e:
+                        messagebox.showerror("Save Error", f"Could not save figure: {save_e}")
+
+            # Buttons first so they don't get hidden by the expanding canvas
+            btn_pdf = ttk.Button(toolbar, text="Save as PDF", command=lambda: _save_as("pdf"))
+            btn_pdf.pack(side=tk.LEFT, padx=4, pady=4)
+            btn_png = ttk.Button(toolbar, text="Save as PNG", command=lambda: _save_as("png"))
+            btn_png.pack(side=tk.LEFT, padx=4, pady=4)
+
+            # Then the figure canvas, which can expand and won't obscure the toolbar
+            canvas = FigureCanvasTkAgg(fig, master=container)
+            canvas.draw()
+            canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+            # Optional: compact textual summary of reasons
+            # Count reasons across all dropped epochs
+            reason_counts = Counter()
+            for entry in total_drop_log:
+                if isinstance(entry, (list, tuple)):
+                    for r in entry:
+                        if r:  # ignore empty strings
+                            reason_counts[r] += 1
+
+            if reason_counts:
+                summary = ttk.Frame(container)
+                summary.pack(fill=tk.X, pady=(2, 4))
+                ttk.Label(
+                    summary,
+                    text="Top drop reasons:",
+                    font=("Arial", 9, "bold"),
+                    foreground="gray",
+                ).pack(side=tk.LEFT, padx=6)
+                txt = ", ".join([f"{k}: {v}" for k, v in reason_counts.most_common(5)])
+                ttk.Label(summary, text=txt, foreground="gray").pack(side=tk.LEFT)
+
+        except Exception as e:
+            ttk.Label(container, text=f"Drop log plot error: {e}").pack(expand=True)
+
+
 
 
 def show_dataset_info_in_container(parent_container, all_epochs, data_name, all_data, freq, data_types, all_individuals=None):

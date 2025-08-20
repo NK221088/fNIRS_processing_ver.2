@@ -11,12 +11,7 @@ from dataset_info_panel import show_dataset_info_in_container
 from preprocessing_dialog import show_preprocessing_dialog
 from plot_settings_dialog import show_plot_settings_dialog
 
-"""
-total_drop_log = ()
-for epochs in self.all_epochs:
-    total_drop_log += epochs.drop_log
-mne.viz.plot_drop_log(total_drop_log).savefig("total.pdf")
-"""
+
 
 dataSetList = list(data_loaders.keys())
 plotTypesList = ["Epoch Plot",
