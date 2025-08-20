@@ -3,7 +3,7 @@ from tkinter import ttk
 from tkinter import filedialog, messagebox
 import numpy as np
 import mne
-from collections import Counter
+from collections import Counter, defaultdict
 
 import matplotlib
 matplotlib.use("Agg")  # backend for figure creation; TkAgg is used only for embedding
@@ -279,7 +279,7 @@ class DatasetInfoPanel:
     - Shows General Info (scrollable)
     - Shows Sensor Setup (click to zoom overlay)
     - Shows Paradigm overview with a scrollable timeline
-    - NEW: Drop Log summary in its own tab
+    - Shows Drop Log summary in its own tab
     """
     def __init__(self, class_instance, parent_container, all_epochs, data_name, all_data, freq, data_types, all_individuals=None):
         self.class_instance = class_instance
@@ -330,7 +330,7 @@ class DatasetInfoPanel:
         self.layout_frame = ttk.Frame(self.main)
         self.layout_frame.grid(row=0, column=1, sticky="nsew", pady=(0, 10))
 
-        # Right bottom: tabs for paradigm & drop log
+        # Right bottom: tabs for paradigm and drop log only
         self.paradigm_frame = ttk.Frame(self.main)
         self.paradigm_frame.grid(row=1, column=1, sticky="nsew")
 
@@ -338,8 +338,10 @@ class DatasetInfoPanel:
         self.plot_tabs = ttk.Notebook(self.paradigm_frame)
         self.paradigm_tab = ttk.Frame(self.plot_tabs)
         self.drop_tab = ttk.Frame(self.plot_tabs)
+        self.bad_channels_tab = ttk.Frame(self.plot_tabs)
         self.plot_tabs.add(self.paradigm_tab, text="Paradigm & Timeline")
         self.plot_tabs.add(self.drop_tab, text="Drop Log")
+        self.plot_tabs.add(self.bad_channels_tab, text="Bad Channels")
         self.plot_tabs.pack(fill=tk.BOTH, expand=True)
 
     # ---------- Data population ----------
@@ -348,6 +350,37 @@ class DatasetInfoPanel:
         self._populate_sensor_layout()
         self._populate_paradigm()
         self._populate_drop_log()
+        self._populate_bad_channels_visualization()
+
+    def _analyze_bad_channels(self):
+        """Analyze bad channels across all participants"""
+        all_bads = []
+        participant_bads = []
+        bad_channel_participants = defaultdict(list)  # Track which participants have each bad channel
+        
+        for i, epochs in enumerate(self.all_epochs):
+            if hasattr(epochs, 'info') and 'bads' in epochs.info:
+                bads = epochs.info['bads']
+                participant_bads.append(bads)
+                all_bads.extend(bads)
+                
+                # Track which participants have each bad channel
+                for bad_ch in bads:
+                    bad_channel_participants[bad_ch].append(i)
+            else:
+                participant_bads.append([])
+        
+        bad_counts = Counter(all_bads)
+        participants_with_bads = sum(1 for bads in participant_bads if bads)
+        
+        return {
+            'total_unique_bads': len(bad_counts),
+            'participants_with_bads': participants_with_bads,
+            'avg_bads_per_participant': len(all_bads) / len(self.all_epochs) if self.all_epochs else 0,
+            'most_common_bads': bad_counts.most_common(),
+            'participant_bads': participant_bads,
+            'bad_channel_participants': dict(bad_channel_participants)
+        }
 
     def _populate_general_info(self):
         canvas = tk.Canvas(self.info_frame, highlightthickness=0)
@@ -375,15 +408,26 @@ class DatasetInfoPanel:
             ttk.Label(inner, text="Channel Information:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
             ttk.Label(inner, text=f"  • Total Channels: {len(first_epoch.ch_names)}").pack(anchor="w", pady=1)
 
-            bads = []
-            if hasattr(first_epoch, 'info') and 'bads' in first_epoch.info:
-                bads = first_epoch.info['bads']
-                ttk.Label(inner, text=f"  • Bad Channels: {len(bads)}").pack(anchor="w", pady=1)
-                if bads:
-                    txt = ", ".join(bads[:5])
-                    if len(bads) > 5:
-                        txt += f" ... (+{len(bads)-5} more)"
-                    ttk.Label(inner, text=f"    {txt}").pack(anchor="w", pady=1)
+            # ENHANCED BAD CHANNELS ANALYSIS
+            bad_channel_analysis = self._analyze_bad_channels()
+            
+            if bad_channel_analysis['total_unique_bads'] > 0:
+                ttk.Label(inner, text=f"  • Bad Channels Summary:").pack(anchor="w", pady=1)
+                ttk.Label(inner, text=f"    - Total unique bad channels: {bad_channel_analysis['total_unique_bads']}").pack(anchor="w", pady=1)
+                ttk.Label(inner, text=f"    - Participants with bad channels: {bad_channel_analysis['participants_with_bads']}/{len(self.all_epochs)}").pack(anchor="w", pady=1)
+                ttk.Label(inner, text=f"    - Average bad channels per participant: {bad_channel_analysis['avg_bads_per_participant']:.1f}").pack(anchor="w", pady=1)
+                
+                # Show most frequently bad channels
+                if bad_channel_analysis['most_common_bads']:
+                    ttk.Label(inner, text=f"    - Most frequently bad:").pack(anchor="w", pady=1)
+                    for ch, count in bad_channel_analysis['most_common_bads'][:3]:
+                        percentage = (count / len(self.all_epochs)) * 100
+                        ttk.Label(inner, text=f"      {ch} ({count} participants, {percentage:.1f}%)").pack(anchor="w", pady=1)
+                
+                # Expandable detailed view
+                self._add_expandable_bad_channels_section(inner, bad_channel_analysis)
+            else:
+                ttk.Label(inner, text=f"  • No bad channels marked across dataset").pack(anchor="w", pady=1)
 
         ttk.Label(inner, text="Epoch Information:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
         total_epochs = sum(len(ep) for ep in self.all_epochs) if self.all_epochs else 0
@@ -405,6 +449,117 @@ class DatasetInfoPanel:
 
         canvas.pack(side="left", fill="both", expand=True)
         vbar.pack(side="right", fill="y")
+
+    def _add_expandable_bad_channels_section(self, parent, analysis):
+        """Add an expandable section for detailed bad channel information"""
+        
+        # Create expandable frame
+        expand_frame = ttk.Frame(parent)
+        expand_frame.pack(anchor="w", fill="x", pady=(5, 0))
+        
+        self.bad_channels_expanded = tk.BooleanVar(value=False)
+        
+        def toggle_bad_channels():
+            if self.bad_channels_expanded.get():
+                self._show_detailed_bad_channels(details_frame, analysis)
+            else:
+                # Clear the details frame
+                for widget in details_frame.winfo_children():
+                    widget.destroy()
+        
+        # Toggle button
+        toggle_btn = ttk.Checkbutton(
+            expand_frame,
+            text="Show detailed bad channels breakdown",
+            variable=self.bad_channels_expanded,
+            command=toggle_bad_channels
+        )
+        toggle_btn.pack(anchor="w")
+        
+        # Details frame (initially empty)
+        details_frame = ttk.Frame(expand_frame)
+        details_frame.pack(anchor="w", fill="x", padx=(20, 0))
+
+    def _show_detailed_bad_channels(self, parent, analysis):
+        """Show detailed bad channel breakdown"""
+        
+        # Table-style view
+        table_frame = ttk.Frame(parent)
+        table_frame.pack(anchor="w", fill="x", pady=5)
+        
+        # Header
+        ttk.Label(table_frame, text="Channel", font=("Arial", 9, "bold")).grid(row=0, column=0, sticky="w", padx=(0, 10))
+        ttk.Label(table_frame, text="Count", font=("Arial", 9, "bold")).grid(row=0, column=1, sticky="w", padx=(0, 10))
+        ttk.Label(table_frame, text="Percentage", font=("Arial", 9, "bold")).grid(row=0, column=2, sticky="w", padx=(0, 10))
+        ttk.Label(table_frame, text="Participants", font=("Arial", 9, "bold")).grid(row=0, column=3, sticky="w")
+        
+        # Separator
+        ttk.Separator(table_frame, orient='horizontal').grid(row=1, column=0, columnspan=4, sticky="ew", pady=2)
+        
+        # Data rows
+        for i, (channel, count) in enumerate(analysis['most_common_bads'][:10]):  # Show top 10
+            row = i + 2
+            percentage = (count / len(self.all_epochs)) * 100
+            participant_list = analysis['bad_channel_participants'][channel]
+            participant_str = ", ".join([f"P{p+1}" for p in participant_list[:5]])  # Show first 5
+            if len(participant_list) > 5:
+                participant_str += f" (+{len(participant_list)-5} more)"
+            
+            ttk.Label(table_frame, text=channel).grid(row=row, column=0, sticky="w", padx=(0, 10))
+            ttk.Label(table_frame, text=str(count)).grid(row=row, column=1, sticky="w", padx=(0, 10))
+            ttk.Label(table_frame, text=f"{percentage:.1f}%").grid(row=row, column=2, sticky="w", padx=(0, 10))
+            ttk.Label(table_frame, text=participant_str, font=("Arial", 8)).grid(row=row, column=3, sticky="w")
+
+    def _populate_bad_channels_visualization(self):
+        """Create visualizations for bad channels"""
+        
+        analysis = self._analyze_bad_channels()
+        
+        if analysis['total_unique_bads'] == 0:
+            ttk.Label(self.bad_channels_tab, text="No bad channels to visualize").pack(expand=True)
+            return
+        
+        # Just show a simple text summary instead of plots
+        summary_frame = ttk.Frame(self.bad_channels_tab)
+        summary_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        # Title
+        title_label = ttk.Label(summary_frame, 
+                               text="Bad Channels Analysis", 
+                               font=("Arial", 14, "bold"))
+        title_label.pack(pady=(0, 20))
+        
+        # Main statistics
+        stats_text = f"""Dataset Bad Channels Summary:
+
+• Total unique bad channels: {analysis['total_unique_bads']}
+• Participants with bad channels: {analysis['participants_with_bads']}/{len(self.all_epochs)} ({analysis['participants_with_bads']/len(self.all_epochs)*100:.1f}%)
+• Average bad channels per participant: {analysis['avg_bads_per_participant']:.1f}
+
+Most problematic channels:"""
+        
+        stats_label = ttk.Label(summary_frame, text=stats_text, font=("Arial", 10))
+        stats_label.pack(anchor="w", pady=(0, 10))
+        
+        # List of most common bad channels
+        for i, (ch, count) in enumerate(analysis['most_common_bads'][:10]):
+            percentage = (count / len(self.all_epochs)) * 100
+            channel_text = f"  {i+1}. {ch}: {count} participants ({percentage:.1f}%)"
+            ttk.Label(summary_frame, text=channel_text, font=("Arial", 9)).pack(anchor="w")
+        
+        # Additional statistics
+        bad_counts_per_participant = [len(bads) for bads in analysis['participant_bads']]
+        additional_stats = f"""
+
+Additional Statistics:
+• Participants with 0 bad channels: {sum(1 for count in bad_counts_per_participant if count == 0)} ({sum(1 for count in bad_counts_per_participant if count == 0)/len(self.all_epochs)*100:.1f}%)
+• Participants with 1-3 bad channels: {sum(1 for count in bad_counts_per_participant if 1 <= count <= 3)}
+• Participants with 4+ bad channels: {sum(1 for count in bad_counts_per_participant if count >= 4)}
+• Maximum bad channels in single participant: {max(bad_counts_per_participant) if bad_counts_per_participant else 0}
+• Range: {min(bad_counts_per_participant)} - {max(bad_counts_per_participant)} bad channels per participant"""
+        
+        additional_label = ttk.Label(summary_frame, text=additional_stats, font=("Arial", 10))
+        additional_label.pack(anchor="w", pady=(20, 0))
 
     def _build_sensor_figure(self, figsize=(5, 4)):
         fig = Figure(figsize=figsize, dpi=100)
@@ -550,8 +705,6 @@ class DatasetInfoPanel:
 
         except Exception as e:
             ttk.Label(container, text=f"Drop log plot error: {e}").pack(expand=True)
-
-
 
 
 def show_dataset_info_in_container(class_instance, parent_container, all_epochs, data_name, all_data, freq, data_types, all_individuals=None):

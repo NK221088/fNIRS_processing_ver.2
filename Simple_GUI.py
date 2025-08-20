@@ -282,7 +282,7 @@ def run_analysis():
         or settings["Apply_TDDR"] != previous_apply_tddr
     )
     if reload_data:
-        current_loader = data_loaders[settings["dataset"]](
+        current_loader = data_loaders[settings["data_set"]](
             short_channel_correction=settings["short_channel_correction"],
             negative_correlation_enhancement=settings["negative_correlation_enhancement"],
             interpolate_bad_channels=settings["interpolate_bad_channels"],
