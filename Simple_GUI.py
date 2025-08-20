@@ -23,7 +23,7 @@ plotTypesList = ["Epoch Plot",
 
 # Default settings (add hemoglobin type to settings)
 settings = {
-    "data_set": dataSetList[2],  # Default to first dataset
+    "data_set": dataSetList[12],  # Default to first dataset
     "epoch_type": "HandMI",
     "individual": "All Individuals",
     "short_channel_correction": True,
@@ -53,6 +53,7 @@ settings = {
     "compare_with_raw": False, 
 }
 
+current_loader = None
 first_data_load = True
 all_individuals = []
 start_up = True
@@ -82,7 +83,7 @@ previous_apply_tddr = settings["Apply_TDDR"]
 
 def update_epoch_types(*args):
     """Load data and update epoch type dropdown based on dataset selection."""
-    global previous_dataset, all_individuals, all_epochs, data_name, all_data, freq, data_types, start_up, first_data_load
+    global previous_dataset, all_individuals, all_epochs, data_name, all_data, freq, data_types, start_up, first_data_load, current_loader
     dataset = dataset_var.get()
     
     # Only reload data if dataset is changed or first time
@@ -231,6 +232,7 @@ def show_dataset_info_view():
 
             # Mount the info panel inside right_frame
             show_dataset_info_in_container(
+                class_instance=current_loader,
                 parent_container=right_frame,
                 all_epochs=all_epochs,
                 data_name=data_name,
@@ -252,7 +254,7 @@ def run_analysis():
     global previous_baseline_correction, previous_tmin, previous_individual, previous_combine_strategy
     global previous_bad_channels_strategy, previous_threshold, previous_scalp_coupling_threshold, previous_reject_criteria
     global previous_filter_lower_value, previous_filter_upper_value, previous_l_trans_bandwidth, previous_h_trans_bandwidth
-    global previous_snr_rejection, previous_snr_threshold, previous_apply_tddr
+    global previous_snr_rejection, previous_snr_threshold, previous_apply_tddr, current_loader
 
     settings["data_set"] = dataset_var.get()
     settings["plot_type"] = plot_type_var.get()
@@ -692,7 +694,7 @@ def open_preprocessing_dialog():
 
         # Mark that data needs to be reloaded
         global previous_short_channel_correction, previous_negative_correlation_enhancement, previous_interpolate_bad_channels,previous_tmin, previous_filter_lower_value, previous_filter_upper_value
-        global previous_h_trans_bandwidth, previous_l_trans_bandwidth, previous_scalp_coupling_threshold, previous_reject_criteria, previous_snr_rejection, previous_snr_threshold, previous_apply_tddr
+        global previous_h_trans_bandwidth, previous_l_trans_bandwidth, previous_scalp_coupling_threshold, previous_reject_criteria, previous_snr_rejection, previous_snr_threshold, previous_apply_tddr, current_loader
         previous_short_channel_correction = None  # Force reload
         previous_negative_correlation_enhancement = None
         previous_baseline_correction = None
@@ -759,7 +761,7 @@ def open_plot_settings_dialog():
             settings["compare_with_raw"] = result["compare_with_raw"]
         
         # Mark that data needs to be reloaded if certain settings changed
-        global previous_combine_strategy, previous_bad_channels_strategy, previous_threshold
+        global previous_combine_strategy, previous_bad_channels_strategy, previous_threshold, current_loader
 
         
         # Update other tracking variables

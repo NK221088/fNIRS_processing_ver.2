@@ -281,7 +281,8 @@ class DatasetInfoPanel:
     - Shows Paradigm overview with a scrollable timeline
     - NEW: Drop Log summary in its own tab
     """
-    def __init__(self, parent_container, all_epochs, data_name, all_data, freq, data_types, all_individuals=None):
+    def __init__(self, class_instance, parent_container, all_epochs, data_name, all_data, freq, data_types, all_individuals=None):
+        self.class_instance = class_instance
         self.parent_container = parent_container
         self.root = parent_container.winfo_toplevel()
         self.all_epochs = all_epochs or []
@@ -305,6 +306,11 @@ class DatasetInfoPanel:
     def _build_ui(self):
         header = ttk.Frame(self.frame)
         header.pack(fill=tk.X, pady=(0, 8))
+
+        ttk.Label(
+            header, text=f"Dataset Information: {self.data_name}",
+            font=("Arial", 14, "bold")
+        ).pack(side=tk.LEFT)
 
         ttk.Button(header, text="Clear", command=self.destroy).pack(side=tk.RIGHT)
 
@@ -351,13 +357,12 @@ class DatasetInfoPanel:
         inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         canvas.create_window((0, 0), window=inner, anchor="nw")
         canvas.configure(yscrollcommand=vbar.set)
-
-        total_participants = len(self.all_epochs)
+        
+        total_participants = self.class_instance.number_of_participants
         ttk.Label(inner, text=f"Total Participants: {total_participants}").pack(anchor="w", pady=2)
 
-        if self.all_individuals is not None:
-            excluded = max(0, len(self.all_individuals) - total_participants)
-            ttk.Label(inner, text=f"Excluded Participants: {excluded}").pack(anchor="w", pady=2)
+        excluded = self.class_instance.number_of_participants - len(self.class_instance.all_epochs)
+        ttk.Label(inner, text=f"Excluded Participants: {excluded}").pack(anchor="w", pady=2)
 
         ttk.Label(inner, text=f"Sampling Frequency: {self.freq:.2f} Hz").pack(anchor="w", pady=2)
 
@@ -549,9 +554,9 @@ class DatasetInfoPanel:
 
 
 
-def show_dataset_info_in_container(parent_container, all_epochs, data_name, all_data, freq, data_types, all_individuals=None):
+def show_dataset_info_in_container(class_instance, parent_container, all_epochs, data_name, all_data, freq, data_types, all_individuals=None):
     """
     Public helper — create and mount the info panel inside `parent_container`.
     Returns the DatasetInfoPanel instance (so you may call .destroy() later if needed).
     """
-    return DatasetInfoPanel(parent_container, all_epochs, data_name, all_data, freq, data_types, all_individuals)
+    return DatasetInfoPanel(class_instance, parent_container, all_epochs, data_name, all_data, freq, data_types, all_individuals)
