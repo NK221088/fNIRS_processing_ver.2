@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from load_data_function import data_loaders, load_data
+from load_data_function import data_loaders
 from epoch_plot import epoch_plot
 from standard_fNIRS_response_plot import standard_fNIRS_response_plot
 from paradigm_plot import paradigm_plot
@@ -88,23 +88,25 @@ def update_epoch_types(*args):
     # Only reload data if dataset is changed or first time
     if dataset != previous_dataset or start_up:
         try:
-            all_epochs, data_name, all_data, freq, data_types, all_individuals = load_data(
-                data_set = dataset,
-                short_channel_correction = settings["short_channel_correction"],
-                negative_correlation_enhancement = settings["negative_correlation_enhancement"],
-                interpolate_bad_channels = settings["interpolate_bad_channels"],
-                baseline_correction = settings["baseline_correction"],
-                tmin = settings["tmin"],
-                filter_lower_value = settings["filter_lower_value"],
-                filter_upper_value = settings["filter_upper_value"],
-                l_trans_bandwidth = settings["l_trans_bandwidth"],
-                h_trans_bandwidth = settings["h_trans_bandwidth"],
-                scalp_coupling_threshold = settings["scalp_coupling_threshold"],
-                reject_criteria = settings["reject_criteria"],
-                snr_rejection = settings["snr_rejection"],
-                snr_threshold = settings["snr_threshold"],
-                apply_tddr = settings["Apply_TDDR"]
+            current_loader = data_loaders[dataset](
+                short_channel_correction=settings["short_channel_correction"],
+                negative_correlation_enhancement=settings["negative_correlation_enhancement"],
+                interpolate_bad_channels=settings["interpolate_bad_channels"],
+                baseline_correction=settings["baseline_correction"],
+                tmin=settings["tmin"],
+                filter_lower_value=settings["filter_lower_value"],
+                filter_upper_value=settings["filter_upper_value"],
+                l_trans_bandwidth=settings["l_trans_bandwidth"],
+                h_trans_bandwidth=settings["h_trans_bandwidth"],
+                scalp_coupling_threshold=settings["scalp_coupling_threshold"],
+                reject_criteria=settings["reject_criteria"],
+                snr_rejection=settings["snr_rejection"],
+                snr_threshold=settings["snr_threshold"],
+                apply_tddr=settings["Apply_TDDR"]
             )
+
+            all_epochs, data_name, all_data, freq, data_types, all_individuals = current_loader.load_data()
+
             # Update dropdown options
             epoch_type_menu["values"] = data_types
             if data_types:
@@ -278,8 +280,7 @@ def run_analysis():
         or settings["Apply_TDDR"] != previous_apply_tddr
     )
     if reload_data:
-        all_epochs, data_name, all_data, freq, data_types, all_individuals = load_data(
-            data_set=settings["data_set"],
+        current_loader = data_loaders[settings["dataset"]](
             short_channel_correction=settings["short_channel_correction"],
             negative_correlation_enhancement=settings["negative_correlation_enhancement"],
             interpolate_bad_channels=settings["interpolate_bad_channels"],
@@ -287,14 +288,17 @@ def run_analysis():
             tmin=settings["tmin"],
             filter_lower_value=settings["filter_lower_value"],
             filter_upper_value=settings["filter_upper_value"],
-            l_trans_bandwidth= settings["l_trans_bandwidth"],
-            h_trans_bandwidth= settings["h_trans_bandwidth"],
+            l_trans_bandwidth=settings["l_trans_bandwidth"],
+            h_trans_bandwidth=settings["h_trans_bandwidth"],
             scalp_coupling_threshold=settings["scalp_coupling_threshold"],
             reject_criteria=settings["reject_criteria"],
             snr_rejection=settings["snr_rejection"],
             snr_threshold=settings["snr_threshold"],
             apply_tddr=settings["Apply_TDDR"]
         )
+
+        all_epochs, data_name, all_data, freq, data_types, all_individuals = current_loader.load_data()
+            
         previous_epoch_type = settings["epoch_type"]
         previous_short_channel_correction = settings["short_channel_correction"]
         previous_negative_correlation_enhancement = settings["negative_correlation_enhancement"]

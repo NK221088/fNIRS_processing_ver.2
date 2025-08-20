@@ -1,5 +1,5 @@
 import scipy.stats as stats
-from load_data_function import load_data
+from load_data_function import data_loaders
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -36,21 +36,23 @@ def cross_area_comparison(start_time=3, end_time=12, dataset1="fNIRS_Melika_hand
                       'S5_D4 hbo', 'S5_D6 hbo', 'S5_D8 hbo']
     
     # Load data
-    all_epochs_hand, data_name_hand, all_data_hand, freq_hand, data_types_hand, all_individuals_hand = load_data(
-        data_set=dataset1, 
+    data_loader1 = data_loaders[dataset1](
         short_channel_correction=short_channel_correction, 
         negative_correlation_enhancement=negative_correlation_enhancement, 
         individuals=individuals, 
         interpolate_bad_channels=interpolate_bad_channels
     )
+
+    all_epochs_hand, data_name_hand, all_data_hand, freq_hand, data_types_hand, all_individuals_hand = data_loader1.load_data()
     
-    all_epochs_tongue, data_name_tongue, all_data_tongue, freq_tongue, data_types_tongue, all_individuals_tongue = load_data(
-        data_set=dataset2, 
-        short_channel_correction=short_channel_correction, 
-        negative_correlation_enhancement=negative_correlation_enhancement, 
-        individuals=individuals, 
-        interpolate_bad_channels=interpolate_bad_channels
+    data_loader2 = data_loaders[dataset2](
+    short_channel_correction=short_channel_correction, 
+    negative_correlation_enhancement=negative_correlation_enhancement, 
+    individuals=individuals, 
+    interpolate_bad_channels=interpolate_bad_channels
     )
+
+    all_epochs_tongue, data_name_tongue, all_data_tongue, freq_tongue, data_types_tongue, all_individuals_tongue = data_loader2.load_data()
     
     # Match channel indices
     reference_epochs_hand = all_individuals_hand[0].get_epochs()

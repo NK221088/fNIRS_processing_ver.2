@@ -17,36 +17,3 @@ data_loaders = {
     "Pardis: DOC data": fNIRS_Pardis_DOC_data_load,
     "Pardis: HC data": fNIRS_Pardis_HC_data_load,
 }
-
-def load_data(data_set : str,
-              short_channel_correction : bool = None,
-              negative_correlation_enhancement : bool = None,
-              interpolate_bad_channels:bool=False,
-              baseline_correction: str = "Previous rest period",
-              tmin : int = 0,
-              filter_lower_value: float = 0.05,
-              filter_upper_value: float = 0.7,
-              h_trans_bandwidth: float = 0.2,
-              l_trans_bandwidth: float = 0.02,
-              reject_criteria: dict = dict(hbo=80e-6),
-              scalp_coupling_threshold: float = 0.8,
-              snr_rejection: str = None,
-              snr_threshold: int = 8,
-              apply_tddr: bool = False):
-    if data_set not in data_loaders:
-        raise ValueError("Dataset does not exist.")
-    loader = data_loaders[data_set](short_channel_correction = short_channel_correction,
-                                    negative_correlation_enhancement = negative_correlation_enhancement,
-                                    interpolate_bad_channels=interpolate_bad_channels,
-                                    baseline_correction = baseline_correction,
-                                    tmin = tmin,
-                                    filter_lower_value = filter_lower_value,
-                                    filter_upper_value = filter_upper_value,
-                                    h_trans_bandwidth = h_trans_bandwidth,
-                                    l_trans_bandwidth = l_trans_bandwidth,
-                                    reject_criteria = reject_criteria,
-                                    scalp_coupling_threshold = scalp_coupling_threshold,
-                                    snr_rejection = snr_rejection,
-                                    snr_threshold = snr_threshold,
-                                    apply_tddr = apply_tddr)
-    return loader.load_data()
