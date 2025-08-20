@@ -2052,7 +2052,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         self.tmax = 21
         self.baseline = (None, 0)
         self.data_types = ["HandMI"]
-        self.data_name = "fNIRS_Melika_data"
+        self.data_name = "fNIRS Melika hand data long"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = [""]
         self.baseline_correction = baseline_correction
@@ -2309,7 +2309,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.tmax = 21
         self.baseline = (None, 0)
         self.data_types = ["TongueMI"]
-        self.data_name = "fNIRS_Melika_tongue_long_data"
+        self.data_name = "fNIRS Melika tongue long data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["2"]
         self.baseline_correction = baseline_correction
@@ -2449,7 +2449,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             )
 
             epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
-
+            
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
                 if self.baseline_correction != "xSecondsBefore":
