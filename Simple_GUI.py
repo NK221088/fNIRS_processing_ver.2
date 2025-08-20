@@ -7,7 +7,7 @@ from standard_fNIRS_response_plot import standard_fNIRS_response_plot
 from paradigm_plot import paradigm_plot
 from individual_frequency_plot import individual_frequency_plot
 from statistical_analysis import statistical_analysis
-from dataset_info_dialog import show_dataset_info
+from dataset_info_panel import show_dataset_info_in_container
 from preprocessing_dialog import show_preprocessing_dialog
 from plot_settings_dialog import show_plot_settings_dialog
 
@@ -217,14 +217,17 @@ def toggle_individual_menu(*args):
     # Force the UI to update
     root.update_idletasks()
         
-
-def show_dataset_info_dialog():
-    """Show the dataset information dialog."""
+def show_dataset_info_view():
+    """Render Dataset Info inside the main plot area (right_frame)."""
     try:
-        # Check if data is loaded
         if 'all_epochs' in globals() and all_epochs:
-            show_dataset_info(
-                parent=root,
+            # Clear the right-side plot area before showing info
+            for widget in right_frame.winfo_children():
+                widget.destroy()
+
+            # Mount the info panel inside right_frame
+            show_dataset_info_in_container(
+                parent_container=right_frame,
                 all_epochs=all_epochs,
                 data_name=data_name,
                 all_data=all_data,
@@ -236,7 +239,7 @@ def show_dataset_info_dialog():
             tk.messagebox.showwarning("No Data", "Please load a dataset first by selecting one from the dropdown.")
     except Exception as e:
         tk.messagebox.showerror("Error", f"Failed to show dataset info: {str(e)}")
-        
+
 # Updated run_analysis function
 def run_analysis():
     """Run data processing and visualization based on selected plot type."""
@@ -613,8 +616,11 @@ dataset_menu.pack(side="left", padx=(0, 5))
 dataset_menu["postcommand"] = lambda: adjust_combobox_width(dataset_menu)
 
 # Dataset info button
-info_button = tk.Button(dataset_selection_frame, text="Info", command=show_dataset_info_dialog, 
-                       bg="lightblue", fg="black", font=("Arial", 10), padx=10, pady=2)
+info_button = tk.Button(
+    dataset_selection_frame, text="Info",
+    command=show_dataset_info_view,   # <-- changed
+    bg="lightblue", fg="black", font=("Arial", 10), padx=10, pady=2
+)
 info_button.pack(side="left")
 
 # Helper function to toggle widget visibility

@@ -1,0 +1,466 @@
+import tkinter as tk
+from tkinter import ttk
+import numpy as np
+import mne
+from collections import Counter
+
+import matplotlib
+matplotlib.use("Agg")  # backend for figure creation; TkAgg is used only for embedding
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.pyplot as plt
+
+
+def create_paradigm_plot(events_data, event_mapping=None, figure_size=(8, 6)):
+    """
+    Create a paradigm visualization plot from events data.
+
+    Parameters
+    ----------
+    events_data : array-like
+        Event data in format [[timestamp, duration, event_id], ...]
+        or MNE events format
+    event_mapping : dict, optional
+        Mapping from event_id to condition name {1: 'Control', 2: 'Task1', ...}
+        If None, will use generic names
+    figure_size : tuple
+        Figure size (width, height)
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+    timeline_ax : matplotlib.axes.Axes
+    total_duration_min : float
+    """
+    if hasattr(events_data, 'shape') and events_data.shape[1] >= 3:
+        events = np.array(events_data)
+        timestamps = events[:, 0]
+        event_ids = events[:, 2]
+    elif isinstance(events_data, (list, tuple)) and len(events_data) > 0:
+        events = np.array(events_data)
+        timestamps = events[:, 0]
+        event_ids = events[:, 2]
+    else:
+        raise ValueError("Unsupported events data format")
+
+    if event_mapping is None:
+        unique_ids = np.unique(event_ids)
+        event_mapping = {int(_id): f'Condition_{int(_id)}' for _id in unique_ids}
+
+    timestamps_min = timestamps / 60
+
+    unique_conditions = list(event_mapping.values())
+    colors = plt.cm.Set3(np.linspace(0, 1, len(unique_conditions)))
+    color_map = {condition: colors[i] for i, condition in enumerate(unique_conditions)}
+
+    fig = Figure(figsize=figure_size, dpi=100)
+    gs = fig.add_gridspec(2, 2, height_ratios=[1, 1.5], hspace=0.4, wspace=0.3)
+
+    total_duration = timestamps.max() / 60
+
+    # 1) Condition distribution
+    ax1 = fig.add_subplot(gs[0, 0])
+    condition_counts = Counter([event_mapping[_eid] for _eid in event_ids])
+    conditions = list(condition_counts.keys())
+    counts = list(condition_counts.values())
+    colors_bar = [color_map[c] for c in conditions]
+
+    bars = ax1.bar(conditions, counts, color=colors_bar, alpha=0.8, edgecolor='black', linewidth=0.5)
+    ax1.set_title('Condition Distribution', fontsize=10, fontweight='bold')
+    ax1.set_ylabel('Count', fontsize=9)
+    total_events = len(events)
+    for bar, count in zip(bars, counts):
+        h = bar.get_height()
+        ax1.text(bar.get_x() + bar.get_width()/2., h/2,
+                 f'{count}\n({count/total_events*100:.1f}%)',
+                 ha='center', va='center', fontsize=8, fontweight='bold', color='white')
+    ax1.tick_params(axis='x', rotation=45, labelsize=8)
+    ax1.tick_params(axis='y', labelsize=8)
+
+    # 2) Inter-event intervals
+    ax2 = fig.add_subplot(gs[0, 1])
+    inter_event_intervals = np.diff(timestamps)
+    if len(inter_event_intervals) > 0:
+        ax2.hist(inter_event_intervals, bins=20, alpha=0.7, color='skyblue', edgecolor='black')
+        ax2.axvline(np.mean(inter_event_intervals), color='red', linestyle='--',
+                    label=f'Mean: {np.mean(inter_event_intervals):.1f}s')
+        ax2.legend(fontsize=8)
+    ax2.set_title('Inter-Event Intervals', fontsize=10, fontweight='bold')
+    ax2.set_xlabel('Interval (seconds)', fontsize=9)
+    ax2.set_ylabel('Frequency', fontsize=9)
+    ax2.tick_params(axis='both', labelsize=8)
+
+    # 3) Timeline across all events
+    ax3 = fig.add_subplot(gs[1, :])
+    for time, event_id in zip(timestamps, event_ids):
+        condition = event_mapping[event_id]
+        color = color_map[condition]
+        rect = matplotlib.patches.Rectangle((time/60, 0), 0.8, 1, facecolor=color, alpha=0.8, edgecolor='black')
+        ax3.add_patch(rect)
+
+    ax3.set_xlim(0, timestamps[-1]/60 + 1)
+    ax3.set_ylim(0, 1)
+    ax3.set_xlabel('Time (minutes)', fontsize=9)
+    ax3.set_title(f'Event Sequence Timeline (All {len(events)} Events)', fontsize=10, fontweight='bold')
+    ax3.set_yticks([])
+    ax3.tick_params(axis='x', labelsize=8)
+
+    total_duration_min = timestamps[-1]/60
+    if total_duration_min > 20:
+        ax3.set_xlim(0, 20)
+
+    ax3.text(0.02, 0.85, f'Total Duration: {total_duration:.1f} min | Total Events: {len(events)}',
+             transform=ax3.transAxes, va='top', fontsize=8,
+             bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+
+    legend_elements = [matplotlib.patches.Rectangle((0, 0), 1, 1, facecolor=color_map[c], alpha=0.8, edgecolor='black')
+                       for c in event_mapping.values()]
+    ax3.legend(legend_elements, list(event_mapping.values()), loc='upper right', fontsize=8)
+
+    fig.tight_layout()
+    return fig, ax3, total_duration_min
+
+
+class ScrollableTimelineFrame(ttk.Frame):
+    """Canvas + optional horizontal scrollbar that updates the timeline view."""
+    def __init__(self, parent, fig, timeline_ax, total_duration_min):
+        super().__init__(parent)
+        self.fig = fig
+        self.timeline_ax = timeline_ax
+        self.total_duration_min = total_duration_min
+        self.view_window = 20
+
+        if total_duration_min > self.view_window:
+            self.scrollbar = ttk.Scrollbar(self, orient=tk.HORIZONTAL, command=self.on_scroll)
+            self.scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+        else:
+            self.scrollbar = None
+
+        self.canvas = FigureCanvasTkAgg(fig, self)
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+        if self.scrollbar:
+            self.update_scrollbar()
+
+        self.canvas.get_tk_widget().bind("<MouseWheel>", self.on_mousewheel)
+        self.canvas.get_tk_widget().bind("<Button-4>", self.on_mousewheel)
+        self.canvas.get_tk_widget().bind("<Button-5>", self.on_mousewheel)
+
+        self.canvas.draw()
+
+    def update_scrollbar(self):
+        if self.scrollbar is None:
+            return
+        x0, x1 = self.timeline_ax.get_xlim()
+        scroll_start = max(0, min(x0 / self.total_duration_min, 1))
+        scroll_end = max(scroll_start, min(x1 / self.total_duration_min, 1))
+        self.scrollbar.set(scroll_start, scroll_end)
+
+    def on_scroll(self, *args):
+        if args[0] == 'scroll':
+            direction = int(args[1])
+            units = args[2]
+            x0, x1 = self.timeline_ax.get_xlim()
+            width = x1 - x0
+            shift = direction * width * (0.1 if units == 'units' else 0.8)
+            new_start, new_end = x0 + shift, x1 + shift
+        elif args[0] == 'moveto':
+            position = float(args[1])
+            x0, x1 = self.timeline_ax.get_xlim()
+            width = x1 - x0
+            new_start = position * self.total_duration_min
+            new_end = new_start + width
+        else:
+            return
+
+        if new_end > self.total_duration_min:
+            new_end = self.total_duration_min
+            new_start = new_end - (x1 - x0)
+        if new_start < 0:
+            new_start = 0
+            new_end = new_start + (x1 - x0)
+
+        self.timeline_ax.set_xlim(new_start, new_end)
+        self.canvas.draw()
+        self.update_scrollbar()
+
+    def on_mousewheel(self, event):
+        if self.scrollbar is None:
+            return
+        if event.delta:
+            delta = -event.delta / 120
+        elif event.num == 4:
+            delta = -1
+        elif event.num == 5:
+            delta = 1
+        else:
+            return
+
+        x0, x1 = self.timeline_ax.get_xlim()
+        width = x1 - x0
+        shift = delta * width * 0.1
+        new_start, new_end = x0 + shift, x1 + shift
+
+        if new_end > self.total_duration_min:
+            new_end = self.total_duration_min
+            new_start = new_end - width
+        if new_start < 0:
+            new_start = 0
+            new_end = new_start + width
+
+        self.timeline_ax.set_xlim(new_start, new_end)
+        self.canvas.draw()
+        self.update_scrollbar()
+
+
+class _ZoomOverlay:
+    """An in-window overlay (no OS pop-up) with a dimmed background and a large figure."""
+    def __init__(self, root, build_figure_fn):
+        self.root = root
+        self.build_figure_fn = build_figure_fn
+
+        self.root.update_idletasks()
+        w, h = self.root.winfo_width(), self.root.winfo_height()
+
+        # Full-window canvas overlay
+        self.canvas = tk.Canvas(self.root, highlightthickness=0)
+        self.canvas.place(x=0, y=0, relwidth=1, relheight=1)
+        # Simulate translucency with stipple
+        self.bg = self.canvas.create_rectangle(0, 0, w, h, fill="black", stipple="gray50", outline="")
+
+        # Center container
+        self.container = tk.Frame(self.canvas, bg="white", bd=2, relief="ridge")
+        self.window_id = self.canvas.create_window(w // 2, h // 2, window=self.container, anchor="center")
+
+        # Close button
+        topbar = tk.Frame(self.container, bg="white")
+        topbar.pack(fill="x")
+        ttk.Button(topbar, text="Close ✕", command=self.destroy).pack(side="right", padx=6, pady=6)
+
+        # Large figure
+        max_w, max_h = int(w * 0.85), int(h * 0.85)
+        fig = self.build_figure_fn(figsize=(max_w / 100.0, max_h / 100.0))
+        self.fig = fig
+        self.fig_canvas = FigureCanvasTkAgg(fig, master=self.container)
+        self.fig_canvas.draw()
+        self.fig_canvas.get_tk_widget().pack(fill="both", expand=True)
+
+        # Interactions
+        self.canvas.bind("<Button-1>", self._on_bg_click)
+        # Prevent closing when clicking inside the content
+        self.container.bind("<Button-1>", lambda e: "break")
+        self.root.bind("<Escape>", self._on_escape)
+
+        # --- IMPORTANT FIX ---
+        # Ensure our content (window item) sits above the dim background.
+        # Do NOT call self.canvas.lift(): on Canvas that maps to raising *items* and requires args.
+        self.canvas.tag_raise(self.window_id)
+
+    def _on_bg_click(self, event):
+        # Click on dim background closes overlay
+        if event.widget is self.canvas:
+            self.destroy()
+
+    def _on_escape(self, _):
+        self.destroy()
+
+    def destroy(self):
+        try:
+            self.root.unbind("<Escape>")
+        except Exception:
+            pass
+        self.canvas.destroy()
+
+
+class DatasetInfoPanel:
+    """
+    Panel version of Dataset Info that renders into a container (no separate window).
+    - Shows General Info (scrollable)
+    - Shows Sensor Setup (click to zoom overlay)
+    - Shows Paradigm overview with a scrollable timeline
+    """
+    def __init__(self, parent_container, all_epochs, data_name, all_data, freq, data_types, all_individuals=None):
+        self.parent_container = parent_container
+        self.root = parent_container.winfo_toplevel()
+        self.all_epochs = all_epochs or []
+        self.data_name = data_name
+        self.all_data = all_data or {}
+        self.freq = freq
+        self.data_types = data_types or []
+        self.all_individuals = all_individuals
+
+        # Main wrapper inside the container
+        self.frame = ttk.Frame(parent_container)
+        self.frame.pack(fill=tk.BOTH, expand=True)
+
+        self._build_ui()
+        self._populate()
+
+    def destroy(self):
+        self.frame.destroy()
+
+    # ---------- UI ----------
+    def _build_ui(self):
+        header = ttk.Frame(self.frame)
+        header.pack(fill=tk.X, pady=(0, 8))
+
+        ttk.Label(
+            header, text=f"Dataset Information: {self.data_name}",
+            font=("Arial", 14, "bold")
+        ).pack(side=tk.LEFT)
+
+        ttk.Button(header, text="Clear", command=self.destroy).pack(side=tk.RIGHT)
+
+        self.main = ttk.Frame(self.frame)
+        self.main.pack(fill=tk.BOTH, expand=True)
+
+        self.main.columnconfigure(0, weight=3)   # Info
+        self.main.columnconfigure(1, weight=2)   # Plots
+        self.main.rowconfigure(0, weight=1)
+        self.main.rowconfigure(1, weight=1)
+
+        # Left (scrollable info)
+        self.info_frame = ttk.Frame(self.main)
+        self.info_frame.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 10))
+
+        # Right top: sensor layout
+        self.layout_frame = ttk.Frame(self.main)
+        self.layout_frame.grid(row=0, column=1, sticky="nsew", pady=(0, 10))
+
+        # Right bottom: paradigm & timeline
+        self.paradigm_frame = ttk.Frame(self.main)
+        self.paradigm_frame.grid(row=1, column=1, sticky="nsew")
+
+    # ---------- Data population ----------
+    def _populate(self):
+        self._populate_general_info()
+        self._populate_sensor_layout()
+        self._populate_paradigm()
+
+    def _populate_general_info(self):
+        canvas = tk.Canvas(self.info_frame, highlightthickness=0)
+        vbar = ttk.Scrollbar(self.info_frame, orient="vertical", command=canvas.yview)
+        inner = ttk.Frame(canvas)
+
+        inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=inner, anchor="nw")
+        canvas.configure(yscrollcommand=vbar.set)
+
+        ttk.Label(inner, text=f"Dataset Name: {self.data_name}", font=("Arial", 12, "bold")).pack(anchor="w", pady=5)
+
+        total_participants = len(self.all_epochs)
+        ttk.Label(inner, text=f"Total Participants: {total_participants}").pack(anchor="w", pady=2)
+
+        if self.all_individuals is not None:
+            excluded = max(0, len(self.all_individuals) - total_participants)
+            ttk.Label(inner, text=f"Excluded Participants: {excluded}").pack(anchor="w", pady=2)
+
+        ttk.Label(inner, text=f"Sampling Frequency: {self.freq:.2f} Hz").pack(anchor="w", pady=2)
+
+        ttk.Label(inner, text="Conditions:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
+        for dt in self.data_types:
+            ttk.Label(inner, text=f"  • {dt}").pack(anchor="w", pady=1)
+
+        if self.all_epochs:
+            first_epoch = self.all_epochs[0]
+            ttk.Label(inner, text="Channel Information:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
+            ttk.Label(inner, text=f"  • Total Channels: {len(first_epoch.ch_names)}").pack(anchor="w", pady=1)
+
+            hbo_channels = [ch for ch in first_epoch.ch_names if ch.lower().endswith('hbo')]
+            hbr_channels = [ch for ch in first_epoch.ch_names if ch.lower().endswith('hbr')]
+            ttk.Label(inner, text=f"  • HbO Channels: {len(hbo_channels)}").pack(anchor="w", pady=1)
+            ttk.Label(inner, text=f"  • HbR Channels: {len(hbr_channels)}").pack(anchor="w", pady=1)
+
+            bads = []
+            if hasattr(first_epoch, 'info') and 'bads' in first_epoch.info:
+                bads = first_epoch.info['bads']
+                ttk.Label(inner, text=f"  • Bad Channels: {len(bads)}").pack(anchor="w", pady=1)
+                if bads:
+                    txt = ", ".join(bads[:5])
+                    if len(bads) > 5:
+                        txt += f" ... (+{len(bads)-5} more)"
+                    ttk.Label(inner, text=f"    {txt}").pack(anchor="w", pady=1)
+
+        ttk.Label(inner, text="Epoch Information:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
+        total_epochs = sum(len(ep) for ep in self.all_epochs) if self.all_epochs else 0
+        ttk.Label(inner, text=f"  • Total Epochs: {total_epochs}").pack(anchor="w", pady=1)
+
+        for dt in self.data_types:
+            if dt in self.all_data:
+                n_epochs = self.all_data[dt].shape[0]
+                ttk.Label(inner, text=f"  • {dt}: {n_epochs} epochs").pack(anchor="w", pady=1)
+
+        ttk.Label(inner, text="Summary Statistics:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
+        for dt in self.data_types:
+            if dt in self.all_data:
+                data = self.all_data[dt]
+                ttk.Label(inner, text=f"  {dt}:").pack(anchor="w", pady=1)
+                ttk.Label(inner, text=f"    Mean: {np.mean(data):.6f}").pack(anchor="w", pady=1)
+                ttk.Label(inner, text=f"    Std: {np.std(data):.6f}").pack(anchor="w", pady=1)
+                ttk.Label(inner, text=f"    Range: {np.min(data):.6f} to {np.max(data):.6f}").pack(anchor="w", pady=1)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        vbar.pack(side="right", fill="y")
+
+    def _build_sensor_figure(self, figsize=(5, 4)):
+        fig = Figure(figsize=figsize, dpi=100)
+        ax = fig.add_subplot(111)
+        first_epoch = self.all_epochs[0]
+        info = first_epoch.info
+        # Minimal dummy data with same channel montage
+        raw_for_plot = mne.io.RawArray(np.zeros((len(info['ch_names']), 1000)), info, verbose='ERROR')
+        raw_for_plot.plot_sensors(kind="topomap", show_names=True, axes=ax)
+        ax.set_title("Sensor Setup")
+        fig.tight_layout()
+        return fig
+
+    def _open_zoom_overlay(self):
+        _ZoomOverlay(self.root, self._build_sensor_figure)
+
+    def _populate_sensor_layout(self):
+        try:
+            if not self.all_epochs:
+                ttk.Label(self.layout_frame, text="No epoch data available for sensor setup").pack()
+                return
+            fig = self._build_sensor_figure(figsize=(5, 4))
+            canvas = FigureCanvasTkAgg(fig, self.layout_frame)
+            canvas.draw()
+            w = canvas.get_tk_widget()
+            w.pack(fill=tk.BOTH, expand=True)
+
+            # Click-to-zoom hint and handler
+            hint = ttk.Label(self.layout_frame, text="Click the plot to zoom • Esc or click outside to close", foreground="gray")
+            hint.pack(pady=(4, 0))
+            w.bind("<Button-1>", lambda _e: self._open_zoom_overlay())
+        except Exception as e:
+            ttk.Label(self.layout_frame, text=f"Sensor setup error: {e}").pack(expand=True)
+
+    def _populate_paradigm(self):
+        try:
+            if not self.all_epochs:
+                ttk.Label(self.paradigm_frame, text="No epoch data available").pack(expand=True)
+                return
+
+            first_epoch = self.all_epochs[0]
+            events = first_epoch.events
+            event_mapping = {v: k for k, v in first_epoch.event_id.items()}
+
+            fig, timeline_ax, total_duration_min = create_paradigm_plot(events, event_mapping, figure_size=(8, 6))
+            timeline_frame = ScrollableTimelineFrame(self.paradigm_frame, fig, timeline_ax, total_duration_min)
+            timeline_frame.pack(fill=tk.BOTH, expand=True)
+
+            ttk.Label(
+                self.paradigm_frame,
+                text="Use the scrollbar or mouse wheel to navigate the timeline.",
+                font=("Arial", 9), foreground="gray"
+            ).pack(pady=(5, 0))
+        except Exception as e:
+            ttk.Label(self.paradigm_frame, text=f"Paradigm plot error: {e}").pack(expand=True)
+
+
+def show_dataset_info_in_container(parent_container, all_epochs, data_name, all_data, freq, data_types, all_individuals=None):
+    """
+    Public helper — create and mount the info panel inside `parent_container`.
+    Returns the DatasetInfoPanel instance (so you may call .destroy() later if needed).
+    """
+    return DatasetInfoPanel(parent_container, all_epochs, data_name, all_data, freq, data_types, all_individuals)
