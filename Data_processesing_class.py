@@ -2284,7 +2284,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None,
                  snr_threshold: int = 8, apply_tddr: bool = False):
-        self.number_of_participants = 6
+        self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "TongueMI",
@@ -2354,6 +2354,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         
     def load_data(self):
         for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
+            self.number_of_participants += 1
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
             raw_intensity = self.make_annotations(raw_intensity)

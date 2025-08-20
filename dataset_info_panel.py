@@ -306,11 +306,6 @@ class DatasetInfoPanel:
         header = ttk.Frame(self.frame)
         header.pack(fill=tk.X, pady=(0, 8))
 
-        ttk.Label(
-            header, text=f"Dataset Information: {self.data_name}",
-            font=("Arial", 14, "bold")
-        ).pack(side=tk.LEFT)
-
         ttk.Button(header, text="Clear", command=self.destroy).pack(side=tk.RIGHT)
 
         self.main = ttk.Frame(self.frame)
@@ -356,8 +351,6 @@ class DatasetInfoPanel:
         inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         canvas.create_window((0, 0), window=inner, anchor="nw")
         canvas.configure(yscrollcommand=vbar.set)
-
-        ttk.Label(inner, text=f"Dataset Name: {self.data_name}", font=("Arial", 12, "bold")).pack(anchor="w", pady=5)
 
         total_participants = len(self.all_epochs)
         ttk.Label(inner, text=f"Total Participants: {total_participants}").pack(anchor="w", pady=2)
