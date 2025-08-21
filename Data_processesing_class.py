@@ -937,7 +937,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
         return raw_intensity
         
     def load_data(self):
-        for i in range(1, self.number_of_participants + 1):
+        for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
             self.number_of_participants += 1
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
@@ -1058,7 +1058,6 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
             
         # Concatenate the control data
         self.all_control = np.concatenate(self.all_control, axis=0)
-
         # Concatenate the data for each data type
         for name in self.data_types:
             setattr(self, f'all_{name}', np.concatenate(getattr(self, f'all_{name}'), axis=0))
@@ -1182,7 +1181,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         return raw_intensity
         
     def load_data(self):
-        for i in range(1, self.number_of_participants + 1):
+        for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
             self.number_of_participants += 1
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
@@ -1465,6 +1464,11 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
             if self.short_channel_correction:
                 raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
             raw_od = mne_nirs.channels.get_long_channels(raw_od)
+            
+            if self.apply_tddr:
+                raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
+
+            sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
 
             sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
             
