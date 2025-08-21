@@ -472,9 +472,9 @@ class DatasetInfoPanel:
                     if arr.size == 0:
                         return {"mean": None, "median": None, "std": None, "n": 0}
                     return {
-                        "mean": float(_np.nanmean(arr)),
-                        "median": float(_np.nanmedian(arr)),
-                        "std": float(_np.nanstd(arr, ddof=1)) if arr.size > 1 else 0.0,
+                        "mean": float(_np.nanmean(arr))*10**6,
+                        "median": float(_np.nanmedian(arr))*10**6,
+                        "std": float(_np.nanstd(arr, ddof=1))*10**6 if arr.size > 1 else 0.0,
                         "n": int(arr.size),
                     }
 
