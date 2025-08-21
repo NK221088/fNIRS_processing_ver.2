@@ -32,6 +32,7 @@ class fNIRS_data_load:
         self.tmin = tmin
         self.tmax = tmax
         self.baseline = baseline
+        self.all_raw_epochs = []
         self.all_epochs = []
         self.all_control = []
         self.data_types = data_types
@@ -155,6 +156,7 @@ class fNIRS_data_load:
                         data_types=self.data_types,
                     )
 
+                self.all_raw_epochs.append(raw_epochs)
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
@@ -538,6 +540,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
                         data_types=self.data_types,
                     )
 
+                self.all_raw_epochs.append(raw_epochs)
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
@@ -818,6 +821,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
                         data_types=self.data_types,
                     )
 
+                self.all_raw_epochs.append(raw_epochs)
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
@@ -1033,6 +1037,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
                         data_types=self.data_types,
                     )
 
+                self.all_raw_epochs.append(raw_epochs)
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
@@ -1277,6 +1282,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
                         data_types=self.data_types,
                     )
 
+                self.all_raw_epochs.append(raw_epochs)
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
@@ -1515,6 +1521,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
                         data_types=self.data_types,
                     )
 
+                self.all_raw_epochs.append(raw_epochs)
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
@@ -1757,6 +1764,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
                         data_types=self.data_types,
                     )
 
+                self.all_raw_epochs.append(raw_epochs)
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
             
@@ -1981,6 +1989,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
                         data_types=self.data_types,
                     )
 
+                self.all_raw_epochs.append(raw_epochs)
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
@@ -2188,6 +2197,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                         data_types=self.data_types,
                     )
 
+                self.all_raw_epochs.append(raw_epochs)
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
@@ -2455,6 +2465,8 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                         epochs,
                         data_types=self.data_types,
                     )
+                    
+                self.all_raw_epochs.append(raw_epochs)
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
@@ -2730,6 +2742,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
                             data_types=self.data_types,
                         )
 
+                    self.all_raw_epochs.append(raw_epochs)
                     self.all_epochs.append(epochs)
                     self.all_control.append(epochs["Control"].get_data(copy=True))
                     
@@ -2978,6 +2991,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                             data_types=self.data_types,
                         )
 
+                    self.all_raw_epochs.append(raw_epochs)
                     self.all_epochs.append(epochs)
                     self.all_control.append(epochs["Control"].get_data(copy=True))
                     

@@ -412,11 +412,7 @@ class DatasetInfoPanel:
             return stats
 
         # Identify optional "before" epochs collection
-        before_epochs_all = None
-        for attr in ["all_epochs_before", "all_epochs_raw", "raw_all_epochs", "epochs_before"]:
-            if hasattr(self.class_instance, attr):
-                before_epochs_all = getattr(self.class_instance, attr)
-                break
+        before_epochs_all = self.class_instance.all_raw_epochs
 
         def collect_epoch_scalars(epochs, ch_index, cond_name):
             try:
@@ -462,16 +458,15 @@ class DatasetInfoPanel:
                 import numpy as _np
                 vals_after = _np.concatenate(vals_after) if len(vals_after) else _np.array([])
 
-                # BEFORE preprocessing (optional)
+                # BEFORE preprocessing
                 vals_before = _np.array([])
-                if before_epochs_all:
-                    concat = []
-                    for ep in before_epochs_all:
-                        vals = collect_epoch_scalars(ep, ch_index, cond)
-                        if vals.size:
-                            concat.append(vals)
-                    if concat:
-                        vals_before = _np.concatenate(concat)
+                concat = []
+                for ep in before_epochs_all:
+                    vals = collect_epoch_scalars(ep, ch_index, cond)
+                    if vals.size:
+                        concat.append(vals)
+                if concat:
+                    vals_before = _np.concatenate(concat)
 
                 def summarize(arr):
                     if arr.size == 0:
