@@ -394,14 +394,23 @@ class DatasetInfoPanel:
         if not self.all_epochs:
             return stats
 
-        # Determine conditions from the first participant's epochs
-        first = self.all_epochs[0]
-        try:
-            condition_names = list(first.event_id.keys())
-        except Exception:
-            condition_names = []
+        # Use data_types instead of trying to get conditions from potentially empty epochs
+        condition_names = self.data_types if self.data_types else []
+        if not condition_names:
+            print("Warning: No condition names found in data_types")
+            return stats
 
-        ch_names = getattr(first, "ch_names", [])
+        # Try to get channel names from first epoch, but handle empty epochs gracefully
+        ch_names = []
+        for epochs in self.all_epochs:
+            if hasattr(epochs, 'ch_names') and epochs.ch_names:
+                ch_names = epochs.ch_names
+                break
+        
+        if not ch_names:
+            print("Warning: No channel names found")
+            return stats
+
         # Identify optional "before" epochs collection
         before_epochs_all = None
         for attr in ["all_epochs_before", "all_epochs_raw", "raw_all_epochs", "epochs_before"]:
@@ -414,10 +423,16 @@ class DatasetInfoPanel:
                 sub = epochs[cond_name]
             except Exception:
                 return np.array([])
+            
+            # Check if epochs object is empty before calling get_data()
+            if len(sub) == 0:
+                return np.array([])
+            
             try:
                 data = sub.get_data()  # (n_epochs, n_channels, n_times)
             except Exception:
                 return np.array([])
+            
             if data.size == 0:
                 return np.array([])
             if ch_index is None or ch_index < 0 or ch_index >= data.shape[1]:
@@ -428,7 +443,12 @@ class DatasetInfoPanel:
         for ch in ch_names:
             stats[ch] = {}
             try:
-                ch_index = first.ch_names.index(ch)
+                # Use any available epochs to get the channel index
+                ch_index = None
+                for epochs in self.all_epochs:
+                    if hasattr(epochs, 'ch_names') and ch in epochs.ch_names:
+                        ch_index = epochs.ch_names.index(ch)
+                        break
             except Exception:
                 ch_index = None
 
@@ -469,6 +489,7 @@ class DatasetInfoPanel:
                 }
 
         return stats
+
     def _populate_general_info(self):
             canvas = tk.Canvas(self.info_frame, highlightthickness=0)
             vbar = ttk.Scrollbar(self.info_frame, orient="vertical", command=canvas.yview)
@@ -604,7 +625,10 @@ class DatasetInfoPanel:
             ttk.Label(controls, text="Channel:").pack(side=tk.LEFT)
             ch_names = []
             try:
-                ch_names = self.all_epochs[0].ch_names
+                for epochs in self.all_epochs:
+                    if hasattr(epochs, 'ch_names') and epochs.ch_names:
+                        ch_names = epochs.ch_names
+                        break
             except Exception:
                 pass
             sel = tk.StringVar(value=(ch_names[0] if ch_names else ""))
@@ -627,10 +651,10 @@ class DatasetInfoPanel:
                     tree.delete(row)
                 ch = sel.get()
                 stats = self._channel_stats_cache.get(ch, {})
-                try:
-                    cond_order = list(self.all_epochs[0].event_id.keys())
-                except Exception:
-                    cond_order = list(stats.keys())
+                
+                # Use self.data_types instead of trying to get from potentially empty epochs
+                cond_order = self.data_types if self.data_types else list(stats.keys())
+                
                 for cond in cond_order:
                     ent = stats.get(cond, {})
                     b = ent.get("before", {})
