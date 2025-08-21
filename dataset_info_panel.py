@@ -12,6 +12,29 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 
 
+def scale_epochs_to_micro_molar(epochs):
+    """
+    Return a copy of epochs scaled to µM.
+    Checks the current unit + multiplier and rescales if necessary.
+    """
+    scaled = epochs.copy()
+    for ch_idx, ch in enumerate(scaled.info["chs"]):
+        if ch["unit"] == mne.io.constants.FIFF.FIFF_UNIT_MOL:
+            # current scale from unit_mul
+            current_mul = 10 ** ch.get("unit_mul", 0)
+            # target is µM = 10^-6
+            target_mul = 1e-6
+            scale_factor = current_mul / target_mul
+
+            # apply scaling to ALL epochs for this channel
+            scaled._data[:, ch_idx, :] *= scale_factor
+
+            # update channel metadata
+            ch["unit"] = mne.io.constants.FIFF.FIFF_UNIT_MOL
+            ch["unit_mul"] = -6  # explicitly mark µ (10^-6)
+    return scaled
+
+
 def create_paradigm_plot(events_data, event_mapping=None, figure_size=(8, 6)):
     """
     Create a paradigm visualization plot from events data.
@@ -387,7 +410,9 @@ class DatasetInfoPanel:
         'After' uses self.all_epochs (required). 'Before' is optional if
         self.class_instance has 'all_epochs_before' or 'all_epochs_raw'.
         We compute per-epoch scalar as the mean value over time for the selected channel,
-        then aggregate across participants+epochs to mean/median/std."""
+        then aggregate across participants+epochs to mean/median/std/min/max.
+        
+        IMPORTANT: All values are scaled to µM using `scale_epochs_to_micro_molar`."""
         import numpy as np
 
         stats = {}
@@ -412,7 +437,11 @@ class DatasetInfoPanel:
             return stats
 
         # Identify optional "before" epochs collection
-        before_epochs_all = self.class_instance.all_raw_epochs
+        before_epochs_all = getattr(self.class_instance, "all_raw_epochs", None)
+
+        # ---- NEW: scale all epochs to µM first (copies are returned) ----
+        after_scaled = [scale_epochs_to_micro_molar(ep) for ep in self.all_epochs]
+        before_scaled = [scale_epochs_to_micro_molar(ep) for ep in before_epochs_all] if before_epochs_all else []
 
         def collect_epoch_scalars(epochs, ch_index, cond_name):
             try:
@@ -441,7 +470,7 @@ class DatasetInfoPanel:
             try:
                 # Use any available epochs to get the channel index
                 ch_index = None
-                for epochs in self.all_epochs:
+                for epochs in after_scaled:
                     if hasattr(epochs, 'ch_names') and ch in epochs.ch_names:
                         ch_index = epochs.ch_names.index(ch)
                         break
@@ -449,32 +478,35 @@ class DatasetInfoPanel:
                 ch_index = None
 
             for cond in condition_names:
-                # AFTER preprocessing
+                # AFTER preprocessing (already scaled to µM)
                 vals_after = []
-                for ep in self.all_epochs:
+                for ep in after_scaled:
                     vals = collect_epoch_scalars(ep, ch_index, cond)
                     if vals.size:
                         vals_after.append(vals)
                 import numpy as _np
                 vals_after = _np.concatenate(vals_after) if len(vals_after) else _np.array([])
 
-                # BEFORE preprocessing
+                # BEFORE preprocessing (if available; already scaled to µM)
                 vals_before = _np.array([])
-                concat = []
-                for ep in before_epochs_all:
-                    vals = collect_epoch_scalars(ep, ch_index, cond)
-                    if vals.size:
-                        concat.append(vals)
-                if concat:
-                    vals_before = _np.concatenate(concat)
+                if before_scaled:
+                    concat = []
+                    for ep in before_scaled:
+                        vals = collect_epoch_scalars(ep, ch_index, cond)
+                        if vals.size:
+                            concat.append(vals)
+                    if concat:
+                        vals_before = _np.concatenate(concat)
 
                 def summarize(arr):
                     if arr.size == 0:
-                        return {"mean": None, "median": None, "std": None, "n": 0}
+                        return {"mean": None, "median": None, "std": None, "min": None, "max": None, "n": 0}
                     return {
-                        "mean": float(_np.nanmean(arr))*10**6,
-                        "median": float(_np.nanmedian(arr))*10**6,
-                        "std": float(_np.nanstd(arr, ddof=1))*10**6 if arr.size > 1 else 0.0,
+                        "mean": float(_np.nanmean(arr)),
+                        "median": float(_np.nanmedian(arr)),
+                        "std": float(_np.nanstd(arr, ddof=1)) if arr.size > 1 else 0.0,
+                        "min": float(_np.nanmin(arr)),
+                        "max": float(_np.nanmax(arr)),
                         "n": int(arr.size),
                     }
 
@@ -547,7 +579,7 @@ class DatasetInfoPanel:
                     ttk.Label(inner, text=f"  • {dt}: {n_epochs} epochs").pack(anchor="w", pady=1)
 
 
-                        # Replaced summary statistics with an inline Channel Explorer (always visible, no header).
+            # Replaced summary statistics with an inline Channel Explorer (always visible, no header).
             _ = self._add_channel_explorer_section(inner, inline=True)
             canvas.pack(side="left", fill="both", expand=True)
             vbar.pack(side="right", fill="y")
@@ -594,91 +626,101 @@ class DatasetInfoPanel:
 
     
     def _add_channel_explorer_section(self, parent, inline=False):
-            """Add a 'Channel Explorer' with a channel combobox and per-condition stats table.
-            If inline=True, render it immediately (no header, no toggle)."""
-            import tkinter as tk
-            from tkinter import ttk
+        """Add a 'Channel Explorer' with a channel combobox and per-condition stats table.
+        Conditions are columns, statistics are rows. No scrollbars, just taller table.
+        """
+        import tkinter as tk
+        from tkinter import ttk
 
-            if not getattr(self, "_channel_stats_cache", None):
-                self._channel_stats_cache = self._precompute_channel_stats()
+        if not getattr(self, "_channel_stats_cache", None):
+            self._channel_stats_cache = self._precompute_channel_stats()
 
-            expand = ttk.Frame(parent)
-            expand.pack(anchor="w", fill="x", pady=(10, 0))
+        expand = ttk.Frame(parent)
+        expand.pack(anchor="w", fill="x", pady=(10, 0))
 
-            # Header and toggle are omitted in inline mode
-            if not inline:
-                header = ttk.Frame(expand)
-                header.pack(anchor="w", fill="x")
-                # Per request: no visible 'Channel Explorer' header; keep space minimal
+        body = ttk.Frame(expand)
 
-            body = ttk.Frame(expand)
+        # Controls
+        controls = ttk.Frame(body)
+        controls.pack(anchor="w", fill="x", pady=(6, 4))
 
-            # Controls
-            controls = ttk.Frame(body)
-            controls.pack(anchor="w", fill="x", pady=(6, 4))
+        ttk.Label(controls, text="Channel:").pack(side=tk.LEFT)
+        ch_names = []
+        try:
+            for epochs in self.all_epochs:
+                if hasattr(epochs, 'ch_names') and epochs.ch_names:
+                    ch_names = epochs.ch_names
+                    break
+        except Exception:
+            pass
+        sel = tk.StringVar(value=(ch_names[0] if ch_names else ""))
+        combo = ttk.Combobox(controls, textvariable=sel, values=ch_names, state="readonly", width=24)
+        combo.pack(side=tk.LEFT, padx=(6, 12))
 
-            ttk.Label(controls, text="Channel:").pack(side=tk.LEFT)
-            ch_names = []
+        # Units hint
+        ttk.Label(controls, text="Units: µM (micro-molar)").pack(side=tk.LEFT)
+
+        # Table (conditions = columns, stats = rows)
+        table_frame = ttk.Frame(body)
+        table_frame.pack(anchor="w", fill="both", expand=True)
+
+        conds = self.data_types if self.data_types else []
+        cols = ["Statistic"] + conds
+
+        tree = ttk.Treeview(
+            table_frame, columns=cols, show="headings", height=12
+        )
+        tree.pack(fill="both", expand=True)
+
+        for c in cols:
+            tree.heading(c, text=c)
+            tree.column(c, anchor="center", width=120, stretch=True)
+        tree.column("Statistic", anchor="w", width=160)
+
+        # Define which statistics we want as rows (N removed)
+        stat_labels = [
+            ("mean", "Mean (before)", "Mean (after)"),
+            ("median", "Median (before)", "Median (after)"),
+            ("std", "Std (before)", "Std (after)"),
+            ("min", "Min (before)", "Min (after)"),
+            ("max", "Max (before)", "Max (after)"),
+        ]
+
+        def refresh_table():
+            for row in tree.get_children():
+                tree.delete(row)
+            ch = sel.get()
+            stats = self._channel_stats_cache.get(ch, {})
+
+            def fmt(x):
+                return f"{x:.6f}" if isinstance(x, float) else ("—" if x is None else str(x))
+
+            for stat_key, before_label, after_label in stat_labels:
+                if before_label:
+                    row_vals = [before_label]
+                    for cond in conds:
+                        row_vals.append(fmt(stats.get(cond, {}).get("before", {}).get(stat_key)))
+                    tree.insert("", "end", values=row_vals)
+                if after_label:
+                    row_vals = [after_label]
+                    for cond in conds:
+                        row_vals.append(fmt(stats.get(cond, {}).get("after", {}).get(stat_key)))
+                    tree.insert("", "end", values=row_vals)
+
+        def on_select(_e=None):
+            refresh_table()
             try:
-                for epochs in self.all_epochs:
-                    if hasattr(epochs, 'ch_names') and epochs.ch_names:
-                        ch_names = epochs.ch_names
-                        break
+                canvas = parent.master
+                if hasattr(canvas, "bbox"):
+                    canvas.update_idletasks()
+                    canvas.configure(scrollregion=canvas.bbox("all"))
             except Exception:
                 pass
-            sel = tk.StringVar(value=(ch_names[0] if ch_names else ""))
-            combo = ttk.Combobox(controls, textvariable=sel, values=ch_names, state="readonly", width=24)
-            combo.pack(side=tk.LEFT, padx=(6, 12))
 
-            # Table
-            table_frame = ttk.Frame(body)
-            cols = ("Condition", "Mean (before)", "Mean (after)", "Median (before)", "Median (after)", "Std (before)", "Std (after)", "N (after)")
-            tree = ttk.Treeview(table_frame, columns=cols, show="headings", height=6)
-            for c in cols:
-                tree.heading(c, text=c)
-                tree.column(c, width=130, anchor="center")
-            tree.column("Condition", width=140, anchor="w")
-            tree.pack(fill="x")
-            table_frame.pack(anchor="w", fill="x")
-
-            def refresh_table():
-                for row in tree.get_children():
-                    tree.delete(row)
-                ch = sel.get()
-                stats = self._channel_stats_cache.get(ch, {})
-                
-                # Use self.data_types instead of trying to get from potentially empty epochs
-                cond_order = self.data_types if self.data_types else list(stats.keys())
-                
-                for cond in cond_order:
-                    ent = stats.get(cond, {})
-                    b = ent.get("before", {})
-                    a = ent.get("after", {})
-                    def fmt(x):
-                        return f"{x:.6f}" if isinstance(x, float) else ("—" if x is None else str(x))
-                    tree.insert("", "end", values=(
-                        cond,
-                        fmt(b.get("mean")), fmt(a.get("mean")),
-                        fmt(b.get("median")), fmt(a.get("median")),
-                        fmt(b.get("std")), fmt(a.get("std")),
-                        a.get("n", 0),
-                    ))
-
-            def on_select(_e=None):
-                refresh_table()
-                try:
-                    canvas = parent.master
-                    if hasattr(canvas, "bbox"):
-                        canvas.update_idletasks()
-                        canvas.configure(scrollregion=canvas.bbox("all"))
-                except Exception:
-                    pass
-
-            # Always visible
-            body.pack(anchor="w", fill="x", padx=(0,0))
-            refresh_table()
-            combo.bind("<<ComboboxSelected>>", on_select)
-            return True
+        body.pack(anchor="w", fill="both", expand=True)
+        refresh_table()
+        combo.bind("<<ComboboxSelected>>", on_select)
+        return True
 
     def _show_detailed_bad_channels(self, parent, analysis):
             """Show detailed bad channel breakdown"""
