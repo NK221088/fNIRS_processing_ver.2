@@ -330,7 +330,7 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
         self.annotation_names = {"1.0": "Control",
                                  "2.0": "Tapping/Left",
                                  "3.0": "Tapping/Right"}
-        self.file_path = mne.datasets.fnirs_motor.data_path()
+        self.file_path = Path(os.getenv('Luke_full_motor'))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 5
@@ -376,9 +376,11 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
         )
 
     def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(f"Dataset/rob-luke/rob-luke-BIDS-NIRS-Tapping-e262df8/sub-{sub_id}/nirs/sub-{sub_id}_task-tapping_nirs.snirf", verbose=True)
+        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'sub-{sub_id}/nirs/sub-{sub_id}_task-tapping_nirs.snirf'}", preload=True, verbose=True)
+            
         raw_intensity.load_data()
         return raw_intensity
+
 
 ###############################################################################################################################################################################################
 
