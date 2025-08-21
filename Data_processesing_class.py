@@ -15,14 +15,13 @@ from preprocessesing_toolbox.SNR_rejection import snr_rejection, get_bad_channel
 load_dotenv()
 
 class fNIRS_data_load:
-    def __init__(self, file_path, number_of_participants=1, annotation_names=None, stimulus_duration=5,
+    def __init__(self, file_path, annotation_names=None, stimulus_duration=5,
                  short_channel_correction=True, negative_correlation_enhancement=True, scalp_coupling_threshold=0.8,
                  reject_criteria: dict = dict(hbo=80e-6), tmin=0, tmax=15, baseline=(None, 0), data_types=[],
                  data_name="None", interpolate_bad_channels=False, unwanted = ["15.0"], baseline_correction: str = "Previous rest period",
                  filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
-                 snr_rejection: str = None, snr_threshold : int = 8, apply_tddr: bool = False):    
-            
-        self.number_of_participants = number_of_participants
+                 snr_rejection: str = "None", snr_threshold : int = 8, apply_tddr: bool = False):    
+        self.number_of_participants = 0    
         self.file_path = file_path
         self.annotation_names = annotation_names
         self.stimulus_duration = stimulus_duration
@@ -59,7 +58,8 @@ class fNIRS_data_load:
         return raw_intensity
 
     def load_data(self):
-        for i in range(1, self.number_of_participants + 1):
+        for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
+            self.number_of_participants += 1
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
 
@@ -195,8 +195,8 @@ class fNIRS_data_load:
 
 class AudioSpeechNoise_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction : bool, negative_correlation_enhancement : bool, interpolate_bad_channels:bool=False, tmin:int = -5,baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
-                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold : int = 8, apply_tddr: bool = False):
-        self.number_of_participants = 17
+                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None", snr_threshold : int = 8, apply_tddr: bool = False):
+        self.number_of_participants = 0
         self.all_speech = []
         self.all_noise = []
         self.annotation_names = {"1.0": "Control",
@@ -224,7 +224,6 @@ class AudioSpeechNoise_data_load(fNIRS_data_load):
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
         super().__init__(
-                        number_of_participants = self.number_of_participants,
                         file_path = self.file_path,
                         annotation_names = self.annotation_names,
                         stimulus_duration = self.stimulus_duration,
@@ -259,8 +258,8 @@ class AudioSpeechNoise_data_load(fNIRS_data_load):
 
 class fNIRS_motor_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
-                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold: int = 8, apply_tddr: bool = False):
-        self.number_of_participants = 1
+                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None", snr_threshold: int = 8, apply_tddr: bool = False):
+        self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1.0": "Control",
@@ -276,7 +275,7 @@ class fNIRS_motor_data_load(fNIRS_data_load):
         self.tmax = 15
         self.baseline = (None, 0)
         self.data_types = ["Tapping"]
-        self.data_name = "fnirs_motor_plus_anti"
+        self.data_name = "fnirs motor"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["15.0"]
         self.baseline_correction = baseline_correction
@@ -288,7 +287,6 @@ class fNIRS_motor_data_load(fNIRS_data_load):
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
         super().__init__(
-            number_of_participants=self.number_of_participants,
             file_path=self.file_path,
             annotation_names=self.annotation_names,
             stimulus_duration=self.stimulus_duration,
@@ -323,8 +321,8 @@ class fNIRS_motor_data_load(fNIRS_data_load):
 
 class fNIRS_full_motor_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
-                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold: int = 8, apply_tddr: bool = False):
-        self.number_of_participants = 5
+                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None", snr_threshold: int = 8, apply_tddr: bool = False):
+        self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1.0": "Control",
@@ -352,7 +350,6 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
         super().__init__(
-            number_of_participants=self.number_of_participants,
             file_path=self.file_path,
             annotation_names=self.annotation_names,
             stimulus_duration=self.stimulus_duration,
@@ -385,8 +382,8 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
 
 class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
-                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold: int = 8, apply_tddr: bool = False):
-        self.number_of_participants = 4
+                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None", snr_threshold: int = 8, apply_tddr: bool = False):
+        self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "Tongue",
@@ -402,7 +399,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
         self.tmax = 15
         self.baseline = (None, 0)
         self.data_types = ["Tongue"]
-        self.data_name = "fNIRS_Alexandros_DoC_data"
+        self.data_name = "Alexandros DoC data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["15.0"]
         self.baseline_correction = baseline_correction
@@ -414,7 +411,6 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
         super().__init__(
-            number_of_participants=self.number_of_participants,
             file_path=self.file_path,
             annotation_names=self.annotation_names,
             stimulus_duration=self.stimulus_duration,
@@ -445,7 +441,8 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
         return raw_intensity
     
     def load_data(self):
-        for i in range(1, self.number_of_participants + 1):
+        for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
+            self.number_of_participants += 1
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
             raw_intensity = self.make_annotations(raw_intensity)
@@ -595,8 +592,8 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
 
 class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
-                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold: int = 8, apply_tddr: bool = False):
-        self.number_of_participants = 7
+                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None", snr_threshold: int = 8, apply_tddr: bool = False):
+        self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "Physical_movement",
@@ -613,7 +610,7 @@ class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
         self.tmax = 15
         self.baseline = (None, 0)
         self.data_types = ["Imagery"]
-        self.data_name = "fNIRS_Alexandros_Healthy_data"
+        self.data_name = "Alexandros Healthy data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["1"]
         self.baseline_correction = baseline_correction
@@ -625,7 +622,6 @@ class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
         super().__init__(
-            number_of_participants=self.number_of_participants,
             file_path=self.file_path,
             annotation_names=self.annotation_names,
             stimulus_duration=self.stimulus_duration,
@@ -658,8 +654,8 @@ class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
 
 class fNIRS_CUH_patient_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
-                reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold: int = 8, apply_tddr: bool = False):
-        self.number_of_participants = 48
+                reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None", snr_threshold: int = 8, apply_tddr: bool = False):
+        self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "Imagery",
@@ -675,7 +671,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
         self.tmax = 15
         self.baseline = (None, 0)
         self.data_types = ["Imagery"]
-        self.data_name = "fNIRS_CUH_patient_data"
+        self.data_name = "Alexandros CUH patient data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = "Pause"
         self.baseline_correction = baseline_correction
@@ -688,7 +684,6 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
         self.apply_tddr = apply_tddr
 
         super().__init__(
-            number_of_participants=self.number_of_participants,
             file_path=self.file_path,
             annotation_names=self.annotation_names,
             stimulus_duration=self.stimulus_duration,
@@ -722,12 +717,13 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
             return raw_intensity
         
     def load_data(self):
-        for i in range(1, self.number_of_participants + 1):
+        for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             if self.data_name == 'fNIRS_CUH_patient_data':
                 sub_id = i
             if sub_id in [3, 14, 15, 17, 18, 30, 31, 41, 46]:
                 continue
+            self.number_of_participants += 1
             raw_intensity = self.define_raw_intensity(sub_id)
             raw_intensity = self.make_annotations(raw_intensity)
 
@@ -877,8 +873,8 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
 
 class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
-                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None, snr_threshold: int = 8, apply_tddr: bool = False):
-        self.number_of_participants = 4
+                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None", snr_threshold: int = 8, apply_tddr: bool = False):
+        self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "HandMI",
@@ -894,7 +890,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
         self.tmax = 28
         self.baseline = (None, 0)
         self.data_types = ["HandMI"]
-        self.data_name = "fNIRS_Melika_data"
+        self.data_name = "Melika hand 5 Hz"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = [""]
         self.baseline_correction = baseline_correction
@@ -906,7 +902,6 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
         super().__init__(
-            number_of_participants=self.number_of_participants,
             file_path=self.file_path,
             annotation_names=self.annotation_names,
             stimulus_duration=self.stimulus_duration,
@@ -939,6 +934,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
         
     def load_data(self):
         for i in range(1, self.number_of_participants + 1):
+            self.number_of_participants += 1
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
             if i == 1 or i == 2 or i == 3 or i == 4:# When data for the first patient was recorded, the introduction was not added in Satori, so we add it manually
@@ -1121,9 +1117,9 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
 class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
-                 l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None,
+                 l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None",
                  snr_threshold: int = 8, apply_tddr: bool = False):
-        self.number_of_participants = 4
+        self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "TongueMI",
@@ -1139,7 +1135,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         self.tmax = 28
         self.baseline = (None, 0)
         self.data_types = ["TongueMI"]
-        self.data_name = "fNIRS_Melika_data"
+        self.data_name = "Melika tongue 5Hz"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["2"]
         self.baseline_correction = baseline_correction
@@ -1151,7 +1147,6 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
         super().__init__(
-            number_of_participants=self.number_of_participants,
             file_path=self.file_path,
             annotation_names=self.annotation_names,
             stimulus_duration=self.stimulus_duration,
@@ -1183,6 +1178,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         
     def load_data(self):
         for i in range(1, self.number_of_participants + 1):
+            self.number_of_participants += 1
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
             if i == 1 : # When data for the first patient was recorded, the introduction was not added in Satori, so we add it manually
@@ -1366,9 +1362,9 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
 class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
-                 l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None,
+                 l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None",
                  snr_threshold: int = 8, apply_tddr: bool = False):
-        self.number_of_participants = 9
+        self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "HandMI",
@@ -1384,7 +1380,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
         self.tmax = 28
         self.baseline = (None, 0)
         self.data_types = ["HandMI"]
-        self.data_name = "fNIRS_Melika_data"
+        self.data_name = "Melika hand 10Hz"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = [""]
         self.baseline_correction = baseline_correction
@@ -1396,7 +1392,6 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
         super().__init__(
-            number_of_participants=self.number_of_participants,
             file_path=self.file_path,
             annotation_names=self.annotation_names,
             stimulus_duration=self.stimulus_duration,
@@ -1428,6 +1423,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
         
     def load_data(self):
         for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
+            self.number_of_participants += 1
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
             raw_intensity = self.make_without_intro_annotations(raw_intensity)
@@ -1604,9 +1600,9 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
 class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
-                 l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None,
+                 l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None",
                  snr_threshold: int = 8, apply_tddr: bool = False):
-        self.number_of_participants = 9
+        self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "TongueMI",
@@ -1622,7 +1618,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
         self.tmax = 28
         self.baseline = (None, 0)
         self.data_types = ["TongueMI"]
-        self.data_name = "fNIRS_Melika_data"
+        self.data_name = "Melika tongue 10Hz"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["2"]
         self.baseline_correction = baseline_correction
@@ -1635,7 +1631,6 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
         self.apply_tddr = apply_tddr
 
         super().__init__(
-            number_of_participants=self.number_of_participants,
             file_path=self.file_path,
             annotation_names=self.annotation_names,
             stimulus_duration=self.stimulus_duration,
@@ -1667,6 +1662,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
         
     def load_data(self):
         for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
+            self.number_of_participants += 1
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
             raw_intensity = self.make_annotations(raw_intensity)
@@ -1825,9 +1821,9 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
 class fNIRS_Melika_old_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
-                 l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None,
+                 l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None",
                  snr_threshold: int = 8, apply_tddr: bool = False):
-        self.number_of_participants = 11
+        self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "HandMI",
@@ -1844,7 +1840,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
         self.tmax = 15
         self.baseline = (None, 0)
         self.data_types = ["HandMI", "TongueMI"]
-        self.data_name = "fNIRS_Melika_data"
+        self.data_name = "Melika old data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["0"]
         self.baseline_correction = baseline_correction
@@ -1857,7 +1853,6 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
         self.apply_tddr = apply_tddr
         
         super().__init__(
-            number_of_participants=self.number_of_participants,
             file_path=self.file_path,
             annotation_names=self.annotation_names,
             stimulus_duration=self.stimulus_duration,
@@ -1888,9 +1883,10 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
         return raw_intensity
         
     def load_data(self):
-        for i in range(1, self.number_of_participants + 1):
+        for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
             if i == 3:
                 continue
+            self.number_of_participants += 1
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
             raw_intensity = self.make_annotations(raw_intensity)
@@ -2034,9 +2030,9 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
 class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
-                 l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None,
+                 l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None",
                  snr_threshold: int = 8, apply_tddr: bool = False):
-        self.number_of_participants = 7
+        self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "HandMI",
@@ -2052,7 +2048,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         self.tmax = 21
         self.baseline = (None, 0)
         self.data_types = ["HandMI"]
-        self.data_name = "fNIRS Melika hand data long"
+        self.data_name = "Melika hand data long"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = [""]
         self.baseline_correction = baseline_correction
@@ -2064,7 +2060,6 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
         super().__init__(
-            number_of_participants=self.number_of_participants,
             file_path=self.file_path,
             annotation_names=self.annotation_names,
             stimulus_duration=self.stimulus_duration,
@@ -2096,6 +2091,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         
     def load_data(self):
         for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
+            self.number_of_participants += 1
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
             raw_intensity = self.make_without_intro_annotations(raw_intensity)
@@ -2282,7 +2278,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
 class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
-                 l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None,
+                 l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None",
                  snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 0
         self.all_tapping = []
@@ -2309,7 +2305,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.tmax = 21
         self.baseline = (None, 0)
         self.data_types = ["TongueMI"]
-        self.data_name = "fNIRS Melika tongue long data"
+        self.data_name = "Melika tongue long data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["2"]
         self.baseline_correction = baseline_correction
@@ -2322,7 +2318,6 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.apply_tddr = apply_tddr
 
         super().__init__(
-            number_of_participants=self.number_of_participants,
             file_path=self.file_path,
             annotation_names=self.annotation_names,
             stimulus_duration=self.stimulus_duration,
@@ -2551,9 +2546,9 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
 class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
     def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
-                 l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = None,
+                 l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None",
                  snr_threshold: int = 8, apply_tddr: bool = False):
-        self.number_of_participants = 68
+        self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "TongueMI",
@@ -2569,7 +2564,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
         self.tmax = 21
         self.baseline = (None, 0)
         self.data_types = ["TongueMI"]
-        self.data_name = "fNIRS_Pardis_DOC_data"
+        self.data_name = "Pardis DOC data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = [""]
         self.baseline_correction = baseline_correction
@@ -2581,7 +2576,6 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
         super().__init__(
-            number_of_participants=self.number_of_participants,
             file_path=self.file_path,
             annotation_names=self.annotation_names,
             stimulus_duration=self.stimulus_duration,
@@ -2642,6 +2636,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
         for i, p_folder_name in enumerate(p_folders, start=1):
             try:
                 raw_intensity = self.define_raw_intensity(p_folder_name)
+                self.number_of_participants += 1
                 raw_intensity = self.make_annotations(raw_intensity)
                 
                 raw_intensity.annotations.rename(self.annotation_names)
@@ -2799,7 +2794,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: bool = False,
                  snr_threshold: float = 8.0, apply_tddr: bool = False):
-        self.number_of_participants = 68
+        self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
         self.annotation_names = {"1": "TonguePhysical",
@@ -2816,7 +2811,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
         self.tmax = 20
         self.baseline = (None, 0)
         self.data_types = ["TonguePhysical", "TongueIM"]
-        self.data_name = "fNIRS_Pardis_HC"
+        self.data_name = "Pardis HC data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["5", "6", "7"]
         self.baseline_correction = baseline_correction
@@ -2828,7 +2823,6 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
         super().__init__(
-            number_of_participants=self.number_of_participants,
             file_path=self.file_path,
             annotation_names=self.annotation_names,
             stimulus_duration=self.stimulus_duration,
@@ -2892,6 +2886,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                 raw_intensity = self.define_raw_intensity(folder_name)
                 # Process your raw_intensity data here
                 print(f"Successfully loaded data from {folder_name} (iteration {i})")
+                self.number_of_participants += 1
 
                 raw_intensity.annotations.rename(self.annotation_names)
                 for _unwanted in self.unwanted:
