@@ -565,8 +565,17 @@ class DatasetInfoPanel:
 
             ttk.Label(inner, text="Epoch Information:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
             # Updated epoch metrics per user spec
-            total_epochs = len(self.all_epochs[0].drop_log) * self.class_instance.number_of_participants if self.all_epochs else 0
-            remaining_epochs = sum(len(ep) for ep in self.all_epochs) if self.all_epochs else 0
+            events = self.class_instance.all_raw_epochs[0].events
+            indices = []
+            for j in range(len(self.class_instance.data_types)):
+                    indices.extend(np.where((events[:, 2] == self.class_instance.all_raw_epochs[0].event_id[self.class_instance.data_types[j]]))[0])
+            total_epochs = len(indices) * self.class_instance.number_of_participants if indices else 0
+            indices = []
+            for i in range(len(self.class_instance.all_epochs)):
+                events = self.class_instance.all_epochs[i].events
+                for j in range(len(self.class_instance.data_types)):
+                        indices.extend(np.where((events[:, 2] == self.class_instance.all_epochs[0].event_id[self.class_instance.data_types[j]]))[0])
+            remaining_epochs = len(indices)
             excluded_epochs = total_epochs - remaining_epochs if total_epochs is not None else 0
             ttk.Label(inner, text=f"  • Total Epochs (expected): {total_epochs}").pack(anchor="w", pady=1)
             ttk.Label(inner, text=f"  • Remaining Epochs: {remaining_epochs}").pack(anchor="w", pady=1)
@@ -869,14 +878,15 @@ class DatasetInfoPanel:
                 return
 
             # Accumulate drop logs across all Epochs objects
+            incomplete_drop_log = self.class_instance.drop_log if hasattr(self.class_instance, 'drop_log') else []
             total_drop_log = ()
-            try:
-                for epochs in self.all_epochs:
-                    if hasattr(epochs, "drop_log") and epochs.drop_log is not None:
-                        total_drop_log += epochs.drop_log
-            except Exception as e:
-                ttk.Label(container, text=f"Error collecting drop logs: {e}").pack(expand=True)
-                return
+            events = self.class_instance.all_raw_epochs[0].events
+            indices = []
+            for j in range(len(self.class_instance.data_types)):
+                    indices.extend(np.where((events[:, 2] == self.class_instance.all_raw_epochs[0].event_id[self.class_instance.data_types[j]]))[0])
+            for i in range(len(incomplete_drop_log)):
+                    for ind in indices:
+                        total_drop_log += (incomplete_drop_log[i][ind],)
 
             if len(total_drop_log) == 0:
                 ttk.Label(container, text="No dropped epochs to display").pack(expand=True)

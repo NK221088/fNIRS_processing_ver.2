@@ -13,14 +13,14 @@ def reject_if_single_event_type(epochs, data_types):
 
     if len(unique_event_types) < (len(data_types)):
         # Drop all epochs by index
-        epochs.drop(range(len(epochs)))
+        epochs.drop(range(len(epochs)), reason=f"All epochs dropped: only {len(unique_event_types)} event type(s) remaining")
         print(f"All epochs dropped: only {len(unique_event_types)} event type(s) remaining")
         return epochs
 
     for event_type in data_types:
         if len(epochs[event_type]) < 2:
             # Drop all epochs by index
-            epochs.drop(range(len(epochs)))
+            epochs.drop(range(len(epochs)), reason=f"All epochs dropped: only {len(epochs[event_type])} event(s) of type {event_type} remaining")
             print(f"All epochs dropped: only {len(epochs[event_type])} event(s) of type {event_type} remaining")
             return epochs
     return epochs
