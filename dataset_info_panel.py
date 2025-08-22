@@ -4,6 +4,7 @@ from tkinter import filedialog, messagebox
 import numpy as np
 import mne
 from collections import Counter, defaultdict
+from data_analysis.effect_size import compute_effect_size
 
 import matplotlib
 matplotlib.use("Agg")  # backend for figure creation; TkAgg is used only for embedding
@@ -440,6 +441,7 @@ class DatasetInfoPanel:
         before_epochs_all = getattr(self.class_instance, "all_raw_epochs", None)
 
         # ---- NEW: scale all epochs to µM first (copies are returned) ----
+        effect_size_raw, effect_size_preprocessed = compute_effect_size(self.class_instance)
         after_scaled = [scale_epochs_to_micro_molar(ep) for ep in self.all_epochs]
         before_scaled = [scale_epochs_to_micro_molar(ep) for ep in before_epochs_all] if before_epochs_all else []
 
