@@ -34,6 +34,7 @@ class fNIRS_data_load:
         self.baseline = baseline
         self.all_raw_epochs = []
         self.all_epochs = []
+        self.drop_log = []
         self.all_control = []
         self.data_types = data_types
         self.data_name = data_name
@@ -146,6 +147,7 @@ class fNIRS_data_load:
 
             epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
+            self.drop_log.append(epochs.drop_log)
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
                 if self.baseline_correction != "xSecondsBefore":
@@ -330,7 +332,7 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
         self.annotation_names = {"1.0": "Control",
                                  "2.0": "Tapping/Left",
                                  "3.0": "Tapping/Right"}
-        self.file_path = mne.datasets.fnirs_motor.data_path()
+        self.file_path = Path(os.getenv('Luke_full_motor'))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 5
@@ -376,9 +378,11 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
         )
 
     def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(f"Dataset/rob-luke/rob-luke-BIDS-NIRS-Tapping-e262df8/sub-{sub_id}/nirs/sub-{sub_id}_task-tapping_nirs.snirf", verbose=True)
+        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'sub-{sub_id}/nirs/sub-{sub_id}_task-tapping_nirs.snirf'}", preload=True, verbose=True)
+            
         raw_intensity.load_data()
         return raw_intensity
+
 
 ###############################################################################################################################################################################################
 
@@ -530,6 +534,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
 
             epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
+            self.drop_log.append(epochs.drop_log)
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
                 if self.baseline_correction != "xSecondsBefore":
@@ -811,6 +816,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
 
             epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
+            self.drop_log.append(epochs.drop_log)
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
                 if self.baseline_correction != "xSecondsBefore":
@@ -937,7 +943,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
         return raw_intensity
         
     def load_data(self):
-        for i in range(1, self.number_of_participants + 1):
+        for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
             self.number_of_participants += 1
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
@@ -1027,6 +1033,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
 
             epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
+            self.drop_log.append(epochs.drop_log)
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
                 if self.baseline_correction != "xSecondsBefore":
@@ -1058,7 +1065,6 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
             
         # Concatenate the control data
         self.all_control = np.concatenate(self.all_control, axis=0)
-
         # Concatenate the data for each data type
         for name in self.data_types:
             setattr(self, f'all_{name}', np.concatenate(getattr(self, f'all_{name}'), axis=0))
@@ -1182,7 +1188,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         return raw_intensity
         
     def load_data(self):
-        for i in range(1, self.number_of_participants + 1):
+        for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
             self.number_of_participants += 1
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
@@ -1272,6 +1278,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
 
             epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
+            self.drop_log.append(epochs.drop_log)
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
                 if self.baseline_correction != "xSecondsBefore":
@@ -1465,6 +1472,11 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
             if self.short_channel_correction:
                 raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
             raw_od = mne_nirs.channels.get_long_channels(raw_od)
+            
+            if self.apply_tddr:
+                raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
+
+            sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
 
             sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
             
@@ -1511,6 +1523,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
 
             epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
+            self.drop_log.append(epochs.drop_log)
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
                 if self.baseline_correction != "xSecondsBefore":
@@ -1754,6 +1767,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
 
             epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
+            self.drop_log.append(epochs.drop_log)
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
                 if self.baseline_correction != "xSecondsBefore":
@@ -1979,6 +1993,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
 
             epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
+            self.drop_log.append(epochs.drop_log)
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
                 if self.baseline_correction != "xSecondsBefore":
@@ -2059,7 +2074,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         self.data_types = ["HandMI"]
         self.data_name = "Melika hand data long"
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = [""]
+        self.unwanted = ["0"]
         self.baseline_correction = baseline_correction
         self.filter_lower_value = filter_lower_value
         self.filter_upper_value = filter_upper_value
@@ -2187,6 +2202,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
 
             epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
+            self.drop_log.append(epochs.drop_log)
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
                 if self.baseline_correction != "xSecondsBefore":
@@ -2239,7 +2255,6 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         events, event_dict = mne.events_from_annotations(raw_intensity)
         cropped_raw_data = raw_intensity.copy()
         cropped_raw_data.annotations.set_durations(self.stimulus_duration)
-        cropped_raw_data.annotations.rename({"0": "End"})
 
         for id,event in enumerate(events):
             if id == 0:
@@ -2253,34 +2268,6 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                 cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 10, "Outro")
             cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
         
-        return cropped_raw_data
-
-    def make_annotations(self, raw_intensity):
-        sampling_frequency = raw_intensity.info["sfreq"]
-        events, event_dict = mne.events_from_annotations(raw_intensity)
-        cropped_raw_data = raw_intensity.copy()
-        cropped_raw_data.annotations.set_durations(self.stimulus_duration)
-        cropped_raw_data.annotations.description[0] = "I"
-        cropped_raw_data.annotations.set_durations({"I" : 80})
-        cropped_raw_data.annotations.rename({"I": "Introduction"})
-        if "0" in cropped_raw_data.annotations.description:
-            cropped_raw_data.annotations.rename({"0": "End"})
-
-        
-        for id,event in enumerate(events):
-            if id == 0:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + 80, 30, "Resting state") # Adding resting state in the beginning
-            elif id == 6:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
-            elif id == 12:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
-            elif id == 18:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 10, "Outro")
-            else:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
         return cropped_raw_data
 
 ###############################################################################################################################################################################################
@@ -2317,7 +2304,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.data_types = ["TongueMI"]
         self.data_name = "Melika tongue long data"
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = ["2"]
+        self.unwanted = ["2", "0"]
         self.baseline_correction = baseline_correction
         self.filter_lower_value = filter_lower_value
         self.filter_upper_value = filter_upper_value
@@ -2456,6 +2443,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
 
             epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
             
+            self.drop_log.append(epochs.drop_log)
             if len(epochs) != 0:
                 # Apply custom baseline correction if needed
                 if self.baseline_correction != "xSecondsBefore":
@@ -2502,28 +2490,6 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.data_types.append("Control")
         return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
 
-    
-    def make_without_intro_annotations(self, raw_intensity):
-        sampling_frequency = raw_intensity.info["sfreq"]
-        events, event_dict = mne.events_from_annotations(raw_intensity)
-        cropped_raw_data = raw_intensity.copy()
-        cropped_raw_data.annotations.set_durations(self.stimulus_duration)
-        cropped_raw_data.annotations.rename({"0": "End"})
-
-        for id,event in enumerate(events):
-            if id == 0:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] - 30, 30, "Resting state") # Adding resting state in the beginning
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] - 110, 80, "Introduction")
-            if id == 5:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
-            if id == 11:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
-            if id == 17:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 10, "Outro")
-            cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
-        
-        return cropped_raw_data
-
     def make_annotations(self, raw_intensity):
         sampling_frequency = raw_intensity.info["sfreq"]
         events, event_dict = mne.events_from_annotations(raw_intensity)
@@ -2532,8 +2498,6 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         cropped_raw_data.annotations.description[0] = "I"
         cropped_raw_data.annotations.set_durations({"I" : 80})
         cropped_raw_data.annotations.rename({"I": "Introduction"})
-        if "0" in cropped_raw_data.annotations.description:
-            cropped_raw_data.annotations.rename({"0": "End"})
 
         
         for id,event in enumerate(events):
@@ -2549,7 +2513,8 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
                 cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 10, "Outro")
             else:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
+                if id != 19 and id !=20:
+                    cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
         return cropped_raw_data
 
 
@@ -2732,6 +2697,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
 
                 epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
+                self.drop_log.append(epochs.drop_log)
                 if len(epochs) != 0:
                     # Apply custom baseline correction if needed
                     if self.baseline_correction != "xSecondsBefore":
@@ -2981,6 +2947,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
 
                 epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
 
+                self.drop_log.append(epochs.drop_log)
                 if len(epochs) != 0:
                     # Apply custom baseline correction if needed
                     if self.baseline_correction != "xSecondsBefore":
