@@ -102,6 +102,6 @@ def compute_effect_size(class_instance):
                 
         return effect_sizes, channels_mean, channels_std_deviation, channels_median, channels_min, channels_max
 
-    effect_sizes_raw, channels_means_raw, channels_std_deviations_raw, channels_medians_raw, channels_mins_raw, channels_maxs_raw = _compute_effect_size(raw_epochs, tmin, tmax, channels, pause_times), channels_mean, channels_std_deviation, channels_median, channels_min, channels_max
-    effect_size_preprocessed, channels_means_preprocessed, channels_std_deviations_preprocessed, channels_medians_preprocessed, channels_mins_preprocessed, channels_maxs_preprocessed = _compute_effect_size(preprocessed_epochs, tmin, tmax, channels, pause_times), channels_mean, channels_std_deviation, channels_median, channels_min, channels_max
+    effect_size_preprocessed, channels_means_preprocessed, channels_std_deviations_preprocessed, channels_medians_preprocessed, channels_mins_preprocessed, channels_maxs_preprocessed = _compute_effect_size(preprocessed_epochs, tmin, tmax, channels, pause_times)
+    effect_sizes_raw, channels_means_raw, channels_std_deviations_raw, channels_medians_raw, channels_mins_raw, channels_maxs_raw = _compute_effect_size(raw_epochs, tmin, tmax, channels, pause_times)
     return effect_sizes_raw, effect_size_preprocessed
