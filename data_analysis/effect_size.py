@@ -12,16 +12,18 @@ def compute_effect_size(class_instance):
     tmax = 12.5
     channels = mne_nirs.channels.get_long_channels(class_instance.Individual_participants[0].raw_haemo).info["ch_names"]
     
-    pause_id = class_instance.standard_event_ids["Pause"]
-    pause_indices = np.where(raw_epochs[0].events[:, 2] == pause_id)
-    pause_times = raw_epochs[0].events[pause_indices, 0]
-    pause_times = np.append(pause_times, raw_epochs[0].events[-1][0])
     
-    def _compute_effect_size(epochs, tmin, tmax, channels, pause_times):
+    
+    def _compute_effect_size(raw_epochs, epochs, tmin, tmax, channels):
+
+        pause_id = class_instance.standard_event_ids["Pause"]
         
         participants_session_data = {}
         channel_means = defaultdict(lambda: defaultdict(list))
         for index, epoch in enumerate(epochs):
+            pause_indices = np.where(raw_epochs[index].events[:, 2] == pause_id)
+            pause_times = raw_epochs[index].events[pause_indices, 0]
+            pause_times = np.append(pause_times, raw_epochs[index].events[-1][0])
             start_time = 0
             participant_data = {}
             session_data = []
@@ -100,8 +102,11 @@ def compute_effect_size(class_instance):
                 channels_min[channel][data_type] = np.min(channel_means[channel][data_type])
                 channels_max[channel][data_type] = np.max(channel_means[channel][data_type])
                 
-        return effect_sizes, channels_mean, channels_std_deviation, channels_median, channels_min, channels_max
+        return (effect_sizes, channels_mean, channels_std_deviation, channels_median, channels_min, channels_max)
 
-    effect_size_preprocessed, channels_means_preprocessed, channels_std_deviations_preprocessed, channels_medians_preprocessed, channels_mins_preprocessed, channels_maxs_preprocessed = _compute_effect_size(preprocessed_epochs, tmin, tmax, channels, pause_times)
-    effect_sizes_raw, channels_means_raw, channels_std_deviations_raw, channels_medians_raw, channels_mins_raw, channels_maxs_raw = _compute_effect_size(raw_epochs, tmin, tmax, channels, pause_times)
-    return effect_sizes_raw, effect_size_preprocessed
+    _keys = ["Effect size", "Channels' means", "Channels' std. deviation", "Channels' medians", "Channels' min", "Channels' max"]
+    raw_return_values = _compute_effect_size(raw_epochs, raw_epochs, tmin, tmax, channels)
+    preprocessed_return_values = _compute_effect_size(raw_epochs, preprocessed_epochs, tmin, tmax, channels)
+    raw_values = {key: val for key, val in zip(_keys, raw_return_values)}
+    preprocessed_values = {key: val for key, val in zip(_keys, preprocessed_return_values)}
+    return raw_values, preprocessed_values
