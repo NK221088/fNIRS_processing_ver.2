@@ -21,16 +21,10 @@ def scale_epochs_to_micro_molar(epochs):
     scaled = epochs.copy()
     for ch_idx, ch in enumerate(scaled.info["chs"]):
         if ch["unit"] == mne.io.constants.FIFF.FIFF_UNIT_MOL:
-            # current scale from unit_mul
             current_mul = 10 ** ch.get("unit_mul", 0)
-            # target is µM = 10^-6
             target_mul = 1e-6
             scale_factor = current_mul / target_mul
-
-            # apply scaling to ALL epochs for this channel
             scaled._data[:, ch_idx, :] *= scale_factor
-
-            # update channel metadata
             ch["unit"] = mne.io.constants.FIFF.FIFF_UNIT_MOL
             ch["unit_mul"] = -6  # explicitly mark µ (10^-6)
     return scaled
@@ -209,7 +203,6 @@ class ScrollableTimelineFrame(ttk.Frame):
         self.canvas.draw()
         self.update_scrollbar()
 
-    
     def on_mousewheel(self, event):
         if self.scrollbar is None:
             return "break"
@@ -274,17 +267,13 @@ class _ZoomOverlay:
 
         # Interactions
         self.canvas.bind("<Button-1>", self._on_bg_click)
-        # Prevent closing when clicking inside the content
         self.container.bind("<Button-1>", lambda e: "break")
         self.root.bind("<Escape>", self._on_escape)
 
-        # --- IMPORTANT FIX ---
-        # Ensure our content (window item) sits above the dim background.
-        # Do NOT call self.canvas.lift(): on Canvas that maps to raising *items* and requires args.
+        # Ensure our content sits above the dim background
         self.canvas.tag_raise(self.window_id)
 
     def _on_bg_click(self, event):
-        # Click on dim background closes overlay
         if event.widget is self.canvas:
             self.destroy()
 
@@ -306,6 +295,7 @@ class DatasetInfoPanel:
     - Shows Sensor Setup (click to zoom overlay)
     - Shows Paradigm overview with a scrollable timeline
     - Shows Drop Log summary in its own tab
+    - NEW: Uses compute_effect_size() outputs for channel-level summaries (no recomputation here)
     """
     def __init__(self, class_instance, parent_container, all_epochs, data_name, all_data, freq, data_types, all_individuals=None):
         self.class_instance = class_instance
@@ -317,6 +307,9 @@ class DatasetInfoPanel:
         self.freq = freq
         self.data_types = data_types or []
         self.all_individuals = all_individuals
+
+        # Cache for effect-size outputs (raw vs preprocessed)
+        self._effect_cache = None  # set by _get_effect_results()
 
         # Main wrapper inside the container
         self.frame = ttk.Frame(parent_container)
@@ -360,7 +353,7 @@ class DatasetInfoPanel:
         self.paradigm_frame = ttk.Frame(self.main)
         self.paradigm_frame.grid(row=1, column=1, sticky="nsew")
 
-        # Notebook to hold multiple plots on the bottom-right
+        # Notebook on the bottom-right
         self.plot_tabs = ttk.Notebook(self.paradigm_frame)
         self.paradigm_tab = ttk.Frame(self.plot_tabs)
         self.drop_tab = ttk.Frame(self.plot_tabs)
@@ -379,23 +372,21 @@ class DatasetInfoPanel:
         """Analyze bad channels across all participants"""
         all_bads = []
         participant_bads = []
-        bad_channel_participants = defaultdict(list)  # Track which participants have each bad channel
-        
+        bad_channel_participants = defaultdict(list)
+
         for i, epochs in enumerate(self.all_epochs):
             if hasattr(epochs, 'info') and 'bads' in epochs.info:
                 bads = epochs.info['bads']
                 participant_bads.append(bads)
                 all_bads.extend(bads)
-                
-                # Track which participants have each bad channel
                 for bad_ch in bads:
                     bad_channel_participants[bad_ch].append(i)
             else:
                 participant_bads.append([])
-        
+
         bad_counts = Counter(all_bads)
         participants_with_bads = sum(1 for bads in participant_bads if bads)
-        
+
         return {
             'total_unique_bads': len(bad_counts),
             'participants_with_bads': participants_with_bads,
@@ -405,246 +396,137 @@ class DatasetInfoPanel:
             'bad_channel_participants': dict(bad_channel_participants)
         }
 
-    
-    def _precompute_channel_stats(self):
-        """Precompute per-channel, per-condition statistics (before/after preprocessing).
-        'After' uses self.all_epochs (required). 'Before' is optional if
-        self.class_instance has 'all_epochs_before' or 'all_epochs_raw'.
-        We compute per-epoch scalar as the mean value over time for the selected channel,
-        then aggregate across participants+epochs to mean/median/std/min/max.
-        
-        IMPORTANT: All values are scaled to µM using `scale_epochs_to_micro_molar`."""
-        import numpy as np
-
-        stats = {}
-        if not self.all_epochs:
-            return stats
-
-        # Use data_types instead of trying to get conditions from potentially empty epochs
-        condition_names = self.data_types if self.data_types else []
-        if not condition_names:
-            print("Warning: No condition names found in data_types")
-            return stats
-
-        # Try to get channel names from first epoch, but handle empty epochs gracefully
-        ch_names = []
-        for epochs in self.all_epochs:
-            if hasattr(epochs, 'ch_names') and epochs.ch_names:
-                ch_names = epochs.ch_names
-                break
-        
-        if not ch_names:
-            print("Warning: No channel names found")
-            return stats
-
-        # Identify optional "before" epochs collection
-        before_epochs_all = getattr(self.class_instance, "all_raw_epochs", None)
-
-        # ---- NEW: scale all epochs to µM first (copies are returned) ----
-        effect_size_raw, effect_size_preprocessed = compute_effect_size(self.class_instance)
-        after_scaled = [scale_epochs_to_micro_molar(ep) for ep in self.all_epochs]
-        before_scaled = [scale_epochs_to_micro_molar(ep) for ep in before_epochs_all] if before_epochs_all else []
-
-        def collect_epoch_scalars(epochs, ch_index, cond_name):
-            try:
-                sub = epochs[cond_name]
-            except Exception:
-                return np.array([])
-            
-            # Check if epochs object is empty before calling get_data()
-            if len(sub) == 0:
-                return np.array([])
-            
-            try:
-                data = sub.get_data()  # (n_epochs, n_channels, n_times)
-            except Exception:
-                return np.array([])
-            
-            if data.size == 0:
-                return np.array([])
-            if ch_index is None or ch_index < 0 or ch_index >= data.shape[1]:
-                return np.array([])
-            chan_data = data[:, ch_index, :]
-            return np.nanmean(chan_data, axis=1)
-
-        for ch in ch_names:
-            stats[ch] = {}
-            try:
-                # Use any available epochs to get the channel index
-                ch_index = None
-                for epochs in after_scaled:
-                    if hasattr(epochs, 'ch_names') and ch in epochs.ch_names:
-                        ch_index = epochs.ch_names.index(ch)
-                        break
-            except Exception:
-                ch_index = None
-
-            for cond in condition_names:
-                # AFTER preprocessing (already scaled to µM)
-                vals_after = []
-                for ep in after_scaled:
-                    vals = collect_epoch_scalars(ep, ch_index, cond)
-                    if vals.size:
-                        vals_after.append(vals)
-                import numpy as _np
-                vals_after = _np.concatenate(vals_after) if len(vals_after) else _np.array([])
-
-                # BEFORE preprocessing (if available; already scaled to µM)
-                vals_before = _np.array([])
-                if before_scaled:
-                    concat = []
-                    for ep in before_scaled:
-                        vals = collect_epoch_scalars(ep, ch_index, cond)
-                        if vals.size:
-                            concat.append(vals)
-                    if concat:
-                        vals_before = _np.concatenate(concat)
-
-                def summarize(arr):
-                    if arr.size == 0:
-                        return {"mean": None, "median": None, "std": None, "min": None, "max": None, "n": 0}
-                    return {
-                        "mean": float(_np.nanmean(arr)),
-                        "median": float(_np.nanmedian(arr)),
-                        "std": float(_np.nanstd(arr, ddof=1)) if arr.size > 1 else 0.0,
-                        "min": float(_np.nanmin(arr)),
-                        "max": float(_np.nanmax(arr)),
-                        "n": int(arr.size),
-                    }
-
-                stats[ch][cond] = {
-                    "before": summarize(vals_before),
-                    "after": summarize(vals_after),
-                }
-
-        return stats
+    # ===== New helper: get effect-size outputs once and cache =====
+    def _get_effect_results(self):
+        if self._effect_cache is not None:
+            return self._effect_cache
+        try:
+            raw_vals, pre_vals = compute_effect_size(self.class_instance)
+        except Exception as e:
+            # Fallback empty structure on error
+            raw_vals, pre_vals = ({}, {}), ({}, {})
+            print(f"compute_effect_size error: {e}")
+        self._effect_cache = {"raw": raw_vals, "pre": pre_vals}
+        return self._effect_cache
 
     def _populate_general_info(self):
-            canvas = tk.Canvas(self.info_frame, highlightthickness=0)
-            vbar = ttk.Scrollbar(self.info_frame, orient="vertical", command=canvas.yview)
-            inner = ttk.Frame(canvas)
+        canvas = tk.Canvas(self.info_frame, highlightthickness=0)
+        vbar = ttk.Scrollbar(self.info_frame, orient="vertical", command=canvas.yview)
+        inner = ttk.Frame(canvas)
 
-            inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-            canvas.create_window((0, 0), window=inner, anchor="nw")
-            canvas.configure(yscrollcommand=vbar.set)
-        
-            total_participants = self.class_instance.number_of_participants
-            ttk.Label(inner, text=f"Total Participants: {total_participants}").pack(anchor="w", pady=2)
+        inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=inner, anchor="nw")
+        canvas.configure(yscrollcommand=vbar.set)
 
-            excluded = self.class_instance.number_of_participants - len(self.class_instance.all_epochs)
-            ttk.Label(inner, text=f"Excluded Participants: {excluded}").pack(anchor="w", pady=2)
+        total_participants = self.class_instance.number_of_participants
+        ttk.Label(inner, text=f"Total Participants: {total_participants}").pack(anchor="w", pady=2)
 
-            ttk.Label(inner, text=f"Sampling Frequency: {self.freq:.2f} Hz").pack(anchor="w", pady=2)
+        excluded = self.class_instance.number_of_participants - len(self.class_instance.all_epochs)
+        ttk.Label(inner, text=f"Excluded Participants: {excluded}").pack(anchor="w", pady=2)
 
-            ttk.Label(inner, text="Conditions:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
-            for dt in self.data_types:
-                ttk.Label(inner, text=f"  • {dt}").pack(anchor="w", pady=1)
+        ttk.Label(inner, text=f"Sampling Frequency: {self.freq:.2f} Hz").pack(anchor="w", pady=2)
 
-            if self.all_epochs:
-                first_epoch = self.all_epochs[0]
-                ttk.Label(inner, text="Channel Information:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
-                ttk.Label(inner, text=f"  • Total Channels: {len(first_epoch.ch_names)}").pack(anchor="w", pady=1)
+        ttk.Label(inner, text="Conditions:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
+        for dt in self.data_types:
+            ttk.Label(inner, text=f"  • {dt}").pack(anchor="w", pady=1)
 
-                # ENHANCED BAD CHANNELS ANALYSIS
-                bad_channel_analysis = self._analyze_bad_channels()
-            
-                if bad_channel_analysis['total_unique_bads'] > 0:
-                    ttk.Label(inner, text=f"    - Total unique bad channels: {bad_channel_analysis['total_unique_bads']}").pack(anchor="w", pady=1)
-                    ttk.Label(inner, text=f"    - Participants with bad channels: {bad_channel_analysis['participants_with_bads']}/{len(self.all_epochs)}").pack(anchor="w", pady=1)
-                    ttk.Label(inner, text=f"    - Average bad channels per participant: {bad_channel_analysis['avg_bads_per_participant']:.1f}").pack(anchor="w", pady=1)
-                
-                    # Show most frequently bad channels
-                    if bad_channel_analysis['most_common_bads']:
-                        ttk.Label(inner, text=f"    - Most frequently bad:").pack(anchor="w", pady=1)
-                        for ch, count in bad_channel_analysis['most_common_bads'][:3]:
-                            percentage = (count / len(self.all_epochs)) * 100
-                            ttk.Label(inner, text=f"      {ch} ({count} participants, {percentage:.1f}%)").pack(anchor="w", pady=1)
-                
-                    # Expandable detailed view
-                    self._add_expandable_bad_channels_section(inner, bad_channel_analysis)
-                else:
-                    ttk.Label(inner, text=f"  • No bad channels marked across dataset").pack(anchor="w", pady=1)
+        if self.all_epochs:
+            first_epoch = self.all_epochs[0]
+            ttk.Label(inner, text="Channel Information:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
+            ttk.Label(inner, text=f"  • Total Channels: {len(first_epoch.ch_names)}").pack(anchor="w", pady=1)
 
-            ttk.Label(inner, text="Epoch Information:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
-            # Updated epoch metrics per user spec
+            # ENHANCED BAD CHANNELS ANALYSIS
+            bad_channel_analysis = self._analyze_bad_channels()
+
+            if bad_channel_analysis['total_unique_bads'] > 0:
+                ttk.Label(inner, text=f"    - Total unique bad channels: {bad_channel_analysis['total_unique_bads']}").pack(anchor="w", pady=1)
+                ttk.Label(inner, text=f"    - Participants with bad channels: {bad_channel_analysis['participants_with_bads']}/{len(self.all_epochs)}").pack(anchor="w", pady=1)
+                ttk.Label(inner, text=f"    - Average bad channels per participant: {bad_channel_analysis['avg_bads_per_participant']:.1f}").pack(anchor="w", pady=1)
+                if bad_channel_analysis['most_common_bads']:
+                    ttk.Label(inner, text=f"    - Most frequently bad:").pack(anchor="w", pady=1)
+                    for ch, count in bad_channel_analysis['most_common_bads'][:3]:
+                        percentage = (count / len(self.all_epochs)) * 100
+                        ttk.Label(inner, text=f"      {ch} ({count} participants, {percentage:.1f}%)").pack(anchor="w", pady=1)
+                self._add_expandable_bad_channels_section(inner, bad_channel_analysis)
+            else:
+                ttk.Label(inner, text=f"  • No bad channels marked across dataset").pack(anchor="w", pady=1)
+
+        ttk.Label(inner, text="Epoch Information:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
+        # Basic epoch counts (expected vs remaining)
+        try:
             events = self.class_instance.all_raw_epochs[0].events
             indices = []
             for j in range(len(self.class_instance.data_types)):
-                    indices.extend(np.where((events[:, 2] == self.class_instance.all_raw_epochs[0].event_id[self.class_instance.data_types[j]]))[0])
+                indices.extend(np.where((events[:, 2] == self.class_instance.all_raw_epochs[0].event_id[self.class_instance.data_types[j]]))[0])
             total_epochs = len(indices) * self.class_instance.number_of_participants if indices else 0
+        except Exception:
+            total_epochs = 0
+
+        try:
             indices = []
             for i in range(len(self.class_instance.all_epochs)):
                 events = self.class_instance.all_epochs[i].events
                 for j in range(len(self.class_instance.data_types)):
-                        indices.extend(np.where((events[:, 2] == self.class_instance.all_epochs[0].event_id[self.class_instance.data_types[j]]))[0])
+                    indices.extend(np.where((events[:, 2] == self.class_instance.all_epochs[0].event_id[self.class_instance.data_types[j]]))[0])
             remaining_epochs = len(indices)
-            excluded_epochs = total_epochs - remaining_epochs if total_epochs is not None else 0
-            ttk.Label(inner, text=f"  • Total Epochs (expected): {total_epochs}").pack(anchor="w", pady=1)
-            ttk.Label(inner, text=f"  • Remaining Epochs: {remaining_epochs}").pack(anchor="w", pady=1)
-            ttk.Label(inner, text=f"  • Excluded Epochs: {excluded_epochs}").pack(anchor="w", pady=1)
+        except Exception:
+            remaining_epochs = 0
 
-            # Keep per-datatype epoch counts if available
-            for dt in self.data_types:
-                if dt in self.all_data:
-                    n_epochs = self.all_data[dt].shape[0]
-                    ttk.Label(inner, text=f"  • {dt}: {n_epochs} epochs").pack(anchor="w", pady=1)
+        excluded_epochs = total_epochs - remaining_epochs if total_epochs is not None else 0
+        ttk.Label(inner, text=f"  • Total Epochs (expected): {total_epochs}").pack(anchor="w", pady=1)
+        ttk.Label(inner, text=f"  • Remaining Epochs: {remaining_epochs}").pack(anchor="w", pady=1)
+        ttk.Label(inner, text=f"  • Excluded Epochs: {excluded_epochs}").pack(anchor="w", pady=1)
 
+        # Channel Explorer (uses compute_effect_size outputs)
+        _ = self._add_channel_explorer_section(inner, inline=True)
 
-            # Replaced summary statistics with an inline Channel Explorer (always visible, no header).
-            _ = self._add_channel_explorer_section(inner, inline=True)
-            canvas.pack(side="left", fill="both", expand=True)
-            vbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+        vbar.pack(side="right", fill="y")
 
     def _add_expandable_bad_channels_section(self, parent, analysis):
-            """Add an expandable section for detailed bad channel information"""
-        
-            # Create expandable frame
-            expand_frame = ttk.Frame(parent)
-            expand_frame.pack(anchor="w", fill="x", pady=(5, 0))
-        
-            self.bad_channels_expanded = tk.BooleanVar(value=False)
-        
-            def toggle_bad_channels():
-                        if self.bad_channels_expanded.get():
-                            # Expand: show details and pack the container
-                            details_frame.pack(anchor="w", fill="x", padx=(20, 0))
-                            self._show_detailed_bad_channels(details_frame, analysis)
-                        else:
-                            # Collapse: clear and hide the details frame
-                            for widget in details_frame.winfo_children():
-                                widget.destroy()
-                            details_frame.pack_forget()
-                        # Force canvas to recompute scrollregion so content pulls back up/down
-                        try:
-                            canvas = parent.master  # `parent` is the inner frame inserted in a Canvas
-                            if hasattr(canvas, 'bbox'):
-                                canvas.update_idletasks()
-                                canvas.configure(scrollregion=canvas.bbox("all"))
-                        except Exception:
-                            pass
-            # Toggle button
-            toggle_btn = ttk.Checkbutton(
-                expand_frame,
-                text="Show detailed bad channels breakdown",
-                variable=self.bad_channels_expanded,
-                command=toggle_bad_channels
-            )
-            toggle_btn.pack(anchor="w")
-        
-            # Details frame (initially empty)
-            details_frame = ttk.Frame(expand_frame)
-            # (no initial pack; we pack when expanded)
+        """Add an expandable section for detailed bad channel information"""
+        expand_frame = ttk.Frame(parent)
+        expand_frame.pack(anchor="w", fill="x", pady=(5, 0))
 
-    
+        self.bad_channels_expanded = tk.BooleanVar(value=False)
+
+        def toggle_bad_channels():
+            if self.bad_channels_expanded.get():
+                details_frame.pack(anchor="w", fill="x", padx=(20, 0))
+                self._show_detailed_bad_channels(details_frame, analysis)
+            else:
+                for widget in details_frame.winfo_children():
+                    widget.destroy()
+                details_frame.pack_forget()
+            try:
+                canvas = parent.master
+                if hasattr(canvas, 'bbox'):
+                    canvas.update_idletasks()
+                    canvas.configure(scrollregion=canvas.bbox("all"))
+            except Exception:
+                pass
+
+        toggle_btn = ttk.Checkbutton(
+            expand_frame,
+            text="Show detailed bad channels breakdown",
+            variable=self.bad_channels_expanded,
+            command=toggle_bad_channels
+        )
+        toggle_btn.pack(anchor="w")
+
+        details_frame = ttk.Frame(expand_frame)
+
+    # ===== Updated Channel Explorer: uses compute_effect_size outputs =====
     def _add_channel_explorer_section(self, parent, inline=False):
-        """Add a 'Channel Explorer' with a channel combobox and per-condition stats table.
-        Conditions are columns, statistics are rows. No scrollbars, just taller table.
         """
-        import tkinter as tk
-        from tkinter import ttk
-
-        if not getattr(self, "_channel_stats_cache", None):
-            self._channel_stats_cache = self._precompute_channel_stats()
+        Add a 'Channel Explorer' that shows:
+          1) Summary metrics per channel (Effect size, Mean diff, s_within, df_within, P),
+             for Preprocessed and Raw side-by-side.
+          2) Person-weighted per-condition means, for Preprocessed and Raw.
+        No recomputation here — values are pulled from compute_effect_size().
+        """
+        if not getattr(self, "_effect_cache", None):
+            self._get_effect_results()
 
         expand = ttk.Frame(parent)
         expand.pack(anchor="w", fill="x", pady=(10, 0))
@@ -656,6 +538,8 @@ class DatasetInfoPanel:
         controls.pack(anchor="w", fill="x", pady=(6, 4))
 
         ttk.Label(controls, text="Channel:").pack(side=tk.LEFT)
+
+        # Try to get channel names from the loaded epochs
         ch_names = []
         try:
             for epochs in self.all_epochs:
@@ -668,58 +552,98 @@ class DatasetInfoPanel:
         combo = ttk.Combobox(controls, textvariable=sel, values=ch_names, state="readonly", width=24)
         combo.pack(side=tk.LEFT, padx=(6, 12))
 
-        # Units hint
-        ttk.Label(controls, text="Units: µM (micro-molar)").pack(side=tk.LEFT)
+        ttk.Label(controls, text="All metrics below come directly from compute_effect_size().").pack(side=tk.LEFT)
 
-        # Table (conditions = columns, stats = rows)
-        table_frame = ttk.Frame(body)
-        table_frame.pack(anchor="w", fill="both", expand=True)
+        # --- Summary metrics table ---
+        summary_frame = ttk.LabelFrame(body, text="Summary metrics (per channel)")
+        summary_frame.pack(anchor="w", fill="x", padx=0, pady=(6, 8))
 
-        conds = self.data_types if self.data_types else []
-        cols = ["Statistic"] + conds
+        sum_cols = ["Metric", "Preprocessed", "Raw"]
+        summary_tree = ttk.Treeview(summary_frame, columns=sum_cols, show="headings", height=6)
+        summary_tree.pack(fill="x", expand=False)
+        for c in sum_cols:
+            summary_tree.heading(c, text=c)
+            summary_tree.column(c, anchor="center", width=160, stretch=True)
+        summary_tree.column("Metric", anchor="w", width=220)
 
-        tree = ttk.Treeview(
-            table_frame, columns=cols, show="headings", height=12
-        )
-        tree.pack(fill="both", expand=True)
+        # --- Per-condition means table ---
+        cond_frame = ttk.LabelFrame(body, text="Person-weighted per-condition means (per channel)")
+        cond_frame.pack(anchor="w", fill="x", padx=0, pady=(0, 8))
 
-        for c in cols:
-            tree.heading(c, text=c)
-            tree.column(c, anchor="center", width=120, stretch=True)
-        tree.column("Statistic", anchor="w", width=160)
+        cond_cols = ["Condition", "Preprocessed", "Raw"]
+        cond_tree = ttk.Treeview(cond_frame, columns=cond_cols, show="headings", height=6)
+        cond_tree.pack(fill="x", expand=False)
+        for c in cond_cols:
+            cond_tree.heading(c, text=c)
+            cond_tree.column(c, anchor="center", width=160, stretch=True)
+        cond_tree.column("Condition", anchor="w", width=220)
 
-        # Define which statistics we want as rows (N removed)
-        stat_labels = [
-            ("mean", "Mean (before)", "Mean (after)"),
-            ("median", "Median (before)", "Median (after)"),
-            ("std", "Std (before)", "Std (after)"),
-            ("min", "Min (before)", "Min (after)"),
-            ("max", "Max (before)", "Max (after)"),
-        ]
+        def _fmt(x):
+            if x is None:
+                return "—"
+            try:
+                if isinstance(x, (int, np.integer)):
+                    return str(int(x))
+                return f"{float(x):.6f}"
+            except Exception:
+                return str(x)
 
-        def refresh_table():
-            for row in tree.get_children():
-                tree.delete(row)
+        def _get_from(cache, section, *keys, default=None):
+            try:
+                d = cache.get(section, {})
+                for k in keys:
+                    d = d[k]
+                return d
+            except Exception:
+                return default
+
+        def refresh_tables():
+            # clear old rows
+            for row in summary_tree.get_children():
+                summary_tree.delete(row)
+            for row in cond_tree.get_children():
+                cond_tree.delete(row)
+
             ch = sel.get()
-            stats = self._channel_stats_cache.get(ch, {})
+            if not ch:
+                return
 
-            def fmt(x):
-                return f"{x:.6f}" if isinstance(x, float) else ("—" if x is None else str(x))
+            # Pull from cached outputs
+            pre = self._effect_cache.get("pre", {})
+            raw = self._effect_cache.get("raw", {})
 
-            for stat_key, before_label, after_label in stat_labels:
-                if before_label:
-                    row_vals = [before_label]
-                    for cond in conds:
-                        row_vals.append(fmt(stats.get(cond, {}).get("before", {}).get(stat_key)))
-                    tree.insert("", "end", values=row_vals)
-                if after_label:
-                    row_vals = [after_label]
-                    for cond in conds:
-                        row_vals.append(fmt(stats.get(cond, {}).get("after", {}).get(stat_key)))
-                    tree.insert("", "end", values=row_vals)
+            # Summary metrics
+            # Keys from compute_effect_size:
+            # "Effect size", "Channels' mean difference", "Channels' within-participant SD",
+            # "Conditions' mean", "df_within", "P Ch."
+            metrics = [
+                ("Effect size (d_within)",
+                 _get_from(pre, "Effect size", ch, default=np.nan),
+                 _get_from(raw, "Effect size", ch, default=np.nan)),
+                ("Mean difference (bar D)",
+                 _get_from(pre, "Channels' mean difference", ch, default=np.nan),
+                 _get_from(raw, "Channels' mean difference", ch, default=np.nan)),
+                ("Within-participant SD (s_within)",
+                 _get_from(pre, "Channels' within-participant SD", ch, default=np.nan),
+                 _get_from(raw, "Channels' within-participant SD", ch, default=np.nan)),
+                ("df_within",
+                 _get_from(pre, "DF within", ch, default=0),
+                 _get_from(raw, "DF within", ch, default=0)),
+                ("Participants contributing (P)",
+                 _get_from(pre, "P Ch.", ch, default=0),
+                 _get_from(raw, "P Ch.", ch, default=0)),
+            ]
+            for name, pre_v, raw_v in metrics:
+                summary_tree.insert("", "end", values=[name, _fmt(pre_v), _fmt(raw_v)])
 
-        def on_select(_e=None):
-            refresh_table()
+            # Per-condition means table
+            conds = list(self.data_types) if self.data_types else []
+            for cond in conds:
+                pre_mean = _get_from(pre, "Conditions' mean", cond, ch, default=np.nan)
+                raw_mean = _get_from(raw, "Conditions' mean", cond, ch, default=np.nan)
+                cond_tree.insert("", "end", values=[cond, _fmt(pre_mean), _fmt(raw_mean)])
+
+            # force scrollregion recalc
             try:
                 canvas = parent.master
                 if hasattr(canvas, "bbox"):
@@ -729,80 +653,69 @@ class DatasetInfoPanel:
                 pass
 
         body.pack(anchor="w", fill="both", expand=True)
-        refresh_table()
-        combo.bind("<<ComboboxSelected>>", on_select)
+        refresh_tables()
+        combo.bind("<<ComboboxSelected>>", lambda _e=None: refresh_tables())
         return True
 
     def _show_detailed_bad_channels(self, parent, analysis):
-            """Show detailed bad channel breakdown"""
-        
-            # Table-style view
-            table_frame = ttk.Frame(parent)
-            table_frame.pack(anchor="w", fill="x", pady=5)
-        
-            # Header
-            ttk.Label(table_frame, text="Channel", font=("Arial", 9, "bold")).grid(row=0, column=0, sticky="w", padx=(0, 10))
-            ttk.Label(table_frame, text="Count", font=("Arial", 9, "bold")).grid(row=0, column=1, sticky="w", padx=(0, 10))
-            ttk.Label(table_frame, text="Percentage", font=("Arial", 9, "bold")).grid(row=0, column=2, sticky="w", padx=(0, 10))
-            ttk.Label(table_frame, text="Participants", font=("Arial", 9, "bold")).grid(row=0, column=3, sticky="w")
-        
-            # Separator
-            ttk.Separator(table_frame, orient='horizontal').grid(row=1, column=0, columnspan=4, sticky="ew", pady=2)
-        
-            # Data rows
-            for i, (channel, count) in enumerate(analysis['most_common_bads'][:10]):  # Show top 10
-                row = i + 2
-                percentage = (count / len(self.all_epochs)) * 100
-                participant_list = analysis['bad_channel_participants'][channel]
-                participant_str = ", ".join([f"P{p+1}" for p in participant_list[:5]])  # Show first 5
-                if len(participant_list) > 5:
-                    participant_str += f" (+{len(participant_list)-5} more)"
-            
-                ttk.Label(table_frame, text=channel).grid(row=row, column=0, sticky="w", padx=(0, 10))
-                ttk.Label(table_frame, text=str(count)).grid(row=row, column=1, sticky="w", padx=(0, 10))
-                ttk.Label(table_frame, text=f"{percentage:.1f}%").grid(row=row, column=2, sticky="w", padx=(0, 10))
-                ttk.Label(table_frame, text=participant_str, font=("Arial", 8)).grid(row=row, column=3, sticky="w")
+        """Show detailed bad channel breakdown"""
+        table_frame = ttk.Frame(parent)
+        table_frame.pack(anchor="w", fill="x", pady=5)
+
+        ttk.Label(table_frame, text="Channel", font=("Arial", 9, "bold")).grid(row=0, column=0, sticky="w", padx=(0, 10))
+        ttk.Label(table_frame, text="Count", font=("Arial", 9, "bold")).grid(row=0, column=1, sticky="w", padx=(0, 10))
+        ttk.Label(table_frame, text="Percentage", font=("Arial", 9, "bold")).grid(row=0,  column=2, sticky="w", padx=(0, 10))
+        ttk.Label(table_frame, text="Participants", font=("Arial", 9, "bold")).grid(row=0, column=3, sticky="w")
+
+        ttk.Separator(table_frame, orient='horizontal').grid(row=1, column=0, columnspan=4, sticky="ew", pady=2)
+
+        for i, (channel, count) in enumerate(analysis['most_common_bads'][:10]):
+            row = i + 2
+            percentage = (count / len(self.all_epochs)) * 100
+            participant_list = analysis['bad_channel_participants'][channel]
+            participant_str = ", ".join([f"P{p+1}" for p in participant_list[:5]])
+            if len(participant_list) > 5:
+                participant_str += f" (+{len(participant_list)-5} more)"
+
+            ttk.Label(table_frame, text=channel).grid(row=row, column=0, sticky="w", padx=(0, 10))
+            ttk.Label(table_frame, text=str(count)).grid(row=row, column=1, sticky="w", padx=(0, 10))
+            ttk.Label(table_frame, text=f"{percentage:.1f}%").grid(row=row, column=2, sticky="w", padx=(0, 10))
+            ttk.Label(table_frame, text=participant_str, font=("Arial", 8)).grid(row=row, column=3, sticky="w")
 
     def _populate_bad_channels_visualization(self):
-            """Create visualizations for bad channels"""
-        
-            analysis = self._analyze_bad_channels()
-        
-            if analysis['total_unique_bads'] == 0:
-                ttk.Label(self.bad_channels_tab, text="No bad channels to visualize").pack(expand=True)
-                return
-        
-            # Just show a simple text summary instead of plots
-            summary_frame = ttk.Frame(self.bad_channels_tab)
-            summary_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-        
-            # Title
-            title_label = ttk.Label(summary_frame, 
-                                   text="Bad Channels Analysis", 
-                                   font=("Arial", 14, "bold"))
-            title_label.pack(pady=(0, 20))
-        
-            # Main statistics
-            stats_text = f"""Dataset Bad Channels Summary:
+        """Create visualizations for bad channels"""
+        analysis = self._analyze_bad_channels()
+
+        if analysis['total_unique_bads'] == 0:
+            ttk.Label(self.bad_channels_tab, text="No bad channels to visualize").pack(expand=True)
+            return
+
+        summary_frame = ttk.Frame(self.bad_channels_tab)
+        summary_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+
+        title_label = ttk.Label(summary_frame,
+                                text="Bad Channels Analysis",
+                                font=("Arial", 14, "bold"))
+        title_label.pack(pady=(0, 20))
+
+        stats_text = f"""Dataset Bad Channels Summary:
 
     • Total unique bad channels: {analysis['total_unique_bads']}
     • Participants with bad channels: {analysis['participants_with_bads']}/{len(self.all_epochs)} ({analysis['participants_with_bads']/len(self.all_epochs)*100:.1f}%)
     • Average bad channels per participant: {analysis['avg_bads_per_participant']:.1f}
 
     Most problematic channels:"""
-        
-            stats_label = ttk.Label(summary_frame, text=stats_text, font=("Arial", 10))
-            stats_label.pack(anchor="w", pady=(0, 10))
-        
-            # List of most common bad channels
-            for i, (ch, count) in enumerate(analysis['most_common_bads'][:10]):
-                percentage = (count / len(self.all_epochs)) * 100
-                channel_text = f"  {i+1}. {ch}: {count} participants ({percentage:.1f}%)"
-                ttk.Label(summary_frame, text=channel_text, font=("Arial", 9)).pack(anchor="w")
-        
-            # Additional statistics
-            bad_counts_per_participant = [len(bads) for bads in analysis['participant_bads']]
-            additional_stats = f"""
+
+        stats_label = ttk.Label(summary_frame, text=stats_text, font=("Arial", 10))
+        stats_label.pack(anchor="w", pady=(0, 10))
+
+        for i, (ch, count) in enumerate(analysis['most_common_bads'][:10]):
+            percentage = (count / len(self.all_epochs)) * 100
+            channel_text = f"  {i+1}. {ch}: {count} participants ({percentage:.1f}%)"
+            ttk.Label(summary_frame, text=channel_text, font=("Arial", 9)).pack(anchor="w")
+
+        bad_counts_per_participant = [len(bads) for bads in analysis['participant_bads']]
+        additional_stats = f"""
 
     Additional Statistics:
     • Participants with 0 bad channels: {sum(1 for count in bad_counts_per_participant if count == 0)} ({sum(1 for count in bad_counts_per_participant if count == 0)/len(self.all_epochs)*100:.1f}%)
@@ -810,155 +723,144 @@ class DatasetInfoPanel:
     • Participants with 4+ bad channels: {sum(1 for count in bad_counts_per_participant if count >= 4)}
     • Maximum bad channels in single participant: {max(bad_counts_per_participant) if bad_counts_per_participant else 0}
     • Range: {min(bad_counts_per_participant)} - {max(bad_counts_per_participant)} bad channels per participant"""
-        
-            additional_label = ttk.Label(summary_frame, text=additional_stats, font=("Arial", 10))
-            additional_label.pack(anchor="w", pady=(20, 0))
+
+        additional_label = ttk.Label(summary_frame, text=additional_stats, font=("Arial", 10))
+        additional_label.pack(anchor="w", pady=(20, 0))
 
     def _build_sensor_figure(self, figsize=(5, 4)):
-            fig = Figure(figsize=figsize, dpi=100)
-            ax = fig.add_subplot(111)
-            first_epoch = self.all_epochs[0]
-            info = first_epoch.info
-            # Minimal dummy data with same channel montage
-            raw_for_plot = mne.io.RawArray(np.zeros((len(info['ch_names']), 1000)), info, verbose='ERROR')
-            raw_for_plot.plot_sensors(kind="topomap", show_names=True, axes=ax)
-            ax.set_title("Sensor Setup")
-            fig.tight_layout()
-            return fig
+        fig = Figure(figsize=figsize, dpi=100)
+        ax = fig.add_subplot(111)
+        first_epoch = self.all_epochs[0]
+        info = first_epoch.info
+        raw_for_plot = mne.io.RawArray(np.zeros((len(info['ch_names']), 1000)), info, verbose='ERROR')
+        raw_for_plot.plot_sensors(kind="topomap", show_names=True, axes=ax)
+        ax.set_title("Sensor Setup")
+        fig.tight_layout()
+        return fig
 
     def _open_zoom_overlay(self):
-            _ZoomOverlay(self.root, self._build_sensor_figure)
+        _ZoomOverlay(self.root, self._build_sensor_figure)
 
     def _populate_sensor_layout(self):
-            try:
-                if not self.all_epochs:
-                    ttk.Label(self.layout_frame, text="No epoch data available for sensor setup").pack()
-                    return
-                fig = self._build_sensor_figure(figsize=(5, 4))
-                canvas = FigureCanvasTkAgg(fig, self.layout_frame)
-                canvas.draw()
-                w = canvas.get_tk_widget()
-                w.pack(fill=tk.BOTH, expand=True)
+        try:
+            if not self.all_epochs:
+                ttk.Label(self.layout_frame, text="No epoch data available for sensor setup").pack()
+                return
+            fig = self._build_sensor_figure(figsize=(5, 4))
+            canvas = FigureCanvasTkAgg(fig, self.layout_frame)
+            canvas.draw()
+            w = canvas.get_tk_widget()
+            w.pack(fill=tk.BOTH, expand=True)
 
-                # Click-to-zoom hint and handler
-                hint = ttk.Label(self.layout_frame, text="Click the plot to zoom • Esc or click outside to close", foreground="gray")
-                hint.pack(pady=(4, 0))
-                w.bind("<Button-1>", lambda _e: self._open_zoom_overlay())
-            except Exception as e:
-                ttk.Label(self.layout_frame, text=f"Sensor setup error: {e}").pack(expand=True)
+            hint = ttk.Label(self.layout_frame, text="Click the plot to zoom • Esc or click outside to close", foreground="gray")
+            hint.pack(pady=(4, 0))
+            w.bind("<Button-1>", lambda _e: self._open_zoom_overlay())
+        except Exception as e:
+            ttk.Label(self.layout_frame, text=f"Sensor setup error: {e}").pack(expand=True)
 
     def _populate_paradigm(self):
-            try:
-                if not self.all_epochs:
-                    ttk.Label(self.paradigm_tab, text="No epoch data available").pack(expand=True)
-                    return
+        try:
+            if not self.all_epochs:
+                ttk.Label(self.paradigm_tab, text="No epoch data available").pack(expand=True)
+                return
 
-                first_epoch = self.all_epochs[0]
-                events = first_epoch.events
-                event_mapping = {v: k for k, v in first_epoch.event_id.items()}
+            first_epoch = self.all_epochs[0]
+            events = first_epoch.events
+            event_mapping = {v: k for k, v in first_epoch.event_id.items()}
 
-                fig, timeline_ax, total_duration_min = create_paradigm_plot(events, event_mapping, figure_size=(8, 6))
-                timeline_frame = ScrollableTimelineFrame(self.paradigm_tab, fig, timeline_ax, total_duration_min)
-                timeline_frame.pack(fill=tk.BOTH, expand=True)
+            fig, timeline_ax, total_duration_min = create_paradigm_plot(events, event_mapping, figure_size=(8, 6))
+            timeline_frame = ScrollableTimelineFrame(self.paradigm_tab, fig, timeline_ax, total_duration_min)
+            timeline_frame.pack(fill=tk.BOTH, expand=True)
 
-                ttk.Label(
-                    self.paradigm_tab,
-                    text="Use the scrollbar or mouse wheel to navigate the timeline.",
-                    font=("Arial", 9), foreground="gray"
-                ).pack(pady=(5, 0))
-            except Exception as e:
-                ttk.Label(self.paradigm_tab, text=f"Paradigm plot error: {e}").pack(expand=True)
+            ttk.Label(
+                self.paradigm_tab,
+                text="Use the scrollbar or mouse wheel to navigate the timeline.",
+                font=("Arial", 9), foreground="gray"
+            ).pack(pady=(5, 0))
+        except Exception as e:
+            ttk.Label(self.paradigm_tab, text=f"Paradigm plot error: {e}").pack(expand=True)
 
     def _populate_drop_log(self):
-            """Create a drop log figure like mne.viz.plot_drop_log for all participants and embed it."""
-            container = self.drop_tab
-            for w in container.winfo_children():
-                w.destroy()
+        """Create a drop log figure like mne.viz.plot_drop_log for all participants and embed it."""
+        container = self.drop_tab
+        for w in container.winfo_children():
+            w.destroy()
 
-            if not self.all_epochs:
-                ttk.Label(container, text="No epoch data available").pack(expand=True)
-                return
+        if not self.all_epochs:
+            ttk.Label(container, text="No epoch data available").pack(expand=True)
+            return
 
-            # Accumulate drop logs across all Epochs objects
-            incomplete_drop_log = self.class_instance.drop_log if hasattr(self.class_instance, 'drop_log') else []
-            total_drop_log = ()
-            events = self.class_instance.all_raw_epochs[0].events
-            indices = []
-            for j in range(len(self.class_instance.data_types)):
-                    indices.extend(np.where((events[:, 2] == self.class_instance.all_raw_epochs[0].event_id[self.class_instance.data_types[j]]))[0])
-            for i in range(len(incomplete_drop_log)):
-                    for ind in indices:
-                        total_drop_log += (incomplete_drop_log[i][ind],)
+        incomplete_drop_log = self.class_instance.drop_log if hasattr(self.class_instance, 'drop_log') else []
+        total_drop_log = ()
+        events = self.class_instance.all_raw_epochs[0].events
+        indices = []
+        for j in range(len(self.class_instance.data_types)):
+            indices.extend(np.where((events[:, 2] == self.class_instance.all_raw_epochs[0].event_id[self.class_instance.data_types[j]]))[0])
+        for i in range(len(incomplete_drop_log)):
+            for ind in indices:
+                total_drop_log += (incomplete_drop_log[i][ind],)
 
-            if len(total_drop_log) == 0:
-                ttk.Label(container, text="No dropped epochs to display").pack(expand=True)
-                return
+        if len(total_drop_log) == 0:
+            ttk.Label(container, text="No dropped epochs to display").pack(expand=True)
+            return
 
-            # Build figure using MNE's helper
+        try:
             try:
-                # Prefer not to open an external window; many MNE plotting functions accept show=False
-                try:
-                    plot_ret = mne.viz.plot_drop_log(total_drop_log, show=False)
-                except TypeError:
-                    plot_ret = mne.viz.plot_drop_log(total_drop_log)
+                plot_ret = mne.viz.plot_drop_log(total_drop_log, show=False)
+            except TypeError:
+                plot_ret = mne.viz.plot_drop_log(total_drop_log)
 
-                # Handle possible return signatures
-                fig = plot_ret[0] if isinstance(plot_ret, (list, tuple)) and hasattr(plot_ret[0], "savefig") else plot_ret
-                if not hasattr(fig, "savefig"):
-                    raise RuntimeError("mne.viz.plot_drop_log did not return a Figure as expected")
+            fig = plot_ret[0] if isinstance(plot_ret, (list, tuple)) and hasattr(plot_ret[0], "savefig") else plot_ret
+            if not hasattr(fig, "savefig"):
+                raise RuntimeError("mne.viz.plot_drop_log did not return a Figure as expected")
 
-                # Simple toolbar with Save-as (pinned at top and always visible)
-                toolbar = ttk.Frame(container)
-                toolbar.pack(side=tk.TOP, fill=tk.X)
+            toolbar = ttk.Frame(container)
+            toolbar.pack(side=tk.TOP, fill=tk.X)
 
-                def _save_as(ext):
-                    default_name = f"total_drop_log.{ext}"
-                    fpath = filedialog.asksaveasfilename(
-                        title="Save Drop Log Figure",
-                        defaultextension=f".{ext}",
-                        initialfile=default_name,
-                        filetypes=[(ext.upper(), f"*.{ext}"), ("PDF", "*.pdf"), ("PNG", "*.png"), ("All", "*.*")],
-                    )
-                    if fpath:
-                        try:
-                            fig.savefig(fpath, bbox_inches="tight")
-                        except Exception as save_e:
-                            messagebox.showerror("Save Error", f"Could not save figure: {save_e}")
+            def _save_as(ext):
+                default_name = f"total_drop_log.{ext}"
+                fpath = filedialog.asksaveasfilename(
+                    title="Save Drop Log Figure",
+                    defaultextension=f".{ext}",
+                    initialfile=default_name,
+                    filetypes=[(ext.upper(), f"*.{ext}"), ("PDF", "*.pdf"), ("PNG", "*.png"), ("All", "*.*")],
+                )
+                if fpath:
+                    try:
+                        fig.savefig(fpath, bbox_inches="tight")
+                    except Exception as save_e:
+                        messagebox.showerror("Save Error", f"Could not save figure: {save_e}")
 
-                # Buttons first so they don't get hidden by the expanding canvas
-                btn_pdf = ttk.Button(toolbar, text="Save as PDF", command=lambda: _save_as("pdf"))
-                btn_pdf.pack(side=tk.LEFT, padx=4, pady=4)
-                btn_png = ttk.Button(toolbar, text="Save as PNG", command=lambda: _save_as("png"))
-                btn_png.pack(side=tk.LEFT, padx=4, pady=4)
+            btn_pdf = ttk.Button(toolbar, text="Save as PDF", command=lambda: _save_as("pdf"))
+            btn_pdf.pack(side=tk.LEFT, padx=4, pady=4)
+            btn_png = ttk.Button(toolbar, text="Save as PNG", command=lambda: _save_as("png"))
+            btn_png.pack(side=tk.LEFT, padx=4, pady=4)
 
-                # Then the figure canvas, which can expand and won't obscure the toolbar
-                canvas = FigureCanvasTkAgg(fig, master=container)
-                canvas.draw()
-                canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+            canvas = FigureCanvasTkAgg(fig, master=container)
+            canvas.draw()
+            canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-                # Optional: compact textual summary of reasons
-                # Count reasons across all dropped epochs
-                reason_counts = Counter()
-                for entry in total_drop_log:
-                    if isinstance(entry, (list, tuple)):
-                        for r in entry:
-                            if r:  # ignore empty strings
-                                reason_counts[r] += 1
+            reason_counts = Counter()
+            for entry in total_drop_log:
+                if isinstance(entry, (list, tuple)):
+                    for r in entry:
+                        if r:
+                            reason_counts[r] += 1
 
-                if reason_counts:
-                    summary = ttk.Frame(container)
-                    summary.pack(fill=tk.X, pady=(2, 4))
-                    ttk.Label(
-                        summary,
-                        text="Top drop reasons:",
-                        font=("Arial", 9, "bold"),
-                        foreground="gray",
-                    ).pack(side=tk.LEFT, padx=6)
-                    txt = ", ".join([f"{k}: {v}" for k, v in reason_counts.most_common(5)])
-                    ttk.Label(summary, text=txt, foreground="gray").pack(side=tk.LEFT)
+            if reason_counts:
+                summary = ttk.Frame(container)
+                summary.pack(fill=tk.X, pady=(2, 4))
+                ttk.Label(
+                    summary,
+                    text="Top drop reasons:",
+                    font=("Arial", 9, "bold"),
+                    foreground="gray",
+                ).pack(side=tk.LEFT, padx=6)
+                txt = ", ".join([f"{k}: {v}" for k, v in reason_counts.most_common(5)])
+                ttk.Label(summary, text=txt, foreground="gray").pack(side=tk.LEFT)
 
-            except Exception as e:
-                ttk.Label(container, text=f"Drop log plot error: {e}").pack(expand=True)
+        except Exception as e:
+            ttk.Label(container, text=f"Drop log plot error: {e}").pack(expand=True)
 
 
 def show_dataset_info_in_container(class_instance, parent_container, all_epochs, data_name, all_data, freq, data_types, all_individuals=None):
