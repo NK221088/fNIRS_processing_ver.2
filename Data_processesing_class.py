@@ -8,7 +8,6 @@ from Participant_class import individual_participant_class
 import glob
 from pathlib import Path
 from dotenv import load_dotenv
-from datetime import datetime
 from preprocessesing_toolbox.baselineCorrection import baselineCorrection
 from preprocessesing_toolbox.post_rejection import reject_if_single_event_type
 from preprocessesing_toolbox.SNR_rejection import snr_rejection, get_bad_channels_by_pairs
@@ -116,12 +115,10 @@ class fNIRS_data_load:
             if self.interpolate_bad_channels:
                 raw_od.interpolate_bads()
             
-            age = datetime.now().year - raw_od.info["subject_info"]["birthday"][0]
-            ppf = compute_differential_pathlength(age, )
-            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf)
+            dpf = compute_differential_pathlength(raw_od)
+            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
-            
-            raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf).copy()
+            raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=dpf).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
             if self.negative_correlation_enhancement:
