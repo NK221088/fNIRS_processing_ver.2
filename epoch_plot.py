@@ -145,9 +145,6 @@ def epoch_plot(epochs, picks: list, epoch_type: str, bad_channels_strategy: str,
                 hbo_plots = epochs[epoch_type].plot_image(
                     picks=hbo_picks,
                     combine=combine_strategy,
-                    vmin=-30,
-                    vmax=30,
-                    ts_args=dict(ylim=dict(hbo=[-15, 15])),
                     show=False,
                 )
                 plots.extend(hbo_plots if isinstance(hbo_plots, list) else [hbo_plots])
@@ -156,9 +153,6 @@ def epoch_plot(epochs, picks: list, epoch_type: str, bad_channels_strategy: str,
                 hbr_plots = epochs[epoch_type].plot_image(
                     picks=hbr_picks,
                     combine=combine_strategy,
-                    vmin=-30,
-                    vmax=30,
-                    ts_args=dict(ylim=dict(hbr=[-15, 15])),
                     show=False,
                 )
                 plots.extend(hbr_plots if isinstance(hbr_plots, list) else [hbr_plots])
@@ -167,9 +161,6 @@ def epoch_plot(epochs, picks: list, epoch_type: str, bad_channels_strategy: str,
             plots = epochs[epoch_type].plot_image(
                 picks=picks,
                 combine=combine_strategy,
-                vmin=-30,
-                vmax=30,
-                ts_args=dict(ylim=dict(hbo=[-15, 15], hbr=[-15, 15])),
                 show=False,
             )
     else:
@@ -180,9 +171,6 @@ def epoch_plot(epochs, picks: list, epoch_type: str, bad_channels_strategy: str,
             
             plots = epochs_reordered.plot_image(
                 combine=combine_strategy,
-                vmin=-30,
-                vmax=30,
-                ts_args=dict(ylim=dict(hbo=[-15, 15], hbr=[-15, 15])),
                 show=False,
             )
         except Exception as e:
@@ -200,9 +188,6 @@ def epoch_plot(epochs, picks: list, epoch_type: str, bad_channels_strategy: str,
                 hbo_plots = epochs[epoch_type].plot_image(
                     picks=hbo_channels,
                     combine=combine_strategy,
-                    vmin=-30,
-                    vmax=30,
-                    ts_args=dict(ylim=dict(hbo=[-15, 15])),
                     show=False,
                 )
                 plots.extend(hbo_plots if isinstance(hbo_plots, list) else [hbo_plots])
@@ -211,9 +196,6 @@ def epoch_plot(epochs, picks: list, epoch_type: str, bad_channels_strategy: str,
                 hbr_plots = epochs[epoch_type].plot_image(
                     picks=hbr_channels,
                     combine=combine_strategy,
-                    vmin=-30,
-                    vmax=30,
-                    ts_args=dict(ylim=dict(hbr=[-15, 15])),
                     show=False,
                 )
                 plots.extend(hbr_plots if isinstance(hbr_plots, list) else [hbr_plots])
