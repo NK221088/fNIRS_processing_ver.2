@@ -2916,9 +2916,9 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                 if self.interpolate_bad_channels:
                     raw_od.interpolate_bads()
 
-                raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
+                raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=6)
 
-                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
+                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=6).copy()
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
                 if self.negative_correlation_enhancement:
@@ -2946,7 +2946,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                     verbose=True,
                 )
 
-                epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
+                epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"], min_number_of_conditions_events=1)
 
                 self.drop_log.append(epochs.drop_log)
                 if len(epochs) != 0:

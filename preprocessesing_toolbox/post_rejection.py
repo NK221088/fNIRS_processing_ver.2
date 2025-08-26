@@ -1,6 +1,6 @@
 import numpy as np
 
-def reject_if_single_event_type(epochs, data_types):
+def reject_if_single_event_type(epochs, data_types, min_number_of_conditions_events=2):
     """
     Drop all epochs if:
     1) not all expected event types are present, OR
@@ -18,7 +18,7 @@ def reject_if_single_event_type(epochs, data_types):
         return epochs
 
     for event_type in data_types:
-        if len(epochs[event_type]) < 2:
+        if len(epochs[event_type]) < min_number_of_conditions_events:
             # Drop all epochs by index
             epochs.drop(range(len(epochs)), reason=f"All epochs dropped: only {len(epochs[event_type])} event(s) of type {event_type} remaining")
             print(f"All epochs dropped: only {len(epochs[event_type])} event(s) of type {event_type} remaining")
