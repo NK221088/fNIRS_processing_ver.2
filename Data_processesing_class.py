@@ -12,6 +12,7 @@ from preprocessesing_toolbox.baselineCorrection import baselineCorrection
 from preprocessesing_toolbox.post_rejection import reject_if_single_event_type
 from preprocessesing_toolbox.SNR_rejection import snr_rejection, get_bad_channels_by_pairs
 from preprocessesing_toolbox.differential_pathlength import compute_differential_pathlength
+from preprocessesing_toolbox.p2p import compute_p2p
 
 load_dotenv()
 
@@ -2427,6 +2428,8 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 99)
+            
             epochs = mne.Epochs(
                 raw_haemo,
                 events,
