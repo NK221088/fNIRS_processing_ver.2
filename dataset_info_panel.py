@@ -5,6 +5,7 @@ import numpy as np
 import mne
 from collections import Counter, defaultdict
 from data_analysis.effect_size import compute_effect_size
+from plotting_functions.experiment_overview import plot_experiment_timeline
 
 import matplotlib
 matplotlib.use("Agg")  # backend for figure creation; TkAgg is used only for embedding
@@ -28,116 +29,6 @@ def scale_epochs_to_micro_molar(epochs):
             ch["unit"] = mne.io.constants.FIFF.FIFF_UNIT_MOL
             ch["unit_mul"] = -6  # explicitly mark µ (10^-6)
     return scaled
-
-
-def create_paradigm_plot(events_data, event_mapping=None, figure_size=(8, 6)):
-    """
-    Create a paradigm visualization plot from events data.
-
-    Parameters
-    ----------
-    events_data : array-like
-        Event data in format [[timestamp, duration, event_id], ...]
-        or MNE events format
-    event_mapping : dict, optional
-        Mapping from event_id to condition name {1: 'Control', 2: 'Task1', ...}
-        If None, will use generic names
-    figure_size : tuple
-        Figure size (width, height)
-
-    Returns
-    -------
-    fig : matplotlib.figure.Figure
-    timeline_ax : matplotlib.axes.Axes
-    total_duration_min : float
-    """
-    if hasattr(events_data, 'shape') and events_data.shape[1] >= 3:
-        events = np.array(events_data)
-        timestamps = events[:, 0]
-        event_ids = events[:, 2]
-    elif isinstance(events_data, (list, tuple)) and len(events_data) > 0:
-        events = np.array(events_data)
-        timestamps = events[:, 0]
-        event_ids = events[:, 2]
-    else:
-        raise ValueError("Unsupported events data format")
-
-    if event_mapping is None:
-        unique_ids = np.unique(event_ids)
-        event_mapping = {int(_id): f'Condition_{int(_id)}' for _id in unique_ids}
-
-    timestamps_min = timestamps / 60
-
-    unique_conditions = list(event_mapping.values())
-    colors = plt.cm.Set3(np.linspace(0, 1, len(unique_conditions)))
-    color_map = {condition: colors[i] for i, condition in enumerate(unique_conditions)}
-
-    fig = Figure(figsize=figure_size, dpi=100)
-    gs = fig.add_gridspec(2, 2, height_ratios=[1, 1.5], hspace=0.4, wspace=0.3)
-
-    total_duration = timestamps.max() / 60
-
-    # 1) Condition distribution
-    ax1 = fig.add_subplot(gs[0, 0])
-    condition_counts = Counter([event_mapping[_eid] for _eid in event_ids])
-    conditions = list(condition_counts.keys())
-    counts = list(condition_counts.values())
-    colors_bar = [color_map[c] for c in conditions]
-
-    bars = ax1.bar(conditions, counts, color=colors_bar, alpha=0.8, edgecolor='black', linewidth=0.5)
-    ax1.set_title('Condition Distribution', fontsize=10, fontweight='bold')
-    ax1.set_ylabel('Count', fontsize=9)
-    total_events = len(events)
-    for bar, count in zip(bars, counts):
-        h = bar.get_height()
-        ax1.text(bar.get_x() + bar.get_width()/2., h/2,
-                 f'{count}\n({count/total_events*100:.1f}%)',
-                 ha='center', va='center', fontsize=8, fontweight='bold', color='white')
-    ax1.tick_params(axis='x', rotation=45, labelsize=8)
-    ax1.tick_params(axis='y', labelsize=8)
-
-    # 2) Inter-event intervals
-    ax2 = fig.add_subplot(gs[0, 1])
-    inter_event_intervals = np.diff(timestamps)
-    if len(inter_event_intervals) > 0:
-        ax2.hist(inter_event_intervals, bins=20, alpha=0.7, color='skyblue', edgecolor='black')
-        ax2.axvline(np.mean(inter_event_intervals), color='red', linestyle='--',
-                    label=f'Mean: {np.mean(inter_event_intervals):.1f}s')
-        ax2.legend(fontsize=8)
-    ax2.set_title('Inter-Event Intervals', fontsize=10, fontweight='bold')
-    ax2.set_xlabel('Interval (seconds)', fontsize=9)
-    ax2.set_ylabel('Frequency', fontsize=9)
-    ax2.tick_params(axis='both', labelsize=8)
-
-    # 3) Timeline across all events
-    ax3 = fig.add_subplot(gs[1, :])
-    for time, event_id in zip(timestamps, event_ids):
-        condition = event_mapping[event_id]
-        color = color_map[condition]
-        rect = matplotlib.patches.Rectangle((time/60, 0), 0.8, 1, facecolor=color, alpha=0.8, edgecolor='black')
-        ax3.add_patch(rect)
-
-    ax3.set_xlim(0, timestamps[-1]/60 + 1)
-    ax3.set_ylim(0, 1)
-    ax3.set_xlabel('Time (minutes)', fontsize=9)
-    ax3.set_title(f'Event Sequence Timeline (All {len(events)} Events)', fontsize=10, fontweight='bold')
-    ax3.set_yticks([])
-    ax3.tick_params(axis='x', labelsize=8)
-
-    total_duration_min = timestamps[-1]/60
-    if total_duration_min > 20:
-        ax3.set_xlim(0, 20)
-
-    ax3.text(0.02, 0.85, f'Total Duration: {total_duration:.1f} min | Total Events: {len(events)}',
-             transform=ax3.transAxes, va='top', fontsize=8,
-             bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-
-    legend_elements = [matplotlib.patches.Rectangle((0, 0), 1, 1, facecolor=color_map[c], alpha=0.8, edgecolor='black')
-                       for c in event_mapping.values()]
-    ax3.legend(legend_elements, list(event_mapping.values()), loc='upper right', fontsize=8)
-
-    fig.tight_layout()
-    return fig, ax3, total_duration_min
 
 
 class ScrollableTimelineFrame(ttk.Frame):
@@ -245,7 +136,6 @@ class _ZoomOverlay:
         # Full-window canvas overlay
         self.canvas = tk.Canvas(self.root, highlightthickness=0)
         self.canvas.place(x=0, y=0, relwidth=1, relheight=1)
-        # Simulate translucency with stipple
         self.bg = self.canvas.create_rectangle(0, 0, w, h, fill="black", stipple="gray50", outline="")
 
         # Center container
@@ -291,11 +181,7 @@ class _ZoomOverlay:
 class DatasetInfoPanel:
     """
     Panel version of Dataset Info that renders into a container (no separate window).
-    - Shows General Info (scrollable)
-    - Shows Sensor Setup (click to zoom overlay)
-    - Shows Paradigm overview with a scrollable timeline
-    - Shows Drop Log summary in its own tab
-    - NEW: Uses compute_effect_size() outputs for channel-level summaries (no recomputation here)
+    Uses compute_effect_size() outputs for channel-level summaries (no recomputation here).
     """
     def __init__(self, class_instance, parent_container, all_epochs, data_name, all_data, freq, data_types, all_individuals=None):
         self.class_instance = class_instance
@@ -308,7 +194,6 @@ class DatasetInfoPanel:
         self.data_types = data_types or []
         self.all_individuals = all_individuals
 
-        # Cache for effect-size outputs (raw vs preprocessed)
         self._effect_cache = None  # set by _get_effect_results()
 
         # Main wrapper inside the container
@@ -349,11 +234,10 @@ class DatasetInfoPanel:
         self.layout_frame = ttk.Frame(self.main)
         self.layout_frame.grid(row=0, column=1, sticky="nsew", pady=(0, 10))
 
-        # Right bottom: tabs for paradigm and drop log only
+        # Right bottom: tabs for paradigm and drop log
         self.paradigm_frame = ttk.Frame(self.main)
         self.paradigm_frame.grid(row=1, column=1, sticky="nsew")
 
-        # Notebook on the bottom-right
         self.plot_tabs = ttk.Notebook(self.paradigm_frame)
         self.paradigm_tab = ttk.Frame(self.plot_tabs)
         self.drop_tab = ttk.Frame(self.plot_tabs)
@@ -403,7 +287,6 @@ class DatasetInfoPanel:
         try:
             raw_vals, pre_vals = compute_effect_size(self.class_instance)
         except Exception as e:
-            # Fallback empty structure on error
             raw_vals, pre_vals = ({}, {}), ({}, {})
             print(f"compute_effect_size error: {e}")
         self._effect_cache = {"raw": raw_vals, "pre": pre_vals}
@@ -435,9 +318,7 @@ class DatasetInfoPanel:
             ttk.Label(inner, text="Channel Information:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
             ttk.Label(inner, text=f"  • Total Channels: {len(first_epoch.ch_names)}").pack(anchor="w", pady=1)
 
-            # ENHANCED BAD CHANNELS ANALYSIS
             bad_channel_analysis = self._analyze_bad_channels()
-
             if bad_channel_analysis['total_unique_bads'] > 0:
                 ttk.Label(inner, text=f"    - Total unique bad channels: {bad_channel_analysis['total_unique_bads']}").pack(anchor="w", pady=1)
                 ttk.Label(inner, text=f"    - Participants with bad channels: {bad_channel_analysis['participants_with_bads']}/{len(self.all_epochs)}").pack(anchor="w", pady=1)
@@ -452,7 +333,6 @@ class DatasetInfoPanel:
                 ttk.Label(inner, text=f"  • No bad channels marked across dataset").pack(anchor="w", pady=1)
 
         ttk.Label(inner, text="Epoch Information:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
-        # Basic epoch counts (expected vs remaining)
         try:
             events = self.class_instance.all_raw_epochs[0].events
             indices = []
@@ -516,30 +396,38 @@ class DatasetInfoPanel:
 
         details_frame = ttk.Frame(expand_frame)
 
-    # ===== Updated Channel Explorer: uses compute_effect_size outputs =====
+    # ===== Channel Explorer: compact columns & styles, using compute_effect_size outputs =====
     def _add_channel_explorer_section(self, parent, inline=False):
         """
-        Add a 'Channel Explorer' that shows:
-          1) Summary metrics per channel (Effect size, Mean diff, s_within, df_within, P),
-             for Preprocessed and Raw side-by-side.
-          2) Person-weighted per-condition means, for Preprocessed and Raw.
-        No recomputation here — values are pulled from compute_effect_size().
+        Shows:
+          1) Summary metrics per channel (Effect size, Mean diff, s_within, df_within, P)
+             as a single Value column formatted 'Pre / Raw'.
+          2) Person-weighted per-condition means formatted 'Pre / Raw'.
+          Uses compact Treeview/LabelFrame styles to minimize whitespace.
         """
         if not getattr(self, "_effect_cache", None):
             self._get_effect_results()
 
+        # --- Compact styles ---
+        style = ttk.Style(self.root)
+        style.configure("Compact.Treeview", rowheight=18, font=("Arial", 9))
+        style.configure("Compact.Treeview.Heading", padding=(4, 1), font=("Arial", 9, "bold"))
+        style.configure("Compact.TLabelframe", padding=(6, 2, 6, 2))
+        style.configure("Compact.TLabelframe.Label", padding=(4, 0, 4, 0))
+
         expand = ttk.Frame(parent)
-        expand.pack(anchor="w", fill="x", pady=(10, 0))
+        expand.pack(anchor="w", fill="x", pady=(6, 0))
 
         body = ttk.Frame(expand)
+        body.pack(anchor="w", fill="x", expand=False)
 
         # Controls
         controls = ttk.Frame(body)
-        controls.pack(anchor="w", fill="x", pady=(6, 4))
+        controls.pack(anchor="w", fill="x", pady=(4, 2))
 
         ttk.Label(controls, text="Channel:").pack(side=tk.LEFT)
 
-        # Try to get channel names from the loaded epochs
+        # Try to get channel names from loaded epochs
         ch_names = []
         try:
             for epochs in self.all_epochs:
@@ -550,35 +438,48 @@ class DatasetInfoPanel:
             pass
         sel = tk.StringVar(value=(ch_names[0] if ch_names else ""))
         combo = ttk.Combobox(controls, textvariable=sel, values=ch_names, state="readonly", width=24)
-        combo.pack(side=tk.LEFT, padx=(6, 12))
+        combo.pack(side=tk.LEFT, padx=(6, 8))
 
-        ttk.Label(controls, text="All metrics below come directly from compute_effect_size().").pack(side=tk.LEFT)
+        ttk.Label(controls, text="Values: Preprocessed / Raw", foreground="gray").pack(side=tk.LEFT, padx=(4, 0))
 
-        # --- Summary metrics table ---
-        summary_frame = ttk.LabelFrame(body, text="Summary metrics (per channel)")
-        summary_frame.pack(anchor="w", fill="x", padx=0, pady=(6, 8))
+        # --- Summary metrics table (Metric | Value (Pre / Raw)) ---
+        summary_frame = ttk.LabelFrame(body, text="Summary metrics (per channel)", style="Compact.TLabelframe")
+        summary_frame.pack(anchor="w", fill="x", padx=0, pady=(4, 4))
 
-        sum_cols = ["Metric", "Preprocessed", "Raw"]
-        summary_tree = ttk.Treeview(summary_frame, columns=sum_cols, show="headings", height=6)
-        summary_tree.pack(fill="x", expand=False)
-        for c in sum_cols:
-            summary_tree.heading(c, text=c)
-            summary_tree.column(c, anchor="center", width=160, stretch=True)
-        summary_tree.column("Metric", anchor="w", width=220)
+        sum_cols = ["Metric", "Value (Pre / Raw)"]
+        summary_tree = ttk.Treeview(
+            summary_frame,
+            columns=sum_cols,
+            show="headings",
+            height=6,
+            style="Compact.Treeview"
+        )
+        # Keep total width tight; no stretching
+        summary_tree.column("Metric", anchor="w", width=220, minwidth=160, stretch=False)
+        summary_tree.column("Value (Pre / Raw)", anchor="w", width=220, minwidth=160, stretch=False)
+        summary_tree.heading("Metric", text="Metric")
+        summary_tree.heading("Value (Pre / Raw)", text="Value (Pre / Raw)")
+        summary_tree.pack(anchor="w", padx=2, pady=2)
 
-        # --- Per-condition means table ---
-        cond_frame = ttk.LabelFrame(body, text="Person-weighted per-condition means (per channel)")
-        cond_frame.pack(anchor="w", fill="x", padx=0, pady=(0, 8))
+        # --- Per-condition means table (Condition | Mean (Pre / Raw)) ---
+        cond_frame = ttk.LabelFrame(body, text="Person-weighted per-condition means (per channel)", style="Compact.TLabelframe")
+        cond_frame.pack(anchor="w", fill="x", padx=0, pady=(0, 4))
 
-        cond_cols = ["Condition", "Preprocessed", "Raw"]
-        cond_tree = ttk.Treeview(cond_frame, columns=cond_cols, show="headings", height=6)
-        cond_tree.pack(fill="x", expand=False)
-        for c in cond_cols:
-            cond_tree.heading(c, text=c)
-            cond_tree.column(c, anchor="center", width=160, stretch=True)
-        cond_tree.column("Condition", anchor="w", width=220)
+        cond_cols = ["Condition", "Mean (Pre / Raw)"]
+        cond_tree = ttk.Treeview(
+            cond_frame,
+            columns=cond_cols,
+            show="headings",
+            height=6,
+            style="Compact.Treeview"
+        )
+        cond_tree.column("Condition", anchor="w", width=220, minwidth=160, stretch=False)
+        cond_tree.column("Mean (Pre / Raw)", anchor="w", width=220, minwidth=160, stretch=False)
+        cond_tree.heading("Condition", text="Condition")
+        cond_tree.heading("Mean (Pre / Raw)", text="Mean (Pre / Raw)")
+        cond_tree.pack(anchor="w", padx=2, pady=2)
 
-        def _fmt(x):
+        def _fmt_num(x):
             if x is None:
                 return "—"
             try:
@@ -608,51 +509,36 @@ class DatasetInfoPanel:
             if not ch:
                 return
 
-            # Pull from cached outputs
             pre = self._effect_cache.get("pre", {})
             raw = self._effect_cache.get("raw", {})
 
-            # Summary metrics
-            # Keys from compute_effect_size:
-            # "Effect size", "Channels' mean difference", "Channels' within-participant SD",
-            # "Conditions' mean", "df_within", "P Ch."
             metrics = [
                 ("Effect size (d_within)",
-                 _get_from(pre, "Effect size", ch, default=np.nan),
-                 _get_from(raw, "Effect size", ch, default=np.nan)),
+                 _fmt_num(_get_from(pre, "Effect size", ch, default=np.nan)),
+                 _fmt_num(_get_from(raw, "Effect size", ch, default=np.nan))),
                 ("Mean difference (bar D)",
-                 _get_from(pre, "Channels' mean difference", ch, default=np.nan),
-                 _get_from(raw, "Channels' mean difference", ch, default=np.nan)),
+                 _fmt_num(_get_from(pre, "Channels' mean difference", ch, default=np.nan)),
+                 _fmt_num(_get_from(raw, "Channels' mean difference", ch, default=np.nan))),
                 ("Within-participant SD (s_within)",
-                 _get_from(pre, "Channels' within-participant SD", ch, default=np.nan),
-                 _get_from(raw, "Channels' within-participant SD", ch, default=np.nan)),
+                 _fmt_num(_get_from(pre, "Channels' within-participant SD", ch, default=np.nan)),
+                 _fmt_num(_get_from(raw, "Channels' within-participant SD", ch, default=np.nan))),
                 ("df_within",
-                 _get_from(pre, "DF within", ch, default=0),
-                 _get_from(raw, "DF within", ch, default=0)),
+                 _fmt_num(_get_from(pre, "DF within", ch, default=0)),
+                 _fmt_num(_get_from(raw, "DF within", ch, default=0))),
                 ("Participants contributing (P)",
-                 _get_from(pre, "P Ch.", ch, default=0),
-                 _get_from(raw, "P Ch.", ch, default=0)),
+                 _fmt_num(_get_from(pre, "P Ch.", ch, default=0)),
+                 _fmt_num(_get_from(raw, "P Ch.", ch, default=0))),
             ]
             for name, pre_v, raw_v in metrics:
-                summary_tree.insert("", "end", values=[name, _fmt(pre_v), _fmt(raw_v)])
+                summary_tree.insert("", "end", values=[name, f"{pre_v} / {raw_v}"])
 
-            # Per-condition means table
+            # Per-condition "pre / raw"
             conds = list(self.data_types) if self.data_types else []
             for cond in conds:
-                pre_mean = _get_from(pre, "Conditions' mean", cond, ch, default=np.nan)
-                raw_mean = _get_from(raw, "Conditions' mean", cond, ch, default=np.nan)
-                cond_tree.insert("", "end", values=[cond, _fmt(pre_mean), _fmt(raw_mean)])
+                pre_mean = _fmt_num(_get_from(pre, "Conditions' mean", cond, ch, default=np.nan))
+                raw_mean = _fmt_num(_get_from(raw, "Conditions' mean", cond, ch, default=np.nan))
+                cond_tree.insert("", "end", values=[cond, f"{pre_mean} / {raw_mean}"])
 
-            # force scrollregion recalc
-            try:
-                canvas = parent.master
-                if hasattr(canvas, "bbox"):
-                    canvas.update_idletasks()
-                    canvas.configure(scrollregion=canvas.bbox("all"))
-            except Exception:
-                pass
-
-        body.pack(anchor="w", fill="both", expand=True)
         refresh_tables()
         combo.bind("<<ComboboxSelected>>", lambda _e=None: refresh_tables())
         return True
@@ -759,24 +645,43 @@ class DatasetInfoPanel:
             ttk.Label(self.layout_frame, text=f"Sensor setup error: {e}").pack(expand=True)
 
     def _populate_paradigm(self):
+        """
+        Use the external plot_experiment_timeline(annotations, figure_size) to build the timeline figure,
+        then embed it. If the experiment spans > 20 minutes, enable horizontal scrolling.
+        """
         try:
             if not self.all_epochs:
                 ttk.Label(self.paradigm_tab, text="No epoch data available").pack(expand=True)
                 return
 
-            first_epoch = self.all_epochs[0]
-            events = first_epoch.events
-            event_mapping = {v: k for k, v in first_epoch.event_id.items()}
+            annotations = self.class_instance.Individual_participants[0].raw_haemo.annotations
+            fig, timeline_ax = plot_experiment_timeline(annotations, figsize=(8, 6))
 
-            fig, timeline_ax, total_duration_min = create_paradigm_plot(events, event_mapping, figure_size=(8, 6))
-            timeline_frame = ScrollableTimelineFrame(self.paradigm_tab, fig, timeline_ax, total_duration_min)
-            timeline_frame.pack(fill=tk.BOTH, expand=True)
+            # Compute total duration (minutes) from annotations for deciding scroll behavior
+            total_duration_min = None
+            try:
+                onsets = np.asarray(annotations.onset, dtype=float)
+                durations = np.asarray(annotations.duration, dtype=float)
+                if onsets.size and durations.size:
+                    total_duration_min = float(np.max(onsets + durations)) / 60.0
+            except Exception:
+                total_duration_min = None
 
-            ttk.Label(
-                self.paradigm_tab,
-                text="Use the scrollbar or mouse wheel to navigate the timeline.",
-                font=("Arial", 9), foreground="gray"
-            ).pack(pady=(5, 0))
+            # Embed with optional horizontal scroll
+            if total_duration_min is not None and total_duration_min > 20.0:
+                timeline_frame = ScrollableTimelineFrame(self.paradigm_tab, fig, timeline_ax, total_duration_min)
+                timeline_frame.pack(fill=tk.BOTH, expand=True)
+
+                ttk.Label(
+                    self.paradigm_tab,
+                    text="Use the scrollbar or mouse wheel to navigate the timeline.",
+                    font=("Arial", 9), foreground="gray"
+                ).pack(pady=(5, 0))
+            else:
+                canvas = FigureCanvasTkAgg(fig, self.paradigm_tab)
+                canvas.draw()
+                canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
         except Exception as e:
             ttk.Label(self.paradigm_tab, text=f"Paradigm plot error: {e}").pack(expand=True)
 
