@@ -182,6 +182,11 @@ class DatasetInfoPanel:
     """
     Panel version of Dataset Info that renders into a container (no separate window).
     Uses compute_effect_size() outputs for channel-level summaries (no recomputation here).
+
+    Visual refresh in this version:
+      • A fixed (non-scrollable) summary band at the top with key figures.
+      • Clear µM units for any concentration-like values.
+      • Tighter, cleaner tables and spacing.
     """
     def __init__(self, class_instance, parent_container, all_epochs, data_name, all_data, freq, data_types, all_individuals=None):
         self.class_instance = class_instance
@@ -208,6 +213,7 @@ class DatasetInfoPanel:
 
     # ---------- UI ----------
     def _build_ui(self):
+        # Overall header
         header = ttk.Frame(self.frame)
         header.pack(fill=tk.X, pady=(0, 8))
 
@@ -218,15 +224,23 @@ class DatasetInfoPanel:
 
         ttk.Button(header, text="Clear", command=self.destroy).pack(side=tk.RIGHT)
 
+        # Fixed summary band (non-scrollable)
+        self.summary_band = ttk.Frame(self.frame)
+        self.summary_band.pack(fill=tk.X, padx=4, pady=(0, 8))
+
+        # A separator to visually distinguish the fixed band from the scrollable details
+        ttk.Separator(self.frame, orient="horizontal").pack(fill=tk.X, pady=(0, 6))
+
+        # Main 2x layout area
         self.main = ttk.Frame(self.frame)
         self.main.pack(fill=tk.BOTH, expand=True)
 
-        self.main.columnconfigure(0, weight=3)   # Info
+        self.main.columnconfigure(0, weight=3)   # Info (scrollable)
         self.main.columnconfigure(1, weight=2)   # Plots
         self.main.rowconfigure(0, weight=1)
         self.main.rowconfigure(1, weight=1)
 
-        # Left (scrollable info)
+        # Left (scrollable details)
         self.info_frame = ttk.Frame(self.main)
         self.info_frame.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 10))
 
@@ -245,12 +259,115 @@ class DatasetInfoPanel:
         self.plot_tabs.add(self.drop_tab, text="Drop Log")
         self.plot_tabs.pack(fill=tk.BOTH, expand=True)
 
+        # Styling tweaks
+        style = ttk.Style(self.root)
+        style.configure("KeyValue.TLabel", font=("Arial", 10))
+        style.configure("KeyValueBold.TLabel", font=("Arial", 10, "bold"))
+        style.configure("Pill.TLabel", padding=(8, 2), relief="solid")
+
     # ---------- Data population ----------
     def _populate(self):
-        self._populate_general_info()
+        self._populate_summary_band()  # fixed, non-scrollable
+        self._populate_details_scrollable()
         self._populate_sensor_layout()
         self._populate_paradigm()
         self._populate_drop_log()
+
+    # ===== Dataset summary (non-scrollable band) =====
+    def _populate_summary_band(self):
+        for w in self.summary_band.winfo_children():
+            w.destroy()
+
+        # 2-column grid of key figures
+        grid = ttk.Frame(self.summary_band)
+        grid.pack(fill=tk.X, padx=4)
+
+        def kv(row, col, k, v):
+            key = ttk.Label(grid, text=k, style="KeyValueBold.TLabel")
+            val = ttk.Label(grid, text=v, style="KeyValue.TLabel")
+            key.grid(row=row, column=col*2, sticky="w", padx=(0, 6), pady=2)
+            val.grid(row=row, column=col*2+1, sticky="w", padx=(0, 16), pady=2)
+
+        total_participants = getattr(self.class_instance, 'number_of_participants', len(self.all_epochs))
+        excluded = total_participants - len(self.all_epochs)
+        freq_txt = f"{self.freq:.2f} Hz"
+
+        # Epoch counts (replicate logic from details so we keep info intact)
+        try:
+            events = self.class_instance.all_raw_epochs[0].events
+            indices = []
+            for j in range(len(self.class_instance.data_types)):
+                indices.extend(np.where((events[:, 2] == self.class_instance.all_raw_epochs[0].event_id[self.class_instance.data_types[j]]))[0])
+            total_epochs = len(indices) * total_participants if indices else 0
+        except Exception:
+            total_epochs = 0
+
+        try:
+            indices = []
+            for i in range(len(self.class_instance.all_epochs)):
+                events = self.class_instance.all_epochs[i].events
+                for j in range(len(self.class_instance.data_types)):
+                    indices.extend(np.where((events[:, 2] == self.class_instance.all_epochs[0].event_id[self.class_instance.data_types[j]]))[0])
+            remaining_epochs = len(indices)
+        except Exception:
+            remaining_epochs = 0
+
+        excluded_epochs = total_epochs - remaining_epochs if total_epochs is not None else 0
+
+        # First row
+        kv(0, 0, "Total Participants:", f"{total_participants}")
+        kv(0, 1, "Excluded Participants:", f"{excluded}")
+        kv(0, 2, "Sampling Frequency:", freq_txt)
+
+        # Second row
+        kv(1, 0, "Total Epochs (expected):", f"{total_epochs}")
+        kv(1, 1, "Remaining Epochs:", f"{remaining_epochs}")
+        kv(1, 2, "Excluded Epochs:", f"{excluded_epochs}")
+
+        # Units pill (to make it explicit everywhere)
+        pill = ttk.Label(self.summary_band, text="All concentration values are in µM (10⁻⁶)", foreground="gray")
+        pill.pack(anchor="w", padx=4, pady=(2, 0))
+
+    # ===== Scrollable details (everything else lives here) =====
+    def _populate_details_scrollable(self):
+        canvas = tk.Canvas(self.info_frame, highlightthickness=0)
+        vbar = ttk.Scrollbar(self.info_frame, orient="vertical", command=canvas.yview)
+        inner = ttk.Frame(canvas)
+
+        inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=inner, anchor="nw")
+        canvas.configure(yscrollcommand=vbar.set)
+
+        # Conditions
+        ttk.Label(inner, text="Conditions:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(6, 2))
+        for dt in self.data_types:
+            ttk.Label(inner, text=f"  • {dt}").pack(anchor="w", pady=1)
+
+        # Channel information + bad channels
+        if self.all_epochs:
+            first_epoch = self.all_epochs[0]
+            ttk.Label(inner, text="Channel Information:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
+            ttk.Label(inner, text=f"  • Total Channels: {len(first_epoch.ch_names)}").pack(anchor="w", pady=1)
+
+            bad_channel_analysis = self._analyze_bad_channels()
+            if bad_channel_analysis['total_unique_bads'] > 0:
+                ttk.Label(inner, text=f"    - Total unique bad channels: {bad_channel_analysis['total_unique_bads']}").pack(anchor="w", pady=1)
+                ttk.Label(inner, text=f"    - Participants with bad channels: {bad_channel_analysis['participants_with_bads']}/{len(self.all_epochs)}").pack(anchor="w", pady=1)
+                ttk.Label(inner, text=f"    - Average bad channels per participant: {bad_channel_analysis['avg_bads_per_participant']:.1f}").pack(anchor="w", pady=1)
+                if bad_channel_analysis['most_common_bads']:
+                    ttk.Label(inner, text=f"    - Most frequently bad:").pack(anchor="w", pady=1)
+                    for ch, count in bad_channel_analysis['most_common_bads'][:3]:
+                        percentage = (count / len(self.all_epochs)) * 100
+                        ttk.Label(inner, text=f"      {ch} ({count} participants, {percentage:.1f}%)").pack(anchor="w", pady=1)
+                self._add_expandable_bad_channels_section(inner, bad_channel_analysis)
+            else:
+                ttk.Label(inner, text=f"  • No bad channels marked across dataset").pack(anchor="w", pady=1)
+
+        # Channel Explorer (uses compute_effect_size outputs)
+        _ = self._add_channel_explorer_section(inner, inline=True)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        vbar.pack(side="right", fill="y")
 
     def _analyze_bad_channels(self):
         """Analyze bad channels across all participants"""
@@ -292,110 +409,6 @@ class DatasetInfoPanel:
         self._effect_cache = {"raw": raw_vals, "pre": pre_vals}
         return self._effect_cache
 
-    def _populate_general_info(self):
-        canvas = tk.Canvas(self.info_frame, highlightthickness=0)
-        vbar = ttk.Scrollbar(self.info_frame, orient="vertical", command=canvas.yview)
-        inner = ttk.Frame(canvas)
-
-        inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((0, 0), window=inner, anchor="nw")
-        canvas.configure(yscrollcommand=vbar.set)
-
-        total_participants = self.class_instance.number_of_participants
-        ttk.Label(inner, text=f"Total Participants: {total_participants}").pack(anchor="w", pady=2)
-
-        excluded = self.class_instance.number_of_participants - len(self.class_instance.all_epochs)
-        ttk.Label(inner, text=f"Excluded Participants: {excluded}").pack(anchor="w", pady=2)
-
-        ttk.Label(inner, text=f"Sampling Frequency: {self.freq:.2f} Hz").pack(anchor="w", pady=2)
-
-        ttk.Label(inner, text="Conditions:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
-        for dt in self.data_types:
-            ttk.Label(inner, text=f"  • {dt}").pack(anchor="w", pady=1)
-
-        if self.all_epochs:
-            first_epoch = self.all_epochs[0]
-            ttk.Label(inner, text="Channel Information:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
-            ttk.Label(inner, text=f"  • Total Channels: {len(first_epoch.ch_names)}").pack(anchor="w", pady=1)
-
-            bad_channel_analysis = self._analyze_bad_channels()
-            if bad_channel_analysis['total_unique_bads'] > 0:
-                ttk.Label(inner, text=f"    - Total unique bad channels: {bad_channel_analysis['total_unique_bads']}").pack(anchor="w", pady=1)
-                ttk.Label(inner, text=f"    - Participants with bad channels: {bad_channel_analysis['participants_with_bads']}/{len(self.all_epochs)}").pack(anchor="w", pady=1)
-                ttk.Label(inner, text=f"    - Average bad channels per participant: {bad_channel_analysis['avg_bads_per_participant']:.1f}").pack(anchor="w", pady=1)
-                if bad_channel_analysis['most_common_bads']:
-                    ttk.Label(inner, text=f"    - Most frequently bad:").pack(anchor="w", pady=1)
-                    for ch, count in bad_channel_analysis['most_common_bads'][:3]:
-                        percentage = (count / len(self.all_epochs)) * 100
-                        ttk.Label(inner, text=f"      {ch} ({count} participants, {percentage:.1f}%)").pack(anchor="w", pady=1)
-                self._add_expandable_bad_channels_section(inner, bad_channel_analysis)
-            else:
-                ttk.Label(inner, text=f"  • No bad channels marked across dataset").pack(anchor="w", pady=1)
-
-        ttk.Label(inner, text="Epoch Information:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 2))
-        try:
-            events = self.class_instance.all_raw_epochs[0].events
-            indices = []
-            for j in range(len(self.class_instance.data_types)):
-                indices.extend(np.where((events[:, 2] == self.class_instance.all_raw_epochs[0].event_id[self.class_instance.data_types[j]]))[0])
-            total_epochs = len(indices) * self.class_instance.number_of_participants if indices else 0
-        except Exception:
-            total_epochs = 0
-
-        try:
-            indices = []
-            for i in range(len(self.class_instance.all_epochs)):
-                events = self.class_instance.all_epochs[i].events
-                for j in range(len(self.class_instance.data_types)):
-                    indices.extend(np.where((events[:, 2] == self.class_instance.all_epochs[0].event_id[self.class_instance.data_types[j]]))[0])
-            remaining_epochs = len(indices)
-        except Exception:
-            remaining_epochs = 0
-
-        excluded_epochs = total_epochs - remaining_epochs if total_epochs is not None else 0
-        ttk.Label(inner, text=f"  • Total Epochs (expected): {total_epochs}").pack(anchor="w", pady=1)
-        ttk.Label(inner, text=f"  • Remaining Epochs: {remaining_epochs}").pack(anchor="w", pady=1)
-        ttk.Label(inner, text=f"  • Excluded Epochs: {excluded_epochs}").pack(anchor="w", pady=1)
-
-        # Channel Explorer (uses compute_effect_size outputs)
-        _ = self._add_channel_explorer_section(inner, inline=True)
-
-        canvas.pack(side="left", fill="both", expand=True)
-        vbar.pack(side="right", fill="y")
-
-    def _add_expandable_bad_channels_section(self, parent, analysis):
-        """Add an expandable section for detailed bad channel information"""
-        expand_frame = ttk.Frame(parent)
-        expand_frame.pack(anchor="w", fill="x", pady=(5, 0))
-
-        self.bad_channels_expanded = tk.BooleanVar(value=False)
-
-        def toggle_bad_channels():
-            if self.bad_channels_expanded.get():
-                details_frame.pack(anchor="w", fill="x", padx=(20, 0))
-                self._show_detailed_bad_channels(details_frame, analysis)
-            else:
-                for widget in details_frame.winfo_children():
-                    widget.destroy()
-                details_frame.pack_forget()
-            try:
-                canvas = parent.master
-                if hasattr(canvas, 'bbox'):
-                    canvas.update_idletasks()
-                    canvas.configure(scrollregion=canvas.bbox("all"))
-            except Exception:
-                pass
-
-        toggle_btn = ttk.Checkbutton(
-            expand_frame,
-            text="Show detailed bad channels breakdown",
-            variable=self.bad_channels_expanded,
-            command=toggle_bad_channels
-        )
-        toggle_btn.pack(anchor="w")
-
-        details_frame = ttk.Frame(expand_frame)
-
     # ===== Channel Explorer: compact columns & styles, using compute_effect_size outputs =====
     def _add_channel_explorer_section(self, parent, inline=False):
         """
@@ -404,6 +417,8 @@ class DatasetInfoPanel:
              as a single Value column formatted 'Pre / Raw'.
           2) Person-weighted per-condition means formatted 'Pre / Raw'.
           Uses compact Treeview/LabelFrame styles to minimize whitespace.
+
+        (Refined) Values for differences and means are shown with a µM suffix.
         """
         if not getattr(self, "_effect_cache", None):
             self._get_effect_results()
@@ -441,6 +456,7 @@ class DatasetInfoPanel:
         combo.pack(side=tk.LEFT, padx=(6, 8))
 
         ttk.Label(controls, text="Values: Preprocessed / Raw", foreground="gray").pack(side=tk.LEFT, padx=(4, 0))
+        ttk.Label(controls, text="(units: µM except d, df, P)", foreground="gray").pack(side=tk.LEFT, padx=(8, 0))
 
         # --- Summary metrics table (Metric | Value (Pre / Raw)) ---
         summary_frame = ttk.LabelFrame(body, text="Summary metrics (per channel)", style="Compact.TLabelframe")
@@ -456,7 +472,7 @@ class DatasetInfoPanel:
         )
         # Keep total width tight; no stretching
         summary_tree.column("Metric", anchor="w", width=220, minwidth=160, stretch=False)
-        summary_tree.column("Value (Pre / Raw)", anchor="w", width=220, minwidth=160, stretch=False)
+        summary_tree.column("Value (Pre / Raw)", anchor="w", width=260, minwidth=200, stretch=False)
         summary_tree.heading("Metric", text="Metric")
         summary_tree.heading("Value (Pre / Raw)", text="Value (Pre / Raw)")
         summary_tree.pack(anchor="w", padx=2, pady=2)
@@ -474,18 +490,39 @@ class DatasetInfoPanel:
             style="Compact.Treeview"
         )
         cond_tree.column("Condition", anchor="w", width=220, minwidth=160, stretch=False)
-        cond_tree.column("Mean (Pre / Raw)", anchor="w", width=220, minwidth=160, stretch=False)
+        cond_tree.column("Mean (Pre / Raw)", anchor="w", width=260, minwidth=200, stretch=False)
         cond_tree.heading("Condition", text="Condition")
         cond_tree.heading("Mean (Pre / Raw)", text="Mean (Pre / Raw)")
         cond_tree.pack(anchor="w", padx=2, pady=2)
 
-        def _fmt_num(x):
-            if x is None:
-                return "—"
+        def _fmt_float(x):
+            # Consistent, compact formatting for floats
+            try:
+                xf = float(x)
+            except Exception:
+                return str(x)
+            ax = abs(xf)
+            if ax >= 100:
+                return f"{xf:,.1f}"
+            if ax >= 1:
+                return f"{xf:.3f}"
+            if ax >= 1e-3:
+                return f"{xf:.6f}"
+            return f"{xf:.2e}"
+
+        def _fmt_muM(x):
+            return f"{_fmt_float(x)} µM"
+
+        def _fmt_plain(x):
+            # for integers / df / P
             try:
                 if isinstance(x, (int, np.integer)):
                     return str(int(x))
-                return f"{float(x):.6f}"
+                # if it looks like an integer float (e.g., 2.0), show as int
+                xf = float(x)
+                if float(int(round(xf))) == xf:
+                    return str(int(round(xf)))
+                return _fmt_float(x)
             except Exception:
                 return str(x)
 
@@ -512,36 +549,70 @@ class DatasetInfoPanel:
             pre = self._effect_cache.get("pre", {})
             raw = self._effect_cache.get("raw", {})
 
+            # Values with/without units
             metrics = [
                 ("Effect size (d_within)",
-                 _fmt_num(_get_from(pre, "Effect size", ch, default=np.nan)),
-                 _fmt_num(_get_from(raw, "Effect size", ch, default=np.nan))),
-                ("Mean difference (bar D)",
-                 _fmt_num(_get_from(pre, "Channels' mean difference", ch, default=np.nan)),
-                 _fmt_num(_get_from(raw, "Channels' mean difference", ch, default=np.nan))),
+                 _fmt_plain(_get_from(pre, "Effect size", ch, default=np.nan)),
+                 _fmt_plain(_get_from(raw, "Effect size", ch, default=np.nan))),
+                ("Mean difference (\u0305D)",
+                 _fmt_muM(_get_from(pre, "Channels' mean difference", ch, default=np.nan)),
+                 _fmt_muM(_get_from(raw, "Channels' mean difference", ch, default=np.nan))),
                 ("Within-participant SD (s_within)",
-                 _fmt_num(_get_from(pre, "Channels' within-participant SD", ch, default=np.nan)),
-                 _fmt_num(_get_from(raw, "Channels' within-participant SD", ch, default=np.nan))),
+                 _fmt_muM(_get_from(pre, "Channels' within-participant SD", ch, default=np.nan)),
+                 _fmt_muM(_get_from(raw, "Channels' within-participant SD", ch, default=np.nan))),
                 ("df_within",
-                 _fmt_num(_get_from(pre, "DF within", ch, default=0)),
-                 _fmt_num(_get_from(raw, "DF within", ch, default=0))),
+                 _fmt_plain(_get_from(pre, "DF within", ch, default=0)),
+                 _fmt_plain(_get_from(raw, "DF within", ch, default=0))),
                 ("Participants contributing (P)",
-                 _fmt_num(_get_from(pre, "P Ch.", ch, default=0)),
-                 _fmt_num(_get_from(raw, "P Ch.", ch, default=0))),
+                 _fmt_plain(_get_from(pre, "P Ch.", ch, default=0)),
+                 _fmt_plain(_get_from(raw, "P Ch.", ch, default=0))),
             ]
             for name, pre_v, raw_v in metrics:
                 summary_tree.insert("", "end", values=[name, f"{pre_v} / {raw_v}"])
 
-            # Per-condition "pre / raw"
+            # Per-condition "pre / raw" — with µM suffix
             conds = list(self.data_types) if self.data_types else []
             for cond in conds:
-                pre_mean = _fmt_num(_get_from(pre, "Conditions' mean", cond, ch, default=np.nan))
-                raw_mean = _fmt_num(_get_from(raw, "Conditions' mean", cond, ch, default=np.nan))
+                pre_mean = _fmt_muM(_get_from(pre, "Conditions' mean", cond, ch, default=np.nan))
+                raw_mean = _fmt_muM(_get_from(raw, "Conditions' mean", cond, ch, default=np.nan))
                 cond_tree.insert("", "end", values=[cond, f"{pre_mean} / {raw_mean}"])
 
         refresh_tables()
         combo.bind("<<ComboboxSelected>>", lambda _e=None: refresh_tables())
         return True
+
+    def _add_expandable_bad_channels_section(self, parent, analysis):
+        """Add an expandable section for detailed bad channel information"""
+        expand_frame = ttk.Frame(parent)
+        expand_frame.pack(anchor="w", fill="x", pady=(5, 0))
+
+        self.bad_channels_expanded = tk.BooleanVar(value=False)
+
+        def toggle_bad_channels():
+            if self.bad_channels_expanded.get():
+                details_frame.pack(anchor="w", fill="x", padx=(20, 0))
+                self._show_detailed_bad_channels(details_frame, analysis)
+            else:
+                for widget in details_frame.winfo_children():
+                    widget.destroy()
+                details_frame.pack_forget()
+            try:
+                canvas = parent.master
+                if hasattr(canvas, 'bbox'):
+                    canvas.update_idletasks()
+                    canvas.configure(scrollregion=canvas.bbox("all"))
+            except Exception:
+                pass
+
+        toggle_btn = ttk.Checkbutton(
+            expand_frame,
+            text="Show detailed bad channels breakdown",
+            variable=self.bad_channels_expanded,
+            command=toggle_bad_channels
+        )
+        toggle_btn.pack(anchor="w")
+
+        details_frame = ttk.Frame(expand_frame)
 
     def _show_detailed_bad_channels(self, parent, analysis):
         """Show detailed bad channel breakdown"""

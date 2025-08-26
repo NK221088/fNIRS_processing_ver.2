@@ -132,6 +132,8 @@ class fNIRS_data_load:
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 99)
+            
             epochs = mne.Epochs(
                 raw_haemo,
                 events,
@@ -2186,7 +2188,8 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
-
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 99)
+            
             epochs = mne.Epochs(
                 raw_haemo,
                 events,
@@ -2428,7 +2431,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
-            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 99)
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
             
             epochs = mne.Epochs(
                 raw_haemo,

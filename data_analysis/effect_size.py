@@ -10,7 +10,7 @@ def compute_effect_size(class_instance):
     preprocessed_epochs = class_instance.all_epochs
     tmin = 2.5
     tmax = 12.5
-    channels = mne_nirs.channels.get_long_channels(class_instance.Individual_participants[0].raw_haemo).info["ch_names"]
+    channels = mne_nirs.channels.get_long_channels(class_instance.Individual_participants[0].raw_haemo).pick("hbo").info["ch_names"]
     
     def _compute_effect_size(raw_epochs, epochs, tmin, tmax, channels):
 
