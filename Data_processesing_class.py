@@ -380,7 +380,7 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
             snr_threshold=self.snr_threshold,
             apply_tddr=self.apply_tddr
         )
-
+    
     def define_raw_intensity(self, sub_id):
         raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'sub-{sub_id}/nirs/sub-{sub_id}_task-tapping_nirs.snirf'}", preload=True, verbose=True)
             
@@ -2285,7 +2285,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
-        self.annotation_names = {"1": "TongueMI",
+        self.annotation_names = {"1.0": "TongueMI",
                                  "Rest": "Control",
                                 }
         self.standard_event_ids = {
@@ -2309,7 +2309,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.data_types = ["TongueMI"]
         self.data_name = "Melika tongue long data"
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = ["2", "0"]
+        self.unwanted = ["2.0", "0.0"]
         self.baseline_correction = baseline_correction
         self.filter_lower_value = filter_lower_value
         self.filter_upper_value = filter_upper_value
@@ -2344,22 +2344,15 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             apply_tddr = self.apply_tddr
         )
 
-    def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", preload=True, verbose=True)
-        raw_intensity.load_data()
+    def define_raw_intensity(self, filename):
+        raw_intensity = mne.io.read_raw_nirx(rf"{self.file_path / filename}", preload=True, verbose=True)
         return raw_intensity
         
     def load_data(self):
         for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
             self.number_of_participants += 1
-            sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
-            raw_intensity = self.define_raw_intensity(sub_id)
+            raw_intensity = self.define_raw_intensity(filename)
             raw_intensity = self.make_annotations(raw_intensity)
-            
-            #Fix the coordinate frame
-            for dig_point in raw_intensity.info['dig']:
-                if dig_point['coord_frame'] == 0:  # FIFFV_COORD_UNKNOWN
-                    dig_point['coord_frame'] = 4   # FIFFV_COORD_HEAD
 
             raw_intensity.annotations.rename(self.annotation_names)
             for _unwanted in self.unwanted:
@@ -2409,9 +2402,10 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             if self.interpolate_bad_channels:
                 raw_od.interpolate_bads()
 
-            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=6)
+            dpf = compute_differential_pathlength(raw_od)
+            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
-            raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=6).copy()
+            raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=dpf).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
             if self.negative_correlation_enhancement:
@@ -2465,7 +2459,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
-                Participant_i = individual_participant_class(f"Participant_{i}")
+                Participant_i = individual_participant_class(epochs.info["subject_info"]["his_id"])
                 Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
                 Participant_i.raw_intensity = raw_intensity
                 Participant_i.raw_od = raw_od
@@ -2498,7 +2492,6 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
 
     def make_annotations(self, raw_intensity):
-        sampling_frequency = raw_intensity.info["sfreq"]
         events, event_dict = mne.events_from_annotations(raw_intensity)
         cropped_raw_data = raw_intensity.copy()
         cropped_raw_data.annotations.set_durations(self.stimulus_duration)
