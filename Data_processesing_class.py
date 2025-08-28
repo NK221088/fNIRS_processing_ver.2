@@ -2353,6 +2353,11 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             self.number_of_participants += 1
             raw_intensity = self.define_raw_intensity(filename)
             raw_intensity = self.make_annotations(raw_intensity)
+            
+            # #Fix the coordinate frame
+            # for dig_point in raw_intensity.info['dig']:
+            #     if dig_point['coord_frame'] == 0:  # FIFFV_COORD_UNKNOWN
+            #         dig_point['coord_frame'] = 4   # FIFFV_COORD_HEAD
 
             raw_intensity.annotations.rename(self.annotation_names)
             for _unwanted in self.unwanted:
