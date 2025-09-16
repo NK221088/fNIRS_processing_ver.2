@@ -505,7 +505,8 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
             if self.interpolate_bad_channels:
                 raw_od.interpolate_bads()
 
-            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
+            dpf = compute_differential_pathlength(raw_od)
+            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
             raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
@@ -786,8 +787,9 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
 
             if self.interpolate_bad_channels:
                 raw_od.interpolate_bads()
-
-            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
+            
+            dpf = compute_differential_pathlength(raw_od)
+            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
             raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
@@ -891,7 +893,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
         self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
-        self.annotation_names = {"1": "HandMI",
+        self.annotation_names = {"1.0": "HandMI",
                                  "Rest": "Control"
                                 }
         self.file_path = Path(os.getenv('Melika_hand_data_5Hz'))
@@ -940,17 +942,15 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
             apply_tddr = self.apply_tddr
         )
 
-    def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", preload=True, verbose=True)
-            
-        raw_intensity.load_data()
+    def define_raw_intensity(self, filename):
+        raw_intensity = mne.io.read_raw_nirx(rf"{self.file_path / filename}", preload=True, verbose=True)
         return raw_intensity
         
     def load_data(self):
         for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
             self.number_of_participants += 1
-            sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
-            raw_intensity = self.define_raw_intensity(sub_id)
+            raw_intensity = self.define_raw_intensity(filename)
+            raw_intensity = self.make_annotations(raw_intensity)
             if i == 1 or i == 2 or i == 3 or i == 4:# When data for the first patient was recorded, the introduction was not added in Satori, so we add it manually
                 raw_intensity = self.make_without_intro_annotations(raw_intensity)
             else: # For all other patients we just add the resting phases
@@ -1004,8 +1004,9 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
             
             if self.interpolate_bad_channels:
                 raw_od.interpolate_bads()
-
-            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
+                
+            dpf = compute_differential_pathlength(raw_od)
+            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
             raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
@@ -1089,7 +1090,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
         events, event_dict = mne.events_from_annotations(raw_intensity)
         cropped_raw_data = raw_intensity.copy()
         cropped_raw_data.annotations.set_durations(self.stimulus_duration)
-        cropped_raw_data.annotations.rename({"0": "End"})
+        cropped_raw_data.annotations.rename({"0.0": "End"})
 
         for id,event in enumerate(events):
             if id == 0:
@@ -1111,7 +1112,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
         cropped_raw_data.annotations.description[0] = "I"
         cropped_raw_data.annotations.set_durations({"I" : 80})
         cropped_raw_data.annotations.rename({"I": "Introduction"})
-        cropped_raw_data.annotations.rename({"0": "End"})
+        cropped_raw_data.annotations.rename({"0.0": "End"})
 
         
         for id,event in enumerate(events):
@@ -1137,7 +1138,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
-        self.annotation_names = {"1": "TongueMI",
+        self.annotation_names = {"1.0": "TongueMI",
                                  "Rest": "Control",
                                 }
         self.file_path = Path(os.getenv('Melika_tongue_5Hz'))
@@ -1152,7 +1153,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         self.data_types = ["TongueMI"]
         self.data_name = "Melika tongue 5Hz"
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = ["2"]
+        self.unwanted = ["2.0"]
         self.baseline_correction = baseline_correction
         self.filter_lower_value = filter_lower_value
         self.filter_upper_value = filter_upper_value
@@ -1186,16 +1187,15 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
             apply_tddr = self.apply_tddr
         )
 
-    def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", preload=True, verbose=True)
-        raw_intensity.load_data()
+    def define_raw_intensity(self, filename):
+        raw_intensity = mne.io.read_raw_nirx(rf"{self.file_path / filename}", preload=True, verbose=True)
         return raw_intensity
         
     def load_data(self):
         for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
             self.number_of_participants += 1
-            sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
-            raw_intensity = self.define_raw_intensity(sub_id)
+            raw_intensity = self.define_raw_intensity(filename)
+            raw_intensity = self.make_annotations(raw_intensity)
             if i == 1 : # When data for the first patient was recorded, the introduction was not added in Satori, so we add it manually
                 raw_intensity = self.make_without_intro_annotations(raw_intensity)
             else: # For all other patients we just add the resting phases
@@ -1248,8 +1248,9 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
             
             if self.interpolate_bad_channels:
                 raw_od.interpolate_bads()
-
-            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
+                
+            dpf = compute_differential_pathlength(raw_od)
+            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
             raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
@@ -1336,7 +1337,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         events, event_dict = mne.events_from_annotations(raw_intensity)
         cropped_raw_data = raw_intensity.copy()
         cropped_raw_data.annotations.set_durations(self.stimulus_duration)
-        cropped_raw_data.annotations.rename({"0": "End"})
+        # cropped_raw_data.annotations.rename({"0.0": "End"})
 
         for id,event in enumerate(events):
             if id == 0:
@@ -1358,7 +1359,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
         cropped_raw_data.annotations.description[0] = "I"
         cropped_raw_data.annotations.set_durations({"I" : 80})
         cropped_raw_data.annotations.rename({"I": "Introduction"})
-        cropped_raw_data.annotations.rename({"0": "End"})
+        # cropped_raw_data.annotations.rename({"0.0": "End"})
 
         
         for id,event in enumerate(events):
@@ -1384,7 +1385,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
         self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
-        self.annotation_names = {"1": "HandMI",
+        self.annotation_names = {"1.0": "HandMI",
                                  "Rest": "Control"
                                 }
         self.file_path = Path(os.getenv('Melika_hand_data_10Hz'))
@@ -1433,17 +1434,15 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
             apply_tddr = self.apply_tddr
         )
 
-    def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", preload=True, verbose=True)
-        raw_intensity.load_data()
+    def define_raw_intensity(self, filename):
+        raw_intensity = mne.io.read_raw_nirx(rf"{self.file_path / filename}", preload=True, verbose=True)
         return raw_intensity
         
     def load_data(self):
         for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
             self.number_of_participants += 1
-            sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
-            raw_intensity = self.define_raw_intensity(sub_id)
-            raw_intensity = self.make_without_intro_annotations(raw_intensity)
+            raw_intensity = self.define_raw_intensity(filename)
+            raw_intensity = self.make_annotations(raw_intensity)
 
 
             raw_intensity.annotations.rename(self.annotation_names)
@@ -1493,8 +1492,9 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
             
             if self.interpolate_bad_channels:
                 raw_od.interpolate_bads()
-
-            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
+                
+            dpf = compute_differential_pathlength(raw_od)
+            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
             raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
@@ -1581,7 +1581,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
         events, event_dict = mne.events_from_annotations(raw_intensity)
         cropped_raw_data = raw_intensity.copy()
         cropped_raw_data.annotations.set_durations(self.stimulus_duration)
-        cropped_raw_data.annotations.rename({"0": "End"})
+        cropped_raw_data.annotations.rename({"0.0": "End"})
 
         for id,event in enumerate(events):
             if id == 0:
@@ -1603,7 +1603,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
         cropped_raw_data.annotations.description[0] = "I"
         cropped_raw_data.annotations.set_durations({"I" : 80})
         cropped_raw_data.annotations.rename({"I": "Introduction"})
-        cropped_raw_data.annotations.rename({"0": "End"})
+        cropped_raw_data.annotations.rename({"0.0": "End"})
 
         
         for id,event in enumerate(events):
@@ -1629,7 +1629,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
         self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
-        self.annotation_names = {"1": "TongueMI",
+        self.annotation_names = {"1.0": "TongueMI",
                                  "Rest": "Control",
                                 }
         self.file_path = Path(os.getenv('Melika_tongue_10Hz'))
@@ -1644,7 +1644,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
         self.data_types = ["TongueMI"]
         self.data_name = "Melika tongue 10Hz"
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = ["2"]
+        self.unwanted = ["2.0", "0.0"]
         self.baseline_correction = baseline_correction
         self.filter_lower_value = filter_lower_value
         self.filter_upper_value = filter_upper_value
@@ -1679,16 +1679,14 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
             apply_tddr = self.apply_tddr
             )
 
-    def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", preload=True, verbose=True)
-        raw_intensity.load_data()
+    def define_raw_intensity(self, filename):
+        raw_intensity = mne.io.read_raw_nirx(rf"{self.file_path / filename}", preload=True, verbose=True)
         return raw_intensity
         
     def load_data(self):
         for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
             self.number_of_participants += 1
-            sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
-            raw_intensity = self.define_raw_intensity(sub_id)
+            raw_intensity = self.define_raw_intensity(filename)
             raw_intensity = self.make_annotations(raw_intensity)
 
             raw_intensity.annotations.rename(self.annotation_names)
@@ -1738,8 +1736,9 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
             
             if self.interpolate_bad_channels:
                 raw_od.interpolate_bads()
-
-            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
+                
+            dpf = compute_differential_pathlength(raw_od)
+            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
             raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
@@ -1826,7 +1825,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
         cropped_raw_data.annotations.description[0] = "I"
         cropped_raw_data.annotations.set_durations({"I" : 80})
         cropped_raw_data.annotations.rename({"I": "Introduction"})
-        cropped_raw_data.annotations.rename({"0": "End"})
+        cropped_raw_data.annotations.rename({"0.0": "End"})
 
         
         for id,event in enumerate(events):
@@ -1964,8 +1963,9 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
             
             if self.interpolate_bad_channels:
                 raw_od.interpolate_bads()
-
-            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
+                
+            dpf = compute_differential_pathlength(raw_od)
+            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
             raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
@@ -2112,17 +2112,15 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
             apply_tddr = self.apply_tddr
         )
 
-    def define_raw_intensity(self, sub_id):
-        raw_intensity = mne.io.read_raw_snirf(rf"{self.file_path / rf'subj-{sub_id}.snirf'}", preload=True, verbose=True)
-        raw_intensity.load_data()
+    def define_raw_intensity(self, filename):
+        raw_intensity = mne.io.read_raw_nirx(rf"{self.file_path / filename}", preload=True, verbose=True)
         return raw_intensity
         
     def load_data(self):
         for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
             self.number_of_participants += 1
-            sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
-            raw_intensity = self.define_raw_intensity(sub_id)
-            raw_intensity = self.make_without_intro_annotations(raw_intensity)
+            raw_intensity = self.define_raw_intensity(filename)
+            raw_intensity = self.make_annotations(raw_intensity)
 
 
             raw_intensity.annotations.rename(self.annotation_names)
@@ -2172,8 +2170,9 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
             
             if self.interpolate_bad_channels:
                 raw_od.interpolate_bads()
-
-            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
+                
+            dpf = compute_differential_pathlength(raw_od)
+            raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
             raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
             raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
@@ -2406,7 +2405,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             
             if self.interpolate_bad_channels:
                 raw_od.interpolate_bads()
-
+                
             dpf = compute_differential_pathlength(raw_od)
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
@@ -2669,8 +2668,9 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
             
                 if self.interpolate_bad_channels:
                     raw_od.interpolate_bads()
-
-                raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=0.1)
+                
+                dpf = compute_differential_pathlength(raw_od)
+                raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
                 raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
@@ -2919,8 +2919,9 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
             
                 if self.interpolate_bad_channels:
                     raw_od.interpolate_bads()
-
-                raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=6)
+                
+                dpf = compute_differential_pathlength(raw_od)
+                raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
                 raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=6).copy()
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
