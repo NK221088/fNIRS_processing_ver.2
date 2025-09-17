@@ -3053,7 +3053,7 @@ class fNIRS_EEG_data_load(fNIRS_data_load):
         self.tmin = tmin
         self.tmax = 20
         self.baseline = (None, 0)
-        self.data_types = ['TonguePhysical', 'Control', 'TongueIM', '0-back-start', '1-back-start', '2-back-start', '3-back-start']
+        self.data_types = ['TonguePhysical', 'TongueIM', '0-back-start', '1-back-start', '2-back-start', '3-back-start']
         self.data_name = "EEG Nirs HC data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = []

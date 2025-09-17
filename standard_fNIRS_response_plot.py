@@ -1,4 +1,5 @@
 import mne
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import os
 from collections import Counter
@@ -82,9 +83,19 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
 
             # Store list of Evoked objects
             evoked_dict[f"{data_type}/{hemoglobin}"] = evoked_list  
+    
+    # Assign colors automatically from colormap (one per event type)
+    cmap = plt.cm.get_cmap("tab10", len(data_types))
+    base_colors = {evt: mpl.colors.to_hex(cmap(i)) for i, evt in enumerate(data_types)}
 
-    color_dict = {"HbO": "#AA3377", "HbR": "b"}
-    styles_dict = {"Control": dict(linestyle="dashed")}
+    # Expand to exact evoked_dict keys (event/chromophore)
+    color_dict = {key: base_colors[key.split("/")[0]] for key in evoked_dict.keys()}
+
+    # Styles fixed by chromophore
+    styles_dict = {
+        "HbO": dict(linestyle="-"),
+        "HbR": dict(linestyle="--"),
+    }
 
     # Prepare picks
     if picks_ != "all":
