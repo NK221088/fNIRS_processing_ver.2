@@ -13,6 +13,7 @@ from preprocessesing_toolbox.post_rejection import reject_if_single_event_type
 from preprocessesing_toolbox.SNR_rejection import snr_rejection, get_bad_channels_by_pairs
 from preprocessesing_toolbox.differential_pathlength import compute_differential_pathlength
 from preprocessesing_toolbox.p2p import compute_p2p
+import pandas as pd
 
 load_dotenv()
 
@@ -2876,6 +2877,307 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                 for _unwanted in self.unwanted:
                     unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
                     raw_intensity.annotations.delete(unwanted)
+
+                if self.snr_rejection != "None":
+                    snr = snr_rejection(raw_intensity, self.snr_rejection)
+                    
+                    # Validation
+                    if self.snr_rejection == "SNR" and self.snr_threshold < 1:
+                        raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
+                    if self.snr_rejection == "CV" and self.snr_threshold > 1:
+                        raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
+                    
+                    # Get bad channels based on pair logic
+                    snr_bad_channels = get_bad_channels_by_pairs(raw_intensity.ch_names, snr, self.snr_threshold, self.snr_rejection)
+                    raw_intensity.info["bads"] = snr_bad_channels
+                else:
+                    snr_bad_channels = []
+
+                raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+                raw_od_original = raw_od.copy()
+
+                # Check channel name consistency
+                assert raw_intensity.ch_names == raw_od.ch_names, \
+                    f"Channel names mismatch!\nraw_intensity: {len(raw_intensity.ch_names)} channels\nraw_od: {len(raw_od.ch_names)} channels"
+                
+                if self.short_channel_correction:
+                    raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
+                raw_od = mne_nirs.channels.get_long_channels(raw_od)
+                
+                if self.apply_tddr:
+                    raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
+
+                sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
+
+                sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
+                
+                # Filter SNR bad channels to only include those that still exist in the long channels dataset
+                snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
+                
+                # Combine bad channels from all preprocessing
+                all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
+                raw_od.info["bads"] = all_bad_channels
+            
+                if self.interpolate_bad_channels:
+                    raw_od.interpolate_bads()
+                
+                dpf = compute_differential_pathlength(raw_od)
+                raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
+
+                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=6).copy()
+                raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
+
+                if self.negative_correlation_enhancement:
+                    raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
+
+                events, event_dict = mne.events_from_annotations(raw_haemo)
+
+                # Set baseline parameter based on correction method
+                baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
+                
+                raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
+
+                epochs = mne.Epochs(
+                    raw_haemo,
+                    events,
+                    event_id=event_dict,
+                    tmin=self.tmin,
+                    tmax=self.tmax,
+                    reject=self.reject_criteria,
+                    reject_by_annotation=True,
+                    proj=True,
+                    baseline=baseline,
+                    preload=True,
+                    detrend=None,
+                    verbose=True,
+                )
+
+                epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"], min_number_of_conditions_events=1)
+
+                self.drop_log.append(epochs.drop_log)
+                if len(epochs) != 0:
+                    # Apply custom baseline correction if needed
+                    if self.baseline_correction != "xSecondsBefore":
+                        corrector = baselineCorrection(self.baseline_correction)
+                        epochs = corrector.apply_correction(
+                            self.baseline_correction,
+                            epochs,
+                            data_types=self.data_types,
+                        )
+
+                    self.all_raw_epochs.append(raw_epochs)
+                    self.all_epochs.append(epochs)
+                    self.all_control.append(epochs["Control"].get_data(copy=True))
+                    
+                    Participant_i = individual_participant_class(f"Participant_{i}")
+                    Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
+                    Participant_i.raw_intensity = raw_intensity
+                    Participant_i.raw_od = raw_od
+                    Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
+                    Participant_i.raw_haemo = raw_haemo
+                    Participant_i.raw_epochs = raw_epochs
+                    Participant_i.epochs = epochs
+                    
+                    for name in self.data_types:
+                        getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
+                        Participant_i.events.update({name: epochs[name].get_data(copy=True)})
+                    
+                    getattr(self, 'Individual_participants').append(Participant_i)
+            except FileNotFoundError as e:
+                print(f"Error loading {folder_name}: {e}")
+            except Exception as e:
+                print(f"Unexpected error with {folder_name}: {e}")
+
+        # Concatenate the control data
+        self.all_control = np.concatenate(self.all_control, axis=0)
+
+        # Concatenate the data for each data type
+        for name in self.data_types:
+            setattr(self, f'all_{name}', np.concatenate(getattr(self, f'all_{name}'), axis=0))
+
+        # Create the dictionary all_data with Control and data for each data type
+        all_data = {"Control": self.all_control}
+        for name in self.data_types:
+            all_data.update({name: getattr(self, f'all_{name}')})
+
+        # Update all_data with control_dict
+        all_freq = self.all_epochs[0].info['sfreq']
+        self.data_types.append("Control")
+        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
+
+###############################################################################################################################################################################################
+
+class fNIRS_EEG_data_load(fNIRS_data_load):
+    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
+                 baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
+                 l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: bool = False,
+                 snr_threshold: float = 8.0, apply_tddr: bool = False):
+        self.number_of_participants = 0
+        self.all_tapping = []
+        self.all_control = []
+        self.annotation_names = {"1": "TonguePhysical",
+                                 "2": "Control",
+                                 "3": "TongueIM",
+                                 "4": "0-back-start",
+                                 "5": "1-back-start",
+                                 "6": "2-back-start",
+                                 "7": "3-back-start"
+                                }
+        self.file_path = Path(os.getenv('nirs_EEG_data'))
+        self.short_channel_correction = short_channel_correction
+        self.negative_correlation_enhancement = negative_correlation_enhancement
+        self.stimulus_duration = {"1": 15,
+                                 "2": 15,
+                                 "3": 15,
+                                 "4": 0,
+                                 "5": 0,
+                                 "6": 0,
+                                 "7": 0,
+                                }
+        self.scalp_coupling_threshold = scalp_coupling_threshold
+        self.reject_criteria = reject_criteria
+        self.tmin = tmin
+        self.tmax = 20
+        self.baseline = (None, 0)
+        self.data_types = ['TonguePhysical', 'Control', 'TongueIM', '0-back-start', '1-back-start', '2-back-start', '3-back-start']
+        self.data_name = "EEG Nirs HC data"
+        self.interpolate_bad_channels = interpolate_bad_channels
+        self.unwanted = []
+        self.baseline_correction = baseline_correction
+        self.filter_lower_value = filter_lower_value
+        self.filter_upper_value = filter_upper_value
+        self.h_trans_bandwidth = h_trans_bandwidth
+        self.l_trans_bandwidth = l_trans_bandwidth
+        self.snr_rejection = snr_rejection
+        self.snr_threshold = snr_threshold
+        self.apply_tddr = apply_tddr
+        super().__init__(
+            file_path=self.file_path,
+            annotation_names=self.annotation_names,
+            stimulus_duration=self.stimulus_duration,
+            short_channel_correction=self.short_channel_correction,
+            negative_correlation_enhancement=self.negative_correlation_enhancement,
+            scalp_coupling_threshold=self.scalp_coupling_threshold,
+            reject_criteria=self.reject_criteria,
+            baseline=self.baseline,
+            tmin=self.tmin,
+            tmax=self.tmax,
+            data_types=self.data_types,
+            data_name=self.data_name,
+            interpolate_bad_channels = self.interpolate_bad_channels,
+            unwanted = self.unwanted,
+            baseline_correction = self.baseline_correction,
+            filter_lower_value = self.filter_lower_value,
+            filter_upper_value = self.filter_upper_value,
+            h_trans_bandwidth = self.h_trans_bandwidth,
+            l_trans_bandwidth = self.l_trans_bandwidth,
+            snr_rejection = self.snr_rejection,
+            snr_threshold = self.snr_threshold,
+            apply_tddr = self.apply_tddr
+            )
+
+    def find_snirf_file(self, folder_path):
+        """
+        Find the .snirf file in the nested folder structure.
+        Returns the full path to the .snirf file or None if not found.
+        """
+        # Look for .snirf files recursively in the folder
+        snirf_files = glob.glob(os.path.join(folder_path, "**", "*.snirf"), recursive=True)
+        
+        if snirf_files:
+            return snirf_files[0]  # Return the first .snirf file found
+        return None
+    
+    def find_excel_file(self, folder_path):
+        """
+        Find the .xlsx file in the nested folder structure.
+        Returns the full path to the .xlsx file or None if not found.
+        """
+        # Look for .xlsx files recursively in the folder
+        excel_files = glob.glob(os.path.join(folder_path, "**", "*.xlsx"), recursive=True)
+
+        if excel_files:
+            return excel_files[0]  # Return the first .snirf file found
+        return None
+
+    def define_raw_intensity(self, folder_name):
+        """
+        Load raw intensity data from a folder (handles different dataset structures).
+        folder_name: The name of the folder containing the data
+        """
+        folder_path = os.path.join(self.file_path, folder_name)
+        
+        # Find the .snirf file in the nested structure
+        snirf_file_path = self.find_snirf_file(folder_path)
+        
+        if not snirf_file_path:
+            raise FileNotFoundError(f"No .snirf file found in {folder_path}")
+        
+        raw_intensity = mne.io.read_raw_snirf(snirf_file_path, verbose=True)
+        raw_intensity.load_data()
+        return raw_intensity
+    
+    def get_actual_event(self, df, sheets, events, sfreq):
+        actual_events = np.empty((0, 3), dtype=int)
+        for sheet in sheets:
+            df[sheet] = df[sheet].sort_values(by=df[sheet].columns[-1]).reset_index(drop=True)
+            generator = (item for item in df[sheet].columns if "started_mean" in item)
+            time_column = next(generator, None)
+            times = list(df[sheet][time_column])
+            times = [time for time in times if str(time) != 'nan']
+            time_corrected_events = events[:,0] / sfreq
+            if sheet == 'Tongue_Loop':
+                offset = times[0] - time_corrected_events[0]
+            times -= offset
+            try:
+                markers = df[sheet]["marker"]
+                markers = [marker for marker in markers if type(marker) != str and str(marker) != 'nan']
+                for time, marker in zip(times, markers):
+                    actual_events = np.vstack([actual_events, np.array([int(time*sfreq), int(0), int(marker)])])
+            except:
+                print("No markers available for the events")
+                
+                self.stimulus_duration[str(actual_events[:,2][-1])] = times[-1] - (actual_events[:,0] / sfreq)[-1] + 3 # We add 3 as the compute the time from the last trigger, but the duration of this event has to be accounted for
+
+                
+            print("Sucessfully added all events")
+
+        return actual_events
+    
+    def make_annotations(self, excel_path, raw_intensity):
+        df = pd.read_excel(excel_path, sheet_name=None)
+        sheets = list(df.keys())
+        sfreq = raw_intensity.info["sfreq"]
+        events, event_dict = mne.events_from_annotations(raw_intensity)
+        actual_events = self.get_actual_event(df, sheets, events, sfreq)
+        onset = actual_events[:, 0] / sfreq
+        duration = np.array([self.stimulus_duration[str(event)] for event in actual_events[:,2]])
+        description = actual_events[:, 2].astype(str)
+        new_annotations = mne.Annotations(onset=onset, 
+                                 duration=duration, 
+                                 description=description)
+
+        raw_intensity.set_annotations(new_annotations)
+        return raw_intensity
+
+    def load_data(self):
+        # Get all folders and sort them (works for both P folders and random named folders)
+        all_folders = [f for f in sorted(os.listdir(self.file_path)) 
+                    if os.path.isdir(os.path.join(self.file_path, f))]
+        
+        for i, folder_name in enumerate(all_folders, start=1):
+            try:
+                
+                
+                excel_path = self.find_excel_file(os.path.join(self.file_path, folder_name))
+                raw_intensity = self.define_raw_intensity(folder_name)
+                self.number_of_participants += 1
+                raw_intensity = self.make_annotations(excel_path, raw_intensity)
+
+                raw_intensity.annotations.rename(self.annotation_names)
+                for _unwanted in self.unwanted:
+                        unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
+                        raw_intensity.annotations.delete(unwanted)
 
                 if self.snr_rejection != "None":
                     snr = snr_rejection(raw_intensity, self.snr_rejection)
