@@ -522,6 +522,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
 
             epochs = mne.Epochs(
                 raw_haemo,
@@ -805,6 +806,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
 
             epochs = mne.Epochs(
                 raw_haemo,
@@ -1022,6 +1024,8 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
+            
             epochs = mne.Epochs(
                 raw_haemo,
                 events,
@@ -1266,7 +1270,8 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
-
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
+            
             epochs = mne.Epochs(
                 raw_haemo,
                 events,
@@ -1510,6 +1515,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
 
             epochs = mne.Epochs(
                 raw_haemo,
@@ -1754,6 +1760,8 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
+            
             epochs = mne.Epochs(
                 raw_haemo,
                 events,
@@ -1981,6 +1989,8 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
+            
             epochs = mne.Epochs(
                 raw_haemo,
                 events,
@@ -2686,6 +2696,8 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
                 
                 raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
+                self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
+                
                 epochs = mne.Epochs(
                     raw_haemo,
                     events,
@@ -2937,6 +2949,8 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                 
                 raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
+                self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
+                
                 epochs = mne.Epochs(
                     raw_haemo,
                     events,
@@ -3237,7 +3251,9 @@ class fNIRS_EEG_data_load(fNIRS_data_load):
                 baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
                 
                 raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
-
+                
+                self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
+                
                 epochs = mne.Epochs(
                     raw_haemo,
                     events,
@@ -3252,8 +3268,6 @@ class fNIRS_EEG_data_load(fNIRS_data_load):
                     detrend=None,
                     verbose=True,
                 )
-
-                epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"], min_number_of_conditions_events=1)
 
                 self.drop_log.append(epochs.drop_log)
                 if len(epochs) != 0:
