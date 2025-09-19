@@ -114,7 +114,7 @@ def compute_effect_size(class_instance):
             for ch in channels
         }   
                 
-        return (effect_sizes, grand_mean_participants, standard_deviation, condition_means, df_within, P_ch)
+        return (effect_sizes, participants_session_data, grand_mean_participants, standard_deviation, condition_means, df_within, P_ch)
 
     _keys = ["Effect size", "Channels' mean difference", "Channels' within-participant SD", "Conditions' mean", "DF within", "P Ch."]
     raw_return_values = _compute_effect_size(raw_epochs, raw_epochs, tmin, tmax, channels)
