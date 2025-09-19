@@ -23,7 +23,7 @@ plotTypesList = ["Epoch Plot",
 
 # Default settings (add hemoglobin type to settings)
 settings = {
-    "data_set": dataSetList[12],  # Default to first dataset
+    "data_set": dataSetList[15],  # Default to first dataset
     "epoch_type": "HandMI",
     "individual": "All Individuals",
     "short_channel_correction": True,
@@ -89,7 +89,9 @@ def update_epoch_types(*args):
     # Only reload data if dataset is changed or first time
     if dataset != previous_dataset or start_up:
         try:
-            current_loader = data_loaders[dataset](
+            current_loader = data_loaders[dataset_var.get()](
+                data_name = dataset_var.get(),
+                file_path = dataset_var.get(),
                 short_channel_correction=settings["short_channel_correction"],
                 negative_correlation_enhancement=settings["negative_correlation_enhancement"],
                 interpolate_bad_channels=settings["interpolate_bad_channels"],
@@ -282,7 +284,9 @@ def run_analysis():
         or settings["Apply_TDDR"] != previous_apply_tddr
     )
     if reload_data:
-        current_loader = data_loaders[settings["data_set"]](
+        current_loader = data_loaders[dataset_var.get()](
+            data_name = dataset_var.get(),
+            file_path = dataset_var.get(),
             short_channel_correction=settings["short_channel_correction"],
             negative_correlation_enhancement=settings["negative_correlation_enhancement"],
             interpolate_bad_channels=settings["interpolate_bad_channels"],

@@ -203,7 +203,7 @@ class fNIRS_data_load:
 ###############################################################################################################################################################################################
 
 class AudioSpeechNoise_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction : bool, negative_correlation_enhancement : bool, interpolate_bad_channels:bool=False, tmin:int = -5,baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
+    def __init__(self, data_name, file_path, short_channel_correction : bool, negative_correlation_enhancement : bool, interpolate_bad_channels:bool=False, tmin:int = -5,baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
                  reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None", snr_threshold : int = 8, apply_tddr: bool = False):
         self.number_of_participants = 0
         self.all_speech = []
@@ -266,7 +266,7 @@ class AudioSpeechNoise_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_motor_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
+    def __init__(self, data_name, file_path, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
                  reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None", snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 0
         self.all_tapping = []
@@ -329,7 +329,7 @@ class fNIRS_motor_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_full_motor_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
+    def __init__(self, data_name, file_path, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
                  reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None", snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 0
         self.all_tapping = []
@@ -392,7 +392,7 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
+    def __init__(self, data_name, file_path, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
                  reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None", snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 0
         self.all_tapping = []
@@ -606,7 +606,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
+    def __init__(self, data_name, file_path, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
                  reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None", snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 0
         self.all_tapping = []
@@ -668,7 +668,7 @@ class fNIRS_Alexandros_Healthy_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_CUH_patient_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
+    def __init__(self, data_name, file_path, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
                 reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None", snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 0
         self.all_tapping = []
@@ -891,7 +891,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
+    def __init__(self, data_name, file_path, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0, baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2, l_trans_bandwidth: float = 0.02,
                  reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None", snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 0
         self.all_tapping = []
@@ -1136,7 +1136,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
+    def __init__(self, data_name, file_path, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None",
                  snr_threshold: int = 8, apply_tddr: bool = False):
@@ -1384,7 +1384,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
+    def __init__(self, data_name, file_path, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None",
                  snr_threshold: int = 8, apply_tddr: bool = False):
@@ -1629,7 +1629,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
+    def __init__(self, data_name, file_path, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None",
                  snr_threshold: int = 8, apply_tddr: bool = False):
@@ -1853,7 +1853,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_old_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
+    def __init__(self, data_name, file_path, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None",
                  snr_threshold: int = 8, apply_tddr: bool = False):
@@ -2067,7 +2067,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
+    def __init__(self, data_name, file_path, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None",
                  snr_threshold: int = 8, apply_tddr: bool = False):
@@ -2288,7 +2288,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
+    def __init__(self, data_name, file_path, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None",
                  snr_threshold: int = 8, apply_tddr: bool = False):
@@ -2536,7 +2536,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
+    def __init__(self, data_name, file_path, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None",
                  snr_threshold: int = 8, apply_tddr: bool = False):
@@ -2787,7 +2787,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
 ###############################################################################################################################################################################################
 
 class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
-    def __init__(self, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
+    def __init__(self, data_name, file_path, short_channel_correction: bool, negative_correlation_enhancement: bool, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: bool = False,
                  snr_threshold: float = 8.0, apply_tddr: bool = False):
@@ -3021,8 +3021,8 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
 
 ###############################################################################################################################################################################################
 
-class fNIRS_EEG__HC_baseline_data_load(fNIRS_data_load):
-    def __init__(self, dataset_name: str = "EEG Nirs HC baseline data", dataset_env_var: str = 'nirs_EEG_data', short_channel_correction: bool = True, negative_correlation_enhancement: bool = False, interpolate_bad_channels:bool=False, tmin:int = 0,
+class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
+    def __init__(self, data_name: str = "EEG fNIRS HC baseline data", file_path: str = 'EEG_fNIRS_HC_baseline_data', short_channel_correction: bool = True, negative_correlation_enhancement: bool = False, interpolate_bad_channels:bool=False, tmin:int = 0,
                  baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: bool = False,
                  snr_threshold: float = 8.0, apply_tddr: bool = False):
@@ -3032,12 +3032,12 @@ class fNIRS_EEG__HC_baseline_data_load(fNIRS_data_load):
         self.annotation_names = {"1": "TonguePhysical",
                                  "2": "Control",
                                  "3": "TongueIM",
-                                 "4": "0-back-start",
+                                 "4": "0-back-start ",
                                  "5": "1-back-start",
                                  "6": "2-back-start",
                                  "7": "3-back-start"
                                 }
-        self.file_path = Path(os.getenv(dataset_env_var))
+        self.file_path = Path(os.getenv(file_path.replace(" ", "_").replace("-", "_")))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = {"1": 15,
@@ -3054,7 +3054,7 @@ class fNIRS_EEG__HC_baseline_data_load(fNIRS_data_load):
         self.tmax = 20
         self.baseline = (None, 0)
         self.data_types = ['TonguePhysical', 'TongueIM', '0-back-start', '1-back-start', '2-back-start', '3-back-start']
-        self.data_name = dataset_name
+        self.data_name = data_name
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = []
         self.baseline_correction = baseline_correction
@@ -3322,21 +3322,12 @@ class fNIRS_EEG__HC_baseline_data_load(fNIRS_data_load):
     
 ###############################################################################################################################################################################################
 
-fNIRS_EEG__HC_follow_up_data_load = fNIRS_EEG__HC_baseline_data_load(
-    dataset_name="EEG Nirs HC follow up data",
-    dataset_env_var="nirs_EEG_data",
-)
+fNIRS_EEG_HC_follow_up_data_load = fNIRS_EEG_HC_baseline_data_load
 
 ###############################################################################################################################################################################################
 
-fNIRS_EEG__patient_baseline_data_load = fNIRS_EEG__HC_baseline_data_load(
-    dataset_name="EEG Nirs patient baseline data",
-    dataset_env_var="nirs_EEG_data",
-)
+fNIRS_EEG_patient_baseline_data_load = fNIRS_EEG_HC_baseline_data_load
 
 ###############################################################################################################################################################################################
 
-fNIRS_EEG__patient_follow_up_data_load = fNIRS_EEG__HC_baseline_data_load(
-    dataset_name="EEG Nirs patient follow up data",
-    dataset_env_var="nirs_EEG_data",
-)
+fNIRS_EEG_patient_follow_up_data_load = fNIRS_EEG_HC_baseline_data_load

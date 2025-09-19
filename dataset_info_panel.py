@@ -417,6 +417,7 @@ class DatasetInfoPanel:
             as a single Value column formatted 'Pre / Raw'.
         2) Person-weighted per-condition means formatted 'Pre / Raw'.
         3) Individual participant selection and comparison with grand means.
+        4) ENHANCED: Detailed individual metrics showing the components that make up effect size
         Uses compact Treeview/LabelFrame styles to minimize whitespace.
 
         (Refined) Values for differences and means are shown with a µM suffix.
@@ -497,7 +498,7 @@ class DatasetInfoPanel:
         cond_tree.heading("Mean (Pre / Raw)", text="Mean (Pre / Raw)")
         cond_tree.pack(anchor="w", padx=2, pady=2)
 
-        # --- NEW: Individual participant section ---
+        # --- ENHANCED: Individual participant section ---
         # Participant selection controls
         participant_controls = ttk.Frame(body)
         participant_controls.pack(anchor="w", fill="x", pady=(8, 2))
@@ -523,28 +524,31 @@ class DatasetInfoPanel:
         )
         participant_combo.pack(side=tk.LEFT, padx=(6, 8))
 
-        ttk.Label(participant_controls, text="Compare individual with grand means", foreground="gray").pack(side=tk.LEFT, padx=(4, 0))
+        ttk.Label(participant_controls, text="Detailed effect size components", foreground="gray").pack(side=tk.LEFT, padx=(4, 0))
 
-        # --- Individual participant metrics table ---
-        individual_frame = ttk.LabelFrame(body, text="Individual participant metrics (per channel)", style="Compact.TLabelframe")
+        # --- ENHANCED: Detailed individual participant metrics table ---
+        individual_frame = ttk.LabelFrame(body, text="Individual participant effect size breakdown (per channel)", style="Compact.TLabelframe")
         individual_frame.pack(anchor="w", fill="x", padx=0, pady=(4, 4))
 
-        ind_cols = ["Metric", "Individual (Pre / Raw)", "Grand Mean (Pre / Raw)", "Difference"]
+        # Updated columns to show more detailed breakdown
+        ind_cols = ["Metric", "Individual (Pre / Raw)", "Grand Mean (Pre / Raw)", "Difference", "Notes"]
         individual_tree = ttk.Treeview(
             individual_frame,
             columns=ind_cols,
             show="headings",
-            height=6,
+            height=8,  # Increased height for more rows
             style="Compact.Treeview"
         )
-        individual_tree.column("Metric", anchor="w", width=180, minwidth=140, stretch=False)
-        individual_tree.column("Individual (Pre / Raw)", anchor="w", width=160, minwidth=120, stretch=False)
-        individual_tree.column("Grand Mean (Pre / Raw)", anchor="w", width=160, minwidth=120, stretch=False)
-        individual_tree.column("Difference", anchor="w", width=120, minwidth=80, stretch=False)
+        individual_tree.column("Metric", anchor="w", width=200, minwidth=150, stretch=False)
+        individual_tree.column("Individual (Pre / Raw)", anchor="w", width=140, minwidth=110, stretch=False)
+        individual_tree.column("Grand Mean (Pre / Raw)", anchor="w", width=140, minwidth=110, stretch=False)
+        individual_tree.column("Difference", anchor="w", width=120, minwidth=90, stretch=False)
+        individual_tree.column("Notes", anchor="w", width=150, minwidth=100, stretch=False)
         individual_tree.heading("Metric", text="Metric")
         individual_tree.heading("Individual (Pre / Raw)", text="Individual (Pre / Raw)")
         individual_tree.heading("Grand Mean (Pre / Raw)", text="Grand Mean (Pre / Raw)")
         individual_tree.heading("Difference", text="Difference")
+        individual_tree.heading("Notes", text="Notes")
         individual_tree.pack(anchor="w", padx=2, pady=2)
 
         def _fmt_float(x):
@@ -632,11 +636,14 @@ class DatasetInfoPanel:
             pre = self._effect_cache.get("pre", {})
             raw = self._effect_cache.get("raw", {})
 
-            # Grand mean values with/without units
+            # Grand mean values with/without units (corrected effect size calculation)
+            grand_effect_pre = _get_from(pre, "Effect size", "grand_mean_participants", ch, default="N/A") if "grand_mean_participants" in pre.get("Effect size", {}) else _get_from(pre, "Channels' mean difference", ch, default="N/A")
+            grand_effect_raw = _get_from(raw, "Effect size", "grand_mean_participants", ch, default="N/A") if "grand_mean_participants" in raw.get("Effect size", {}) else _get_from(raw, "Channels' mean difference", ch, default="N/A")
+            
             metrics = [
                 ("Effect size (d_within)",
-                _fmt_plain(_get_from(pre, "Channels' mean difference", ch, default="N/A")),
-                _fmt_plain(_get_from(raw, "Channels' mean difference", ch, default="N/A"))),
+                _fmt_plain(grand_effect_pre),
+                _fmt_plain(grand_effect_raw)),
                 ("Mean difference (\u0305D)",
                 _fmt_muM(_get_from(pre, "Channels' mean difference", ch, default="N/A")),
                 _fmt_muM(_get_from(raw, "Channels' mean difference", ch, default="N/A"))),
@@ -660,41 +667,68 @@ class DatasetInfoPanel:
                 raw_mean = _fmt_muM(_get_from(raw, "Conditions' mean", cond, ch, default="N/A"))
                 cond_tree.insert("", "end", values=[cond, f"{pre_mean} / {raw_mean}"])
 
-            # Individual participant comparison
+            # ENHANCED: Individual participant detailed breakdown
             if participant and ch:
-                # Get individual values - use safer defaults
+                # Get individual effect size components
                 ind_effect_pre = _get_from(pre, "Effect size", participant, ch, default="N/A")
                 ind_effect_raw = _get_from(raw, "Effect size", participant, ch, default="N/A")
+                
+                # Get individual standard deviation (s_within)
                 ind_sd_pre = _get_from(pre, "Channels' within-participant SD", participant, ch, default="N/A")
                 ind_sd_raw = _get_from(raw, "Channels' within-participant SD", participant, ch, default="N/A")
+                
+                # Get individual mean difference (averages_over_sessions)
+                ind_mean_diff_pre = _get_from(pre, "Channels' mean difference", participant, ch, default="N/A")
+                ind_mean_diff_raw = _get_from(raw, "Channels' mean difference", participant, ch, default="N/A")
+                
+                # Get individual degrees of freedom
                 ind_df_pre = _get_from(pre, "DF within", participant, ch, default="N/A")
                 ind_df_raw = _get_from(raw, "DF within", participant, ch, default="N/A")
 
-                # Get grand mean values for comparison - use safer defaults
-                grand_effect_pre = _get_from(pre, "Channels' mean difference", ch, default="N/A")
-                grand_effect_raw = _get_from(raw, "Channels' mean difference", ch, default="N/A")
+                # Get grand mean values for comparison
+                grand_mean_diff_pre = _get_from(pre, "Channels' mean difference", ch, default="N/A")
+                grand_mean_diff_raw = _get_from(raw, "Channels' mean difference", ch, default="N/A")
                 grand_sd_pre = _get_from(pre, "Channels' within-participant SD", ch, default="N/A")
                 grand_sd_raw = _get_from(raw, "Channels' within-participant SD", ch, default="N/A")
 
+                # Calculate effect size manually to verify: d = mean_diff / sd
+                calculated_effect_pre = "N/A"
+                calculated_effect_raw = "N/A"
+                try:
+                    if not _safe_isnan(ind_mean_diff_pre) and not _safe_isnan(ind_sd_pre):
+                        calculated_effect_pre = float(ind_mean_diff_pre) / float(ind_sd_pre)
+                except:
+                    pass
+                try:
+                    if not _safe_isnan(ind_mean_diff_raw) and not _safe_isnan(ind_sd_raw):
+                        calculated_effect_raw = float(ind_mean_diff_raw) / float(ind_sd_raw)
+                except:
+                    pass
+
+                # Enhanced individual metrics with more detail
                 individual_metrics = [
-                    ("Effect size (d_within)", ind_effect_pre, ind_effect_raw, grand_effect_pre, grand_effect_raw, _fmt_plain, False),
-                    ("Within-participant SD", ind_sd_pre, ind_sd_raw, grand_sd_pre, grand_sd_raw, _fmt_muM, True),
-                    ("df_within", ind_df_pre, ind_df_raw, ind_df_pre, ind_df_raw, _fmt_plain, False),
+                    ("Effect size (d_within)", ind_effect_pre, ind_effect_raw, grand_effect_pre, grand_effect_raw, _fmt_plain, True, "d = \u0305D / s_within"),
+                    ("Mean difference (\u0305D)", ind_mean_diff_pre, ind_mean_diff_raw, grand_mean_diff_pre, grand_mean_diff_raw, _fmt_muM, True, "Session average"),
+                    ("Within-participant SD (s_within)", ind_sd_pre, ind_sd_raw, grand_sd_pre, grand_sd_raw, _fmt_muM, True, "Variability measure"),
+                    ("Degrees of freedom (df_within)", ind_df_pre, ind_df_raw, ind_df_pre, ind_df_raw, _fmt_plain, False, "Sessions - 1"),
+                    ("Calculated d (verification)", calculated_effect_pre, calculated_effect_raw, "—", "—", _fmt_plain, False, "\u0305D / s_within"),
                 ]
 
-                for name, ind_pre, ind_raw, grand_pre, grand_raw, formatter, show_diff in individual_metrics:
+                for name, ind_pre, ind_raw, grand_pre, grand_raw, formatter, show_diff, notes in individual_metrics:
                     ind_pre_str = formatter(ind_pre)
                     ind_raw_str = formatter(ind_raw)
-                    grand_pre_str = formatter(grand_pre)
-                    grand_raw_str = formatter(grand_raw)
+                    grand_pre_str = formatter(grand_pre) if grand_pre != "—" else "—"
+                    grand_raw_str = formatter(grand_raw) if grand_raw != "—" else "—"
                     
-                    if show_diff:
+                    if show_diff and grand_pre != "—" and grand_raw != "—":
                         diff_pre = _calculate_difference(ind_pre, grand_pre)
                         diff_raw = _calculate_difference(ind_raw, grand_raw)
                         if diff_pre == "N/A" or diff_raw == "N/A":
                             diff_str = "N/A"
                         else:
-                            diff_str = f"{formatter(diff_pre)} / {formatter(diff_raw)}"
+                            diff_pre_str = formatter(diff_pre) if hasattr(formatter, '__call__') else _fmt_float(diff_pre)
+                            diff_raw_str = formatter(diff_raw) if hasattr(formatter, '__call__') else _fmt_float(diff_raw)
+                            diff_str = f"{diff_pre_str} / {diff_raw_str}"
                     else:
                         diff_str = "—"
                     
@@ -702,8 +736,37 @@ class DatasetInfoPanel:
                         name, 
                         f"{ind_pre_str} / {ind_raw_str}",
                         f"{grand_pre_str} / {grand_raw_str}",
-                        diff_str
+                        diff_str,
+                        notes
                     ])
+
+                # Add separator and session-level details if available
+                try:
+                    session_data_pre = _get_from(pre, "Channels' mean difference", participant, default={})
+                    session_data_raw = _get_from(raw, "Channels' mean difference", participant, default={})
+                    
+                    if session_data_pre and ch in session_data_pre.get("session_differences", [{}]):
+                        individual_tree.insert("", "end", values=["", "", "", "", ""])  # separator
+                        individual_tree.insert("", "end", values=["Session Details:", "", "", "", ""])
+                        
+                        # Try to get session-level data
+                        try:
+                            sessions_pre = session_data_pre.get("session_differences", [])
+                            sessions_raw = session_data_raw.get("session_differences", [])
+                            
+                            for i, (sess_pre, sess_raw) in enumerate(zip(sessions_pre, sessions_raw)):
+                                if ch in sess_pre and ch in sess_raw:
+                                    sess_diff_pre = _fmt_muM(sess_pre[ch])
+                                    sess_diff_raw = _fmt_muM(sess_raw[ch])
+                                    individual_tree.insert("", "end", values=[
+                                        f"  Session {i+1} diff", 
+                                        f"{sess_diff_pre} / {sess_diff_raw}",
+                                        "—", "—", "Raw session data"
+                                    ])
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
 
         refresh_tables()
         combo.bind("<<ComboboxSelected>>", lambda _e=None: refresh_tables())
