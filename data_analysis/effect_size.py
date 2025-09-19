@@ -18,6 +18,7 @@ def compute_effect_size(class_instance):
         
         participants_session_data = {}
         cond_session_means = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+        cond_session_means_per_person = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
         
         for index, epoch in enumerate(epochs):
             pid = f"participant_{index}"
@@ -68,11 +69,13 @@ def compute_effect_size(class_instance):
                 per_person = []
                 for pid, sess_vals in cond_session_means[cond][ch].items():
                     if len(sess_vals) > 0:
-                        per_person.append(np.mean(sess_vals))  # equal-weight sessions within person
+                        per_person.append(np.mean(sess_vals))
+                        cond_session_means_per_person[cond][ch][pid] = np.mean(sess_vals)  # mean per person
                 condition_means[cond][ch] = float(np.mean(per_person)) if per_person else np.nan  # equal-weight across people
 
         standard_deviation = defaultdict(lambda: defaultdict())
         df_within = defaultdict(lambda: defaultdict())
+        standard_deviation_all_participants = {ch: [] for ch in channels}
        
         for channel in channels:
             for participant, pdata in participants_session_data.items():
@@ -86,15 +89,18 @@ def compute_effect_size(class_instance):
                     num += float((residuals**2).sum())
                     df  = (k_p - 1)
                 # if k_p == 0 or 1: contribute nothing to num or df
-                standard_deviation[participant][channel] = np.sqrt(num/df) if df > 0 else np.nan
+                std = np.sqrt(num/df) if df > 0 else np.nan
+                standard_deviation[participant][channel] = std
+                standard_deviation_all_participants[channel].append(std)
                 df_within[participant][channel] = df
         
         effect_sizes = defaultdict(lambda: defaultdict())
+        Dpbar_all_participants = {ch: [] for ch in channels}
         
         for channel in channels:
             for participant, pdata in participants_session_data.items():
                 Dpbar = pdata["averages_over_sessions"][channel]
-                
+                Dpbar_all_participants[channel].append(Dpbar)
                 if not np.isnan(standard_deviation[participant][channel]):
                     effect_sizes[participant][channel] = Dpbar / standard_deviation[participant][channel]
                 else:
@@ -112,11 +118,14 @@ def compute_effect_size(class_instance):
         grand_mean_participants = {
             ch: (grand_sum[ch] / P_ch[ch]) if P_ch[ch] > 0 else np.nan
             for ch in channels
-        }   
-                
-        return (effect_sizes, participants_session_data, grand_mean_participants, standard_deviation, condition_means, df_within, P_ch)
+        }
+        
+        Dpbar_all_participants = {channel: np.mean(Dp_value) for channel, Dp_value in Dpbar_all_participants.items()}
+        standard_deviation_all_participants = {channel: np.mean(std_value) for channel, std_value in standard_deviation_all_participants.items()}
+        
+        return (effect_sizes, participants_session_data, grand_mean_participants, standard_deviation, condition_means, df_within, P_ch, Dpbar_all_participants, standard_deviation_all_participants, cond_session_means_per_person)
 
-    _keys = ["Effect size", "Channels' mean difference", "Channels' within-participant SD", "Conditions' mean", "DF within", "P Ch."]
+    _keys = ["Effect size", "Participants' session_data", "Channels' average effect size", "Participants' within-participant SD", "Conditions' mean", "DF within", "P Ch.", "Dpbar all participants", "standard deviation all participants", "Condition means per person"]
     raw_return_values = _compute_effect_size(raw_epochs, raw_epochs, tmin, tmax, channels)
     preprocessed_return_values = _compute_effect_size(raw_epochs, preprocessed_epochs, tmin, tmax, channels)
     raw_values = {key: val for key, val in zip(_keys, raw_return_values)}

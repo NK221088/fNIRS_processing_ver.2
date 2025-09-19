@@ -413,15 +413,11 @@ class DatasetInfoPanel:
     def _add_channel_explorer_section(self, parent, inline=False):
         """
         Shows:
-        1) Summary metrics per channel (Effect size, Mean diff, s_within, df_within, P)
-            as a single Value column formatted 'Pre / Raw'.
-        2) Person-weighted per-condition means formatted 'Pre / Raw'.
-        3) Individual participant selection and comparison with grand means.
-        4) ENHANCED: Detailed individual metrics showing the components that make up effect size
-        Uses compact Treeview/LabelFrame styles to minimize whitespace.
-
-        (Refined) Values for differences and means are shown with a µM suffix.
+        - Person-weighted per-condition grand means (Pre / Raw)
+        - Individual participant's per-condition means and difference from grand mean
+        Uses one unified Treeview to display everything compactly.
         """
+
         if not getattr(self, "_effect_cache", None):
             self._get_effect_results()
 
@@ -438,7 +434,7 @@ class DatasetInfoPanel:
         body = ttk.Frame(expand)
         body.pack(anchor="w", fill="x", expand=False)
 
-        # Controls
+        # --- Controls: channel selection ---
         controls = ttk.Frame(body)
         controls.pack(anchor="w", fill="x", pady=(4, 2))
 
@@ -453,7 +449,7 @@ class DatasetInfoPanel:
                     break
         except Exception:
             pass
-        
+
         sel = tk.StringVar(value=(ch_names[0] if ch_names else ""))
         combo = ttk.Combobox(controls, textvariable=sel, values=ch_names, state="readonly", width=24)
         combo.pack(side=tk.LEFT, padx=(6, 8))
@@ -461,45 +457,7 @@ class DatasetInfoPanel:
         ttk.Label(controls, text="Values: Preprocessed / Raw", foreground="gray").pack(side=tk.LEFT, padx=(4, 0))
         ttk.Label(controls, text="(units: µM except d, df, P)", foreground="gray").pack(side=tk.LEFT, padx=(8, 0))
 
-        # --- Summary metrics table (Metric | Value (Pre / Raw)) ---
-        summary_frame = ttk.LabelFrame(body, text="Grand mean metrics (per channel)", style="Compact.TLabelframe")
-        summary_frame.pack(anchor="w", fill="x", padx=0, pady=(4, 4))
-
-        sum_cols = ["Metric", "Value (Pre / Raw)"]
-        summary_tree = ttk.Treeview(
-            summary_frame,
-            columns=sum_cols,
-            show="headings",
-            height=6,
-            style="Compact.Treeview"
-        )
-        # Keep total width tight; no stretching
-        summary_tree.column("Metric", anchor="w", width=220, minwidth=160, stretch=False)
-        summary_tree.column("Value (Pre / Raw)", anchor="w", width=260, minwidth=200, stretch=False)
-        summary_tree.heading("Metric", text="Metric")
-        summary_tree.heading("Value (Pre / Raw)", text="Value (Pre / Raw)")
-        summary_tree.pack(anchor="w", padx=2, pady=2)
-
-        # --- Per-condition means table (Condition | Mean (Pre / Raw)) ---
-        cond_frame = ttk.LabelFrame(body, text="Person-weighted per-condition means (per channel)", style="Compact.TLabelframe")
-        cond_frame.pack(anchor="w", fill="x", padx=0, pady=(0, 4))
-
-        cond_cols = ["Condition", "Mean (Pre / Raw)"]
-        cond_tree = ttk.Treeview(
-            cond_frame,
-            columns=cond_cols,
-            show="headings",
-            height=6,
-            style="Compact.Treeview"
-        )
-        cond_tree.column("Condition", anchor="w", width=220, minwidth=160, stretch=False)
-        cond_tree.column("Mean (Pre / Raw)", anchor="w", width=260, minwidth=200, stretch=False)
-        cond_tree.heading("Condition", text="Condition")
-        cond_tree.heading("Mean (Pre / Raw)", text="Mean (Pre / Raw)")
-        cond_tree.pack(anchor="w", padx=2, pady=2)
-
-        # --- ENHANCED: Individual participant section ---
-        # Participant selection controls
+        # --- Participant selection ---
         participant_controls = ttk.Frame(body)
         participant_controls.pack(anchor="w", fill="x", pady=(8, 2))
 
@@ -516,43 +474,51 @@ class DatasetInfoPanel:
 
         participant_sel = tk.StringVar(value=(participant_names[0] if participant_names else ""))
         participant_combo = ttk.Combobox(
-            participant_controls, 
-            textvariable=participant_sel, 
-            values=participant_names, 
-            state="readonly", 
+            participant_controls,
+            textvariable=participant_sel,
+            values=participant_names,
+            state="readonly",
             width=24
         )
         participant_combo.pack(side=tk.LEFT, padx=(6, 8))
 
-        ttk.Label(participant_controls, text="Detailed effect size components", foreground="gray").pack(side=tk.LEFT, padx=(4, 0))
+        ttk.Label(participant_controls, text="Shows participant vs grand means per condition", foreground="gray").pack(side=tk.LEFT, padx=(4, 0))
 
-        # --- ENHANCED: Detailed individual participant metrics table ---
-        individual_frame = ttk.LabelFrame(body, text="Individual participant effect size breakdown (per channel)", style="Compact.TLabelframe")
-        individual_frame.pack(anchor="w", fill="x", padx=0, pady=(4, 4))
+        # --- Unified condition+participant table ---
+        combined_frame = ttk.LabelFrame(
+            body,
+            text="Per-condition means and participant values (per channel)",
+            style="Compact.TLabelframe"
+        )
+        combined_frame.pack(anchor="w", fill="x", padx=0, pady=(4, 4))
 
-        # Updated columns to show more detailed breakdown
-        ind_cols = ["Metric", "Individual (Pre / Raw)", "Grand Mean (Pre / Raw)", "Difference", "Notes"]
-        individual_tree = ttk.Treeview(
-            individual_frame,
-            columns=ind_cols,
+        comb_cols = ["Condition", "Grand Mean (Pre / Raw)", "Participant (Pre / Raw)", "Difference (Pre / Raw)"]
+        combined_tree = ttk.Treeview(
+            combined_frame,
+            columns=comb_cols,
             show="headings",
-            height=8,  # Increased height for more rows
+            height=10,
             style="Compact.Treeview"
         )
-        individual_tree.column("Metric", anchor="w", width=200, minwidth=150, stretch=False)
-        individual_tree.column("Individual (Pre / Raw)", anchor="w", width=140, minwidth=110, stretch=False)
-        individual_tree.column("Grand Mean (Pre / Raw)", anchor="w", width=140, minwidth=110, stretch=False)
-        individual_tree.column("Difference", anchor="w", width=120, minwidth=90, stretch=False)
-        individual_tree.column("Notes", anchor="w", width=150, minwidth=100, stretch=False)
-        individual_tree.heading("Metric", text="Metric")
-        individual_tree.heading("Individual (Pre / Raw)", text="Individual (Pre / Raw)")
-        individual_tree.heading("Grand Mean (Pre / Raw)", text="Grand Mean (Pre / Raw)")
-        individual_tree.heading("Difference", text="Difference")
-        individual_tree.heading("Notes", text="Notes")
-        individual_tree.pack(anchor="w", padx=2, pady=2)
+        for col, w in zip(comb_cols, [180, 180, 180, 160]):
+            combined_tree.column(col, anchor="w", width=w, minwidth=int(w * 0.75), stretch=False)
+            combined_tree.heading(col, text=col)
+        combined_tree.pack(anchor="w", padx=2, pady=2)
+
+        # --- Helpers ---
+        def _safe_isnan(x):
+            try:
+                if x is None:
+                    return True
+                if isinstance(x, str):
+                    return x.lower() in ['nan', 'none', '']
+                if isinstance(x, (list, tuple, dict)):
+                    return True
+                return np.isnan(float(x))
+            except Exception:
+                return True
 
         def _fmt_float(x):
-            # Consistent, compact formatting for floats
             try:
                 xf = float(x)
             except Exception:
@@ -566,38 +532,10 @@ class DatasetInfoPanel:
                 return f"{xf:.6f}"
             return f"{xf:.2e}"
 
-        def _safe_isnan(x):
-            """Safely check if value is NaN, handling various data types"""
-            try:
-                if x is None:
-                    return True
-                if isinstance(x, str):
-                    return x.lower() in ['nan', 'none', '']
-                if isinstance(x, (list, tuple, dict)):
-                    return True
-                return np.isnan(float(x))
-            except (TypeError, ValueError, AttributeError):
-                return True
-
         def _fmt_muM(x):
             if _safe_isnan(x):
                 return "N/A"
             return f"{_fmt_float(x)} µM"
-
-        def _fmt_plain(x):
-            # for integers / df / P
-            try:
-                if _safe_isnan(x):
-                    return "N/A"
-                if isinstance(x, (int, np.integer)):
-                    return str(int(x))
-                # if it looks like an integer float (e.g., 2.0), show as int
-                xf = float(x)
-                if float(int(round(xf))) == xf:
-                    return str(int(round(xf)))
-                return _fmt_float(x)
-            except Exception:
-                return "N/A"
 
         def _get_from(cache, section, *keys, default=None):
             try:
@@ -609,24 +547,17 @@ class DatasetInfoPanel:
                 return default
 
         def _calculate_difference(individual_val, grand_val):
-            """Calculate difference between individual and grand mean values"""
             try:
                 if _safe_isnan(individual_val) or _safe_isnan(grand_val):
                     return "N/A"
-                ind_val = float(individual_val)
-                grand_val_f = float(grand_val)
-                return ind_val - grand_val_f
+                return float(individual_val) - float(grand_val)
             except Exception:
                 return "N/A"
 
-        def refresh_tables():
-            # clear old rows
-            for row in summary_tree.get_children():
-                summary_tree.delete(row)
-            for row in cond_tree.get_children():
-                cond_tree.delete(row)
-            for row in individual_tree.get_children():
-                individual_tree.delete(row)
+        # --- Refresh function ---
+        def refresh_table():
+            for row in combined_tree.get_children():
+                combined_tree.delete(row)
 
             ch = sel.get()
             participant = participant_sel.get()
@@ -636,141 +567,44 @@ class DatasetInfoPanel:
             pre = self._effect_cache.get("pre", {})
             raw = self._effect_cache.get("raw", {})
 
-            # Grand mean values with/without units (corrected effect size calculation)
-            grand_effect_pre = _get_from(pre, "Effect size", "grand_mean_participants", ch, default="N/A") if "grand_mean_participants" in pre.get("Effect size", {}) else _get_from(pre, "Channels' mean difference", ch, default="N/A")
-            grand_effect_raw = _get_from(raw, "Effect size", "grand_mean_participants", ch, default="N/A") if "grand_mean_participants" in raw.get("Effect size", {}) else _get_from(raw, "Channels' mean difference", ch, default="N/A")
-            
-            metrics = [
-                ("Effect size (d_within)",
-                _fmt_plain(grand_effect_pre),
-                _fmt_plain(grand_effect_raw)),
-                ("Mean difference (\u0305D)",
-                _fmt_muM(_get_from(pre, "Channels' mean difference", ch, default="N/A")),
-                _fmt_muM(_get_from(raw, "Channels' mean difference", ch, default="N/A"))),
-                ("Within-participant SD (s_within)",
-                _fmt_muM(_get_from(pre, "Channels' within-participant SD", ch, default="N/A")),
-                _fmt_muM(_get_from(raw, "Channels' within-participant SD", ch, default="N/A"))),
-                ("df_within",
-                _fmt_plain(_get_from(pre, "DF within", ch, default=0)),
-                _fmt_plain(_get_from(raw, "DF within", ch, default=0))),
-                ("Participants contributing (P)",
-                _fmt_plain(_get_from(pre, "P Ch.", ch, default=0)),
-                _fmt_plain(_get_from(raw, "P Ch.", ch, default=0))),
-            ]
-            for name, pre_v, raw_v in metrics:
-                summary_tree.insert("", "end", values=[name, f"{pre_v} / {raw_v}"])
+            for cond in (self.data_types or []):
+                # Grand means
+                grand_pre = _get_from(pre, "Conditions' mean", cond, ch, default="N/A")
+                grand_raw = _get_from(raw, "Conditions' mean", cond, ch, default="N/A")
 
-            # Per-condition "pre / raw" — with µM suffix
-            conds = list(self.data_types) if self.data_types else []
-            for cond in conds:
-                pre_mean = _fmt_muM(_get_from(pre, "Conditions' mean", cond, ch, default="N/A"))
-                raw_mean = _fmt_muM(_get_from(raw, "Conditions' mean", cond, ch, default="N/A"))
-                cond_tree.insert("", "end", values=[cond, f"{pre_mean} / {raw_mean}"])
+                # Participant values
+                if participant:
+                    ind_pre = _get_from(pre, "Condition means per person", participant, cond, ch, default="N/A")
+                    ind_raw = _get_from(raw, "Condition means per person", participant, cond, ch, default="N/A")
+                else:
+                    ind_pre = ind_raw = "N/A"
 
-            # ENHANCED: Individual participant detailed breakdown
-            if participant and ch:
-                # Get individual effect size components
-                ind_effect_pre = _get_from(pre, "Effect size", participant, ch, default="N/A")
-                ind_effect_raw = _get_from(raw, "Effect size", participant, ch, default="N/A")
-                
-                # Get individual standard deviation (s_within)
-                ind_sd_pre = _get_from(pre, "Channels' within-participant SD", participant, ch, default="N/A")
-                ind_sd_raw = _get_from(raw, "Channels' within-participant SD", participant, ch, default="N/A")
-                
-                # Get individual mean difference (averages_over_sessions)
-                ind_mean_diff_pre = _get_from(pre, "Channels' mean difference", participant, ch, default="N/A")
-                ind_mean_diff_raw = _get_from(raw, "Channels' mean difference", participant, ch, default="N/A")
-                
-                # Get individual degrees of freedom
-                ind_df_pre = _get_from(pre, "DF within", participant, ch, default="N/A")
-                ind_df_raw = _get_from(raw, "DF within", participant, ch, default="N/A")
+                # Differences
+                if participant and not _safe_isnan(ind_pre) and not _safe_isnan(grand_pre):
+                    diff_pre = _calculate_difference(ind_pre, grand_pre)
+                else:
+                    diff_pre = "N/A"
+                if participant and not _safe_isnan(ind_raw) and not _safe_isnan(grand_raw):
+                    diff_raw = _calculate_difference(ind_raw, grand_raw)
+                else:
+                    diff_raw = "N/A"
 
-                # Get grand mean values for comparison
-                grand_mean_diff_pre = _get_from(pre, "Channels' mean difference", ch, default="N/A")
-                grand_mean_diff_raw = _get_from(raw, "Channels' mean difference", ch, default="N/A")
-                grand_sd_pre = _get_from(pre, "Channels' within-participant SD", ch, default="N/A")
-                grand_sd_raw = _get_from(raw, "Channels' within-participant SD", ch, default="N/A")
+                combined_tree.insert(
+                    "",
+                    "end",
+                    values=[
+                        cond,
+                        f"{_fmt_muM(grand_pre)} / {_fmt_muM(grand_raw)}",
+                        f"{_fmt_muM(ind_pre)} / {_fmt_muM(ind_raw)}" if participant else "—",
+                        f"{_fmt_muM(diff_pre)} / {_fmt_muM(diff_raw)}" if participant else "—"
+                    ]
+                )
 
-                # Calculate effect size manually to verify: d = mean_diff / sd
-                calculated_effect_pre = "N/A"
-                calculated_effect_raw = "N/A"
-                try:
-                    if not _safe_isnan(ind_mean_diff_pre) and not _safe_isnan(ind_sd_pre):
-                        calculated_effect_pre = float(ind_mean_diff_pre) / float(ind_sd_pre)
-                except:
-                    pass
-                try:
-                    if not _safe_isnan(ind_mean_diff_raw) and not _safe_isnan(ind_sd_raw):
-                        calculated_effect_raw = float(ind_mean_diff_raw) / float(ind_sd_raw)
-                except:
-                    pass
+        # Bind refresh
+        refresh_table()
+        combo.bind("<<ComboboxSelected>>", lambda _e=None: refresh_table())
+        participant_combo.bind("<<ComboboxSelected>>", lambda _e=None: refresh_table())
 
-                # Enhanced individual metrics with more detail
-                individual_metrics = [
-                    ("Effect size (d_within)", ind_effect_pre, ind_effect_raw, grand_effect_pre, grand_effect_raw, _fmt_plain, True, "d = \u0305D / s_within"),
-                    ("Mean difference (\u0305D)", ind_mean_diff_pre, ind_mean_diff_raw, grand_mean_diff_pre, grand_mean_diff_raw, _fmt_muM, True, "Session average"),
-                    ("Within-participant SD (s_within)", ind_sd_pre, ind_sd_raw, grand_sd_pre, grand_sd_raw, _fmt_muM, True, "Variability measure"),
-                    ("Degrees of freedom (df_within)", ind_df_pre, ind_df_raw, ind_df_pre, ind_df_raw, _fmt_plain, False, "Sessions - 1"),
-                    ("Calculated d (verification)", calculated_effect_pre, calculated_effect_raw, "—", "—", _fmt_plain, False, "\u0305D / s_within"),
-                ]
-
-                for name, ind_pre, ind_raw, grand_pre, grand_raw, formatter, show_diff, notes in individual_metrics:
-                    ind_pre_str = formatter(ind_pre)
-                    ind_raw_str = formatter(ind_raw)
-                    grand_pre_str = formatter(grand_pre) if grand_pre != "—" else "—"
-                    grand_raw_str = formatter(grand_raw) if grand_raw != "—" else "—"
-                    
-                    if show_diff and grand_pre != "—" and grand_raw != "—":
-                        diff_pre = _calculate_difference(ind_pre, grand_pre)
-                        diff_raw = _calculate_difference(ind_raw, grand_raw)
-                        if diff_pre == "N/A" or diff_raw == "N/A":
-                            diff_str = "N/A"
-                        else:
-                            diff_pre_str = formatter(diff_pre) if hasattr(formatter, '__call__') else _fmt_float(diff_pre)
-                            diff_raw_str = formatter(diff_raw) if hasattr(formatter, '__call__') else _fmt_float(diff_raw)
-                            diff_str = f"{diff_pre_str} / {diff_raw_str}"
-                    else:
-                        diff_str = "—"
-                    
-                    individual_tree.insert("", "end", values=[
-                        name, 
-                        f"{ind_pre_str} / {ind_raw_str}",
-                        f"{grand_pre_str} / {grand_raw_str}",
-                        diff_str,
-                        notes
-                    ])
-
-                # Add separator and session-level details if available
-                try:
-                    session_data_pre = _get_from(pre, "Channels' mean difference", participant, default={})
-                    session_data_raw = _get_from(raw, "Channels' mean difference", participant, default={})
-                    
-                    if session_data_pre and ch in session_data_pre.get("session_differences", [{}]):
-                        individual_tree.insert("", "end", values=["", "", "", "", ""])  # separator
-                        individual_tree.insert("", "end", values=["Session Details:", "", "", "", ""])
-                        
-                        # Try to get session-level data
-                        try:
-                            sessions_pre = session_data_pre.get("session_differences", [])
-                            sessions_raw = session_data_raw.get("session_differences", [])
-                            
-                            for i, (sess_pre, sess_raw) in enumerate(zip(sessions_pre, sessions_raw)):
-                                if ch in sess_pre and ch in sess_raw:
-                                    sess_diff_pre = _fmt_muM(sess_pre[ch])
-                                    sess_diff_raw = _fmt_muM(sess_raw[ch])
-                                    individual_tree.insert("", "end", values=[
-                                        f"  Session {i+1} diff", 
-                                        f"{sess_diff_pre} / {sess_diff_raw}",
-                                        "—", "—", "Raw session data"
-                                    ])
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-
-        refresh_tables()
-        combo.bind("<<ComboboxSelected>>", lambda _e=None: refresh_tables())
-        participant_combo.bind("<<ComboboxSelected>>", lambda _e=None: refresh_tables())
         return True
 
     def _add_expandable_bad_channels_section(self, parent, analysis):
