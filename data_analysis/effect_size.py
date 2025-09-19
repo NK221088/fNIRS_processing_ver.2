@@ -71,49 +71,48 @@ def compute_effect_size(class_instance):
                         per_person.append(np.mean(sess_vals))  # equal-weight sessions within person
                 condition_means[cond][ch] = float(np.mean(per_person)) if per_person else np.nan  # equal-weight across people
 
-        standard_deviation = defaultdict(int)
-        df_within = {}
+        standard_deviation = defaultdict(lambda: defaultdict())
+        df_within = defaultdict(lambda: defaultdict())
        
         for channel in channels:
-            num = 0.0
-            df = 0
             for participant, pdata in participants_session_data.items():
+                num = 0.0
+                df = 0
                 Dps = [sd[channel] for sd in pdata["session_differences"]]  # session diffs for this channel
                 k_p = len(Dps)
                 if k_p >= 2:
                     Dpbar = pdata["averages_over_sessions"][channel]
                     residuals = np.array(Dps, dtype=float) - float(Dpbar)
                     num += float((residuals**2).sum())
-                    df  += (k_p - 1)
+                    df  = (k_p - 1)
                 # if k_p == 0 or 1: contribute nothing to num or df
-            standard_deviation[channel] = np.sqrt(num/df) if df > 0 else np.nan
-            df_within[channel] = df
+                standard_deviation[participant][channel] = np.sqrt(num/df) if df > 0 else np.nan
+                df_within[participant][channel] = df
         
-        # Build per-channel sums and counts
+        effect_sizes = defaultdict(lambda: defaultdict())
+        
+        for channel in channels:
+            for participant, pdata in participants_session_data.items():
+                Dpbar = pdata["averages_over_sessions"][channel]
+                
+                if not np.isnan(standard_deviation[participant][channel]):
+                    effect_sizes[participant][channel] = Dpbar / standard_deviation[participant][channel]
+                else:
+                    effect_sizes[participant][channel] = np.nan
+
         grand_sum = {ch: 0.0 for ch in channels}
         P_ch = {ch: 0 for ch in channels}
-
-        for pdata in participants_session_data.values():
-            avgs = pdata["averages_over_sessions"]  # dict: channel -> \bar D_{p,u}
-            for ch in channels:
-                val = avgs[ch]
-                if np.isfinite(val):
-                    grand_sum[ch] += float(val)
-                    P_ch[ch] += 1
-
+        
+        for participant, ch_effect_sizes in effect_sizes.items():
+            for channel, value in ch_effect_sizes.items():
+                grand_sum[channel] += value
+                P_ch[channel] += 1
+        
         # Per-channel grand mean across participants (equal person weight)
         grand_mean_participants = {
             ch: (grand_sum[ch] / P_ch[ch]) if P_ch[ch] > 0 else np.nan
             for ch in channels
-        }
-
-        # Effect size d_within = grand mean / s_within, per channel
-        effect_sizes = {
-            ch: (grand_mean_participants[ch] / standard_deviation[ch])
-                if (np.isfinite(grand_mean_participants[ch]) and np.isfinite(standard_deviation[ch]) and standard_deviation[ch] > 0)
-                else np.nan
-            for ch in channels
-        }
+        }   
                 
         return (effect_sizes, grand_mean_participants, standard_deviation, condition_means, df_within, P_ch)
 
