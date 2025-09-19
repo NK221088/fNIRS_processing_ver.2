@@ -607,6 +607,7 @@ class DatasetInfoPanel:
 
         return True
 
+
     def _add_expandable_bad_channels_section(self, parent, analysis):
         """Add an expandable section for detailed bad channel information"""
         expand_frame = ttk.Frame(parent)
