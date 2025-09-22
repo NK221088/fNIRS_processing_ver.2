@@ -583,8 +583,9 @@ root = tk.Tk()
 root.title("fNIRS Data Analysis")
 root.geometry("800x600")
 
-left_container = tk.Frame(root)
+left_container = tk.Frame(root, width=300)  # Set desired width
 left_container.pack(side="left", padx=20, pady=20, fill="y")
+left_container.pack_propagate(False)  # Prevent resizing based on content
 
 top_left_frame = tk.Frame(left_container)
 top_left_frame.pack(side="top", fill="y", expand=True)
