@@ -413,7 +413,7 @@ class DatasetInfoPanel:
     def _add_channel_explorer_section(self, parent, inline=False):
         """
         Unified table view:
-        Metric | Individual (Pre / Raw) | Grand Mean (Pre / Raw) | Difference
+        Metric | Individual (Pre/Raw) | Grand (Pre/Raw) | Difference
 
         Rows:
         • Effect size (d_within)
@@ -461,7 +461,7 @@ class DatasetInfoPanel:
         combo.pack(side=tk.LEFT, padx=(6, 8))
 
         ttk.Label(controls, text="Values: Preprocessed / Raw", foreground="gray").pack(side=tk.LEFT, padx=(4, 0))
-        ttk.Label(controls, text="(units: µM except d, df, P)", foreground="gray").pack(side=tk.LEFT, padx=(8, 0))
+        ttk.Label(controls, text="(d and df are unitless)", foreground="gray").pack(side=tk.LEFT, padx=(8, 0))
 
         # --- Individual participant controls ---
         participant_controls = ttk.Frame(body)
@@ -493,8 +493,9 @@ class DatasetInfoPanel:
         # --- Unified table ---
         table_frame = ttk.LabelFrame(body, text="Metrics & Condition means (per channel)", style="Compact.TLabelframe")
         table_frame.pack(anchor="w", fill="x", padx=0, pady=(4, 4))
+        table_frame.configure(width=600)
 
-        cols = ["Metric", "Individual (Pre / Raw)", "Grand Mean (Pre / Raw)", "Difference"]
+        cols = ["Metric", "Individual (Pre/Raw)", "Grand (Pre/Raw)", "Difference"]
         tree = ttk.Treeview(
             table_frame,
             columns=cols,
@@ -502,8 +503,8 @@ class DatasetInfoPanel:
             height=14,
             style="Compact.Treeview"
         )
-        for col, w in zip(cols, [220, 200, 200, 160]):
-            tree.column(col, anchor="w", width=w, minwidth=int(w * 0.6), stretch=False)
+        for col, w in zip(cols, [175, 128, 128, 128]):
+            tree.column(col, anchor="w", width=w, minwidth=int(w * 1), stretch=False)
             tree.heading(col, text=col)
         tree.pack(anchor="w", padx=2, pady=2)
 
@@ -535,7 +536,7 @@ class DatasetInfoPanel:
         def _fmt_muM(x):
             if _safe_isnan(x):
                 return "N/A"
-            return f"{_fmt_float(x)} µM"
+            return _fmt_float(x)
 
         def _fmt_plain(x):
             if _safe_isnan(x):
@@ -598,10 +599,10 @@ class DatasetInfoPanel:
             grand_mean_diff_raw = _get_from(raw, "Dpbar all participants", ch, default="N/A")
 
             individual_metrics = [
-                ("Effect size (d_within)", ind_effect_pre, ind_effect_raw, grand_effect_pre, grand_effect_raw, _fmt_plain, True),
-                ("Mean difference (\u0305D)", ind_mean_diff_pre, ind_mean_diff_raw, grand_mean_diff_pre, grand_mean_diff_raw, _fmt_muM, True),
-                ("Within-participant SD (s_within)", ind_sd_pre, ind_sd_raw, grand_sd_pre, grand_sd_raw, _fmt_muM, True),
-                ("Degrees of freedom (df_within)", ind_df_pre, ind_df_raw, "—", "—", _fmt_plain, False),
+                ("Effect size", ind_effect_pre, ind_effect_raw, grand_effect_pre, grand_effect_raw, _fmt_plain, True),
+                ("Mean difference (\u0305D) (µM)", ind_mean_diff_pre, ind_mean_diff_raw, grand_mean_diff_pre, grand_mean_diff_raw, _fmt_muM, True),
+                ("Within-participant SD (µM)", ind_sd_pre, ind_sd_raw, grand_sd_pre, grand_sd_raw, _fmt_muM, True),
+                ("Degrees of freedom", ind_df_pre, ind_df_raw, "—", "—", _fmt_plain, False),
             ]
 
             for name, ind_pre, ind_raw, grand_pre, grand_raw, formatter, show_diff in individual_metrics:
@@ -654,7 +655,7 @@ class DatasetInfoPanel:
                 else:
                     diff_str = f"{_fmt_muM(diff_pre)} / {_fmt_muM(diff_raw)}"
 
-                tree.insert("", "end", values=[f"Mean condition {cond}", individual_cell, grand_cell, diff_str])
+                tree.insert("", "end", values=[f"Mean condition {cond} (µM)", individual_cell, grand_cell, diff_str])
 
         # Bind refresh
         refresh_tables()
