@@ -3032,7 +3032,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         self.annotation_names = {"1": "TonguePhysical",
                                  "2": "Control",
                                  "3": "TongueIM",
-                                 "4": "0-back-start ",
+                                 "4": "0-back-start",
                                  "5": "1-back-start",
                                  "6": "2-back-start",
                                  "7": "3-back-start"
@@ -3147,6 +3147,8 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 markers = df[sheet]["marker"]
                 markers = [marker for marker in markers if type(marker) != str and str(marker) != 'nan']
                 for time, marker in zip(times, markers):
+                    if "back" in self.annotation_names[str(int(markers[0]))]:
+                        actual_events = np.vstack([actual_events, np.array([int((time-15)*sfreq), int(0), int(2)])]) # Add control/baseline/rest before active task
                     actual_events = np.vstack([actual_events, np.array([int(time*sfreq), int(0), int(marker)])])
             except:
                 print("No markers available for the events")
