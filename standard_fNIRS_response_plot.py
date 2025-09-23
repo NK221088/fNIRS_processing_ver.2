@@ -56,9 +56,10 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
             epochs[i].info['bads'] = []
         
     elif bad_channels_strategy == "all":
-        bad_channels = list(set(channel for ep in epochs for channel in ep.info['bads']))
-        for ep in epochs:
-            ep.info['bads'] = bad_channels
+        bad_channels = list(set(channel for epoch in epochs for ep in epoch for channel in ep.info['bads']))
+        for epoch in epochs:
+            for ep in epoch:
+                ep.info['bads'] = bad_channels
 
     elif bad_channels_strategy == "threshold":
         if threshold is None:
@@ -75,7 +76,8 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
     for data_type in data_types:
         for hemoglobin in ("HbO", "HbR"):
             # Compute evoked responses per subject
-            evoked_list = [sub_ep[data_type].average(picks=hemoglobin.lower()) for sub_ep in epochs]
+            evoked_list = [next(ep for ep in sub_ep if data_type in ep.event_id).average(picks=hemoglobin.lower()) for sub_ep in epochs]
+
 
             # Rename channels inside each evoked object
             for evoked in evoked_list:
@@ -102,9 +104,19 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
         picks_ = set([s.removesuffix(" hbo").removesuffix(" hbr") for s in picks_]) 
         picks_ = list(picks_)
 
+    
+    # Find maximum length among all evokeds
+    max_len = max(evk.data.shape[1] for lst in evoked_dict.values() for evk in lst)
+
+    # Pad all evokeds to same length
+    padded_dict = {
+        key: [pad_evoked(evk, max_len) for evk in evks]
+        for key, evks in evoked_dict.items()
+    }
+
     # Plot evoked data
     plot = mne.viz.plot_compare_evokeds(
-        evoked_dict, combine=combine_strategy, ci=0.95, colors=color_dict, styles=styles_dict, show=False, picks=picks_,
+        padded_dict, combine=combine_strategy, ci=0.95, colors=color_dict, styles=styles_dict, show_sensors=True, show=False, picks=picks_,
     )
 
     # Save the plot if specified
@@ -116,3 +128,22 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
     plt.close(plot[0])  # Close the figure after saving
     
     return plot
+
+import numpy as np
+import mne
+
+def pad_evoked(evoked, new_length):
+    """Pad an Evoked object with zeros up to new_length (in samples)."""
+    data = evoked.data
+    n_ch, n_times = data.shape
+
+    if n_times >= new_length:
+        return evoked.copy()
+
+    # Pad with zeros
+    pad_width = new_length - n_times
+    padded_data = np.pad(data, ((0, 0), (0, pad_width)), mode="constant")
+
+    # Create new EvokedArray
+    padded_evoked = mne.EvokedArray(padded_data, evoked.info.copy(), tmin=evoked.times[0])
+    return padded_evoked

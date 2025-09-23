@@ -45,7 +45,7 @@ settings = {
 
     # Plot settings
     "save_plot": False,
-    "plot_type": "Epoch Plot",
+    "plot_type": "paradigm_plot",
     "combine_strategy": "mean",
     "interpolate_bad_channels": False,
     "bad_channels_strategy": "all",
@@ -444,24 +444,10 @@ def run_analysis():
             valid_individuals = []
             for individual in all_individuals:
                 if hasattr(individual, 'epochs'):
-                    has_all_data_types = True
-                    for data_type in data_types:
-                        # Match any event ID whose key contains the data_type substring
-                        matching_ids = [
-                            v for k, v in individual.epochs.event_id.items()
-                            if data_type in k
-                        ]
-
-                        # Count events where the event ID matches one of the matching IDs
-                        epoch_count = sum(
-                            1 for event in individual.epochs.events
-                            if event[2] in matching_ids
-                        )
-
-                        if epoch_count == 0:
-                            has_all_data_types = False
-                            break
-
+                    number_of_data_types = len(data_types)
+                    attributes = list(vars(individual))
+                    number_of_data_types_contained = sum(1 if "epoch" in val else 0 for val in attributes) - 2 # Subtract 2 as all individuals have 2 attributes containing name epoch
+                    has_all_data_types = number_of_data_types_contained == number_of_data_types
                     if has_all_data_types:
                         valid_individuals.append(individual)
             
@@ -920,10 +906,11 @@ def populate_channels():
         if selected_individual and hasattr(selected_individual, 'epochs'):
             try:
                 # Get bad channels for this individual
-                bad_channels = selected_individual.epochs.info.get("bads", [])
-                
+                bad_channels = [epoch.info.get("bads", []) for epoch in selected_individual.epochs]
+                bad_channels = list(set([ch for sublist in bad_channels for ch in sublist]))
+
                 # Get all channels and extract unique base channel names
-                all_channels = selected_individual.epochs.ch_names
+                all_channels = selected_individual.epochs[0].ch_names
                 unique_base_channels = set()
                 
                 for channel in all_channels:
@@ -963,7 +950,7 @@ def populate_channels():
             for name in selected_names:
                 individual = next((ind for ind in all_individuals if getattr(ind, "name", "") == name), None)
                 if individual and hasattr(individual, "epochs"):
-                    individual_channels = set(individual.epochs.ch_names)
+                    individual_channels = set(individual.epochs[0].ch_names)
                     if common_channels is None:
                         common_channels = individual_channels
                     else:
@@ -1011,7 +998,7 @@ def populate_channels():
             for name in selected_names:
                 individual = next((ind for ind in all_individuals if getattr(ind, "name", "") == name), None)
                 if individual and hasattr(individual, "epochs"):
-                    individual_channels = set(individual.epochs.ch_names)
+                    individual_channels = set(individual.epochs[0].ch_names)
                     if common_channels is None:
                         common_channels = individual_channels
                     else:
@@ -1082,24 +1069,10 @@ def populate_individuals():
         valid_individuals = []
         for individual in all_individuals:
             if hasattr(individual, 'epochs'):
-                has_all_data_types = True
-                for data_type in data_types:
-                    # Match any event ID whose key contains the data_type substring
-                    matching_ids = [
-                        v for k, v in individual.epochs.event_id.items()
-                        if data_type in k
-                    ]
-
-                    # Count events where the event ID matches one of the matching IDs
-                    epoch_count = sum(
-                        1 for event in individual.epochs.events
-                        if event[2] in matching_ids
-                    )
-
-                    if epoch_count == 0:
-                        has_all_data_types = False
-                        break
-
+                number_of_data_types = len(data_types)
+                attributes = list(vars(individual))
+                number_of_data_types_contained = sum(1 if "epoch" in val else 0 for val in attributes) - 2 # Subtract 2 as all individuals have 2 attributes containing name epoch
+                has_all_data_types = number_of_data_types_contained == number_of_data_types
                 if has_all_data_types:
                     valid_individuals.append(individual)
 

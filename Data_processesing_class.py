@@ -3028,14 +3028,14 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                  snr_threshold: float = 8.0, apply_tddr: bool = False):
         self.number_of_participants = 0
         self.all_tapping = []
-        self.all_control = []
+        self.all_Control = []
         self.annotation_names = {"1": "TonguePhysical",
                                  "2": "Control",
                                  "3": "TongueIM",
-                                 "4": "0-back-start",
-                                 "5": "1-back-start",
-                                 "6": "2-back-start",
-                                 "7": "3-back-start"
+                                 "4": "0_back_start",
+                                 "5": "1_back_start",
+                                 "6": "2_back_start",
+                                 "7": "3_back_start"
                                 }
         self.file_path = Path(os.getenv(file_path.replace(" ", "_").replace("-", "_")))
         self.short_channel_correction = short_channel_correction
@@ -3053,7 +3053,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         self.tmin = tmin
         self.tmax = 20
         self.baseline = (None, 0)
-        self.data_types = ['TonguePhysical', 'TongueIM', '0-back-start', '1-back-start', '2-back-start', '3-back-start']
+        self.data_types = ['TonguePhysical', 'TongueIM', '0_back_start', '1_back_start', '2_back_start', '3_back_start']
         self.data_name = data_name
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = []
@@ -3152,8 +3152,8 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                     actual_events = np.vstack([actual_events, np.array([int(time*sfreq), int(0), int(marker)])])
             except:
                 print("No markers available for the events")
-                
-                self.stimulus_duration[str(actual_events[:,2][-1])] = times[-1] - (actual_events[:,0] / sfreq)[-1] + 3 # We add 3 as the compute the time from the last trigger, but the duration of this event has to be accounted for
+                if self.stimulus_duration[str(actual_events[:,2][-1])] == 0:
+                    self.stimulus_duration[str(actual_events[:,2][-1])] = times[-1] - (actual_events[:,0] / sfreq)[-1] + 3 # We add 3 as the compute the time from the last trigger, but the duration of this event has to be accounted for
 
                 
             print("Sucessfully added all events")
@@ -3189,7 +3189,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 raw_intensity = self.define_raw_intensity(folder_name)
                 self.number_of_participants += 1
                 raw_intensity = self.make_annotations(excel_path, raw_intensity)
-
+                self.tmax = max(self.stimulus_duration.values())
                 raw_intensity.annotations.rename(self.annotation_names)
                 for _unwanted in self.unwanted:
                         unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
@@ -3247,7 +3247,8 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 if self.negative_correlation_enhancement:
                     raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
 
-                events, event_dict = mne.events_from_annotations(raw_haemo)
+                event_dict_trans = {val: int(key) for key, val in self.annotation_names.items()}
+                events, event_dict = mne.events_from_annotations(raw_haemo, event_dict_trans)
 
                 # Set baseline parameter based on correction method
                 baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
@@ -3270,6 +3271,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                     detrend=None,
                     verbose=True,
                 )
+                
 
                 self.drop_log.append(epochs.drop_log)
                 if len(epochs) != 0:
@@ -3282,22 +3284,38 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                             data_types=self.data_types,
                         )
 
-                    self.all_raw_epochs.append(raw_epochs)
-                    self.all_epochs.append(epochs)
-                    self.all_control.append(epochs["Control"].get_data(copy=True))
+                    # self.all_raw_epochs.append(raw_epochs)
+                    # self.all_epochs.append(epochs)
+                    # self.all_control.append(epochs["Control"].get_data(copy=True))
                     
                     Participant_i = individual_participant_class(f"Participant_{i}")
-                    Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
+                    # Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
                     Participant_i.raw_intensity = raw_intensity
                     Participant_i.raw_od = raw_od
                     Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
                     Participant_i.raw_haemo = raw_haemo
-                    Participant_i.raw_epochs = raw_epochs
-                    Participant_i.epochs = epochs
-                    
-                    for name in self.data_types:
-                        getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
-                        Participant_i.events.update({name: epochs[name].get_data(copy=True)})
+                    # Participant_i.raw_epochs = raw_epochs
+                    # Instead of a single epochs object
+                    for name in self.data_types + ["Control"]:
+                        # Crop to stimulus duration per condition
+                        if len(epochs[name]) != 0:
+                            dur = np.floor(self.stimulus_duration[str(event_dict[name])])
+                            epochs_cond = epochs[name].copy().crop(tmin=self.tmin, tmax=dur)
+                            
+                            # Store in Participant_i as a separate attribute
+                            setattr(Participant_i, f'epochs_{name}', epochs_cond)
+                            
+                            # Store raw data for later extraction
+                            Participant_i.events[name] = epochs_cond.get_data(copy=True)
+                            Participant_i.epochs.append(epochs_cond)
+                            
+                            # Append to global lists
+                            if not hasattr(self, f'all_{name}_epochs'):
+                                setattr(self, f'all_{name}_epochs', [])
+                            else:
+                                getattr(self, f'all_{name}_epochs').append(epochs_cond)
+                            getattr(self, f'all_{name}').append(epochs_cond.get_data(copy=True))
+
                     
                     getattr(self, 'Individual_participants').append(Participant_i)
             except FileNotFoundError as e:
@@ -3306,19 +3324,17 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 print(f"Unexpected error with {folder_name}: {e}")
 
         # Concatenate the control data
-        self.all_control = np.concatenate(self.all_control, axis=0)
+        self.all_control = np.concatenate(self.all_Control, axis=0)
+        all_data = {"Control": self.all_control}
 
         # Concatenate the data for each data type
         for name in self.data_types:
             setattr(self, f'all_{name}', np.concatenate(getattr(self, f'all_{name}'), axis=0))
-
-        # Create the dictionary all_data with Control and data for each data type
-        all_data = {"Control": self.all_control}
-        for name in self.data_types:
+            self.all_epochs.append(getattr(self, f'all_{name}_epochs'))
             all_data.update({name: getattr(self, f'all_{name}')})
 
         # Update all_data with control_dict
-        all_freq = self.all_epochs[0].info['sfreq']
+        all_freq = raw_intensity.info["sfreq"]
         self.data_types.append("Control")
         return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
     
