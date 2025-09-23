@@ -144,6 +144,8 @@ def toggle_individual_menu(*args):
         individual_label, individuals_menu,
         # Individual checkboxes
         individual_selection_label, individual_selection_frame,
+        # Epoch types checkboxes
+        epoch_type_selection_label, epoch_type_selection_frame,
         # Epoch type
         epoch_type_label, epoch_type_menu,
         # Channel selection
@@ -155,7 +157,6 @@ def toggle_individual_menu(*args):
         time_window_label, time_window_frame,
         dataset1_label, dataset1_menu,
         dataset2_label, dataset2_menu,
-        
     ]:
         widget.pack_forget()
     
@@ -172,14 +173,19 @@ def toggle_individual_menu(*args):
         dataset2_menu.pack(pady=5)
         
     elif plot_type == "Standard fNIRS Response Plot":
+        #Show Epoch selection
+        epoch_type_selection_label.pack(anchor="w")
+        epoch_type_selection_frame.pack(fill="x", expand=False)
         # Show individual selection checkboxes
         individual_selection_label.pack(anchor="w")
         individual_selection_frame.pack(fill="x", expand=False)
         # Show channel selection
         channel_selection_label.pack(anchor="w")
         channel_frame.pack(fill="x", expand=True)
+        # Populate epoch type selection
+        populate_epoch_types()
         # Populate the individual checkboxes
-        populate_individuals()
+        populate_individuals()      
         # Populate channel checkboxes
         populate_channels()
         
@@ -479,11 +485,13 @@ def run_analysis():
                 # Create both plots
                 figures = []
                 
+                selected_epoch_types = [epoch_type for epoch_type, var in epoch_type_vars.items() if var.get()]
+                
                 # Create raw epochs plot if raw epochs exist
                 if selected_raw_epochs:
                     raw_figure = standard_fNIRS_response_plot(
                         selected_raw_epochs, 
-                        data_types, 
+                        selected_epoch_types, 
                         bad_channels_strategy=settings["bad_channels_strategy"],
                         save=settings["save_plot"], 
                         combine_strategy=settings["combine_strategy"],
@@ -497,7 +505,7 @@ def run_analysis():
                 if selected_processed_epochs:
                     processed_figure = standard_fNIRS_response_plot(
                         selected_processed_epochs, 
-                        data_types, 
+                        selected_epoch_types, 
                         bad_channels_strategy=settings["bad_channels_strategy"],
                         save=settings["save_plot"], 
                         combine_strategy=settings["combine_strategy"],
@@ -511,6 +519,9 @@ def run_analysis():
                 # Original behavior - only processed epochs
                 selected_processed_epochs = []
                 
+                # Only show selected epoch types
+                selected_epoch_types = [epoch_type for epoch_type, var in epoch_type_vars.items() if var.get()]
+                
                 # Find the actual individual objects from their names and get their processed epochs
                 for ind_name in selected_individuals:
                     # Find the individual object that matches this name FROM THE FILTERED LIST
@@ -523,7 +534,7 @@ def run_analysis():
                 # Create single plot with processed epochs
                 figures = [standard_fNIRS_response_plot(
                     selected_processed_epochs, 
-                    data_types, 
+                    selected_epoch_types, 
                     bad_channels_strategy=settings["bad_channels_strategy"],
                     save=settings["save_plot"], 
                     combine_strategy=settings["combine_strategy"],
@@ -798,6 +809,7 @@ def create_checkbox_with_label(parent, label_text, default_value):
     checkbox.pack(anchor="w")
     return label, var, checkbox
 
+
 # Channel selection
 channel_selection_label = tk.Label(top_left_frame, text="Select Channels:", font=("Arial", 12))
 channel_selection_label.pack(anchor="w")
@@ -832,6 +844,16 @@ individual_canvas.configure(yscrollcommand=individual_scrollbar.set, xscrollcomm
 # Variable to track individual selections
 individual_selection_vars = {}
 
+# Epoch type selection checkboxes
+epoch_type_selection_label = tk.Label(top_left_frame, text="Select Epoch Types:", font=("Arial", 12))
+epoch_type_selection_label.pack_forget()  # Initially hidden
+
+epoch_type_selection_frame = tk.Frame(top_left_frame)
+epoch_type_selection_frame.pack_forget()  # Initially hidden
+
+# Variable to track epoch type selections
+epoch_type_vars = {}
+
 # Helper function to clear container widgets
 def clear_container(container):
     for widget in container.winfo_children():
@@ -842,6 +864,29 @@ def update_canvas_scroll(container, canvas):
     container.update_idletasks()
     canvas.config(scrollregion=canvas.bbox("all"))
 
+def populate_epoch_types():
+    """Populate the epoch type selection checkboxes."""
+    # Store current selections before clearing
+    current_selections = {epoch_type: var.get() for epoch_type, var in epoch_type_vars.items()}
+    
+    # Clear existing checkboxes
+    for widget in epoch_type_selection_frame.winfo_children():
+        widget.destroy()
+    epoch_type_vars.clear()
+    
+    # Get available epoch types from data_types
+    if 'data_types' in globals() and data_types:
+        for i, epoch_type in enumerate(data_types):
+            # Use existing selection if available, otherwise default to all checked
+            if epoch_type in current_selections:
+                is_checked = current_selections[epoch_type]
+            else:
+                is_checked = True  # Default: all epoch types checked
+                
+            epoch_type_vars[epoch_type] = tk.BooleanVar(value=is_checked)
+            cb = tk.Checkbutton(epoch_type_selection_frame, text=epoch_type, variable=epoch_type_vars[epoch_type])
+            cb.grid(row=i // 3, column=i % 3, sticky="w")
+    
 def populate_channels():
     # Clear existing checkboxes
     clear_container(channel_container)
