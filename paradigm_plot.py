@@ -1,8 +1,10 @@
 from Participant_class import individual_participant_class
 import mne
 import matplotlib.pyplot as plt
+from datetime import datetime
+import os
 
-def paradigm_plot(individual: individual_participant_class, picks_ : list = ["all"], duration: int= 500, show_scrollbars: bool=True, haemo_type : str = "hbo"):
+def paradigm_plot(individual: individual_participant_class, picks_ : list = ["all"], duration: int= 500, show_scrollbars: bool=True, haemo_type : str = "hbo", save: bool = False):
 
     """Plot channels for one patient along the paradigm
 
@@ -47,6 +49,15 @@ def paradigm_plot(individual: individual_participant_class, picks_ : list = ["al
         hbr_plots = individual_hbr_copy.plot(n_channels=len(individual_hbr_copy.ch_names), duration=duration, show_scrollbars=show_scrollbars, show = False)
         plots.extend(hbr_plots if isinstance(hbr_plots, list) else [hbr_plots])
     
+
+    if save:
+        os.makedirs("Plots", exist_ok=True)
+        current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        for i, fig in enumerate(plots):
+            filename = os.path.join("Plots", f"Paradigm_plot_{current_datetime}_{haemo_type}.pdf")
+            fig.savefig(filename)
+            print(f"Plot saved as {filename}")
+
     # Always close the figures to prevent memory accumulation or re-display
     for fig in plots:
         plt.close(fig)

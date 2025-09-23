@@ -542,7 +542,8 @@ def run_analysis():
                 figures = [paradigm_plot(
                     all_individuals[index], 
                     picks_=picks, 
-                    haemo_type=selected_haemo_type
+                    haemo_type=selected_haemo_type,
+                    save=settings["save_plot"]
                 )]
         elif settings["plot_type"] == "individual frequency plot":
             selected_individual = settings["individual"]
