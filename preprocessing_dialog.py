@@ -491,7 +491,7 @@ class PreprocessingDialog:
         # Register validation function for positive numeric input
         vcmd_positive = (self.dialog.register(self.validate_positive_numeric_input), '%P')
         
-        self.filter_lower_var = tk.StringVar(value=str(self.settings.get("filter_lower_value", 0.05)))
+        self.filter_lower_var = tk.StringVar(value=str(self.settings.get("filter_lower_value", 0.01)))
         self.filter_lower_entry = tk.Entry(
             filter_lower_frame,
             textvariable=self.filter_lower_var,
@@ -525,7 +525,7 @@ class PreprocessingDialog:
         )
         filter_upper_label.pack(side="left")
         
-        self.filter_upper_var = tk.StringVar(value=str(self.settings.get("filter_upper_value", 0.7)))
+        self.filter_upper_var = tk.StringVar(value=str(self.settings.get("filter_upper_value", 0.5)))
         self.filter_upper_entry = tk.Entry(
             filter_upper_frame,
             textvariable=self.filter_upper_var,
@@ -593,7 +593,7 @@ class PreprocessingDialog:
         )
         l_trans_label.pack(side="left")
         
-        self.l_trans_var = tk.StringVar(value=str(self.settings.get("l_trans_bandwidth", 0.02)))
+        self.l_trans_var = tk.StringVar(value=str(self.settings.get("l_trans_bandwidth", 0.01)))
         self.l_trans_entry = tk.Entry(
             l_trans_frame,
             textvariable=self.l_trans_var,
