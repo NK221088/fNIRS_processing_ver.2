@@ -551,7 +551,7 @@ def run_analysis():
             index = next((i for i, ind in enumerate(all_individuals) 
                         if getattr(ind, "name", f"Participant_{i+1}") == selected_individual), -1)
             if index >= 0:
-                figures = [individual_frequency_plot(all_individuals[index])]
+                figures = [individual_frequency_plot(all_individuals[index], save=settings["save_plot"])]
         
         # Ensure figures is always a list
         if figures:

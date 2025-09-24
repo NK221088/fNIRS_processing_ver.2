@@ -3224,7 +3224,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 if self.apply_tddr:
                     raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
 
-                sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
+                sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od, l_freq=0.5, h_freq=2.5)
 
                 sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
                 
@@ -3243,7 +3243,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
 
                 raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=6).copy()
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
-    
+
                 if self.negative_correlation_enhancement:
                     raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
 
