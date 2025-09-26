@@ -330,13 +330,7 @@ class DatasetInfoPanel:
 
     # ===== Scrollable details (everything else lives here) =====
     def _populate_details_scrollable(self):
-        canvas = tk.Canvas(self.info_frame, highlightthickness=0)
-        vbar = ttk.Scrollbar(self.info_frame, orient="vertical", command=canvas.yview)
-        inner = ttk.Frame(canvas)
-
-        inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((0, 0), window=inner, anchor="nw")
-        canvas.configure(yscrollcommand=vbar.set)
+        inner = ttk.Frame(self.info_frame)
 
         # Conditions
         ttk.Label(inner, text="Conditions:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(6, 2))
@@ -366,8 +360,7 @@ class DatasetInfoPanel:
         # Channel Explorer (uses compute_effect_size outputs)
         _ = self._add_channel_explorer_section(inner, inline=True)
 
-        canvas.pack(side="left", fill="both", expand=True)
-        vbar.pack(side="right", fill="y")
+        inner.pack(fill="both", expand=True)
 
     def _analyze_bad_channels(self):
         """Analyze bad channels across all participants"""
@@ -681,10 +674,7 @@ class DatasetInfoPanel:
                     widget.destroy()
                 details_frame.pack_forget()
             try:
-                canvas = parent.master
-                if hasattr(canvas, 'bbox'):
-                    canvas.update_idletasks()
-                    canvas.configure(scrollregion=canvas.bbox("all"))
+                parent.update_idletasks()
             except Exception:
                 pass
 

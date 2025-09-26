@@ -23,7 +23,7 @@ plotTypesList = ["Epoch Plot",
 
 # Default settings (add hemoglobin type to settings)
 settings = {
-    "data_set": dataSetList[15],  # Default to first dataset
+    "data_set": dataSetList[12],  # Default to first dataset
     "epoch_type": "HandMI",
     "individual": "All Individuals",
     "short_channel_correction": True,
@@ -45,7 +45,7 @@ settings = {
 
     # Plot settings
     "save_plot": False,
-    "plot_type": "paradigm_plot",
+    "plot_type": "Epoch Plot",
     "combine_strategy": "mean",
     "interpolate_bad_channels": False,
     "bad_channels_strategy": "all",
@@ -421,7 +421,7 @@ def run_analysis():
             for name in selected_individuals:
                 individual = next((ind for ind in all_individuals if getattr(ind, "name", "") == name), None)
                 if individual is not None:
-                    selected_all_epochs.append(individual.epochs)
+                    selected_all_epochs.extend(individual.epochs)
 
             if selected_all_epochs:
                 figures = [epoch_plot(
@@ -583,7 +583,7 @@ root.geometry("800x600")
 
 left_container = tk.Frame(root, width=300)  # Set desired width
 left_container.pack(side="left", padx=20, pady=20, fill="y")
-left_container.pack_propagate(False)  # Prevent resizing based on content
+left_container.pack_propagate(True)  # Resizing based on content
 
 top_left_frame = tk.Frame(left_container)
 top_left_frame.pack(side="top", fill="y", expand=True)
@@ -806,10 +806,10 @@ channel_frame = tk.Frame(top_left_frame)
 channel_frame.pack(fill="both", expand=False)
 channel_canvas = tk.Canvas(channel_frame, height=150)  # Set as needed
 channel_scrollbar = tk.Scrollbar(channel_frame, orient="vertical", command=channel_canvas.yview)
-channel_scrollbar_horizontal = tk.Scrollbar(channel_frame, orient="horizontal", command=channel_canvas.xview)
+# Remove horizontal scrollbar for channels
 channel_container = tk.Frame(channel_canvas)
 channel_canvas.create_window((0, 0), window=channel_container, anchor="nw")
-channel_canvas.configure(yscrollcommand=channel_scrollbar.set, xscrollcommand=channel_scrollbar_horizontal.set)
+channel_canvas.configure(yscrollcommand=channel_scrollbar.set)  # Remove xscrollcommand
 
 # Variable to track channel selections
 channel_vars = {}
@@ -823,10 +823,10 @@ individual_selection_frame = tk.Frame(top_left_frame)
 individual_selection_frame.pack(fill="x", expand=False)
 individual_canvas = tk.Canvas(individual_selection_frame, height=100)
 individual_scrollbar = tk.Scrollbar(individual_selection_frame, orient="vertical", command=individual_canvas.yview)
-individual_scrollbar_horizontal = tk.Scrollbar(individual_selection_frame, orient="horizontal", command=individual_canvas.xview)
+# Remove horizontal scrollbar for individuals
 individual_container = tk.Frame(individual_canvas)
 individual_canvas.create_window((0, 0), window=individual_container, anchor="nw")
-individual_canvas.configure(yscrollcommand=individual_scrollbar.set, xscrollcommand=individual_scrollbar_horizontal.set)
+individual_canvas.configure(yscrollcommand=individual_scrollbar.set)  # Remove xscrollcommand
 
 # Variable to track individual selections
 individual_selection_vars = {}
@@ -847,9 +847,19 @@ def clear_container(container):
         widget.destroy()
 
 # Helper function to update the scroll region of the canvas
-def update_canvas_scroll(container, canvas):
+def update_canvas_scroll(container, canvas, scrollbar=None):
     container.update_idletasks()
     canvas.config(scrollregion=canvas.bbox("all"))
+    
+    # Show/hide scrollbar based on whether scrolling is needed
+    if scrollbar:
+        bbox = canvas.bbox("all")
+        if bbox and bbox[3] > canvas.winfo_height():
+            # Content overflows, show scrollbar
+            scrollbar.pack(side="right", fill="y")
+        else:
+            # Content fits, hide scrollbar
+            scrollbar.pack_forget()
 
 def populate_epoch_types():
     """Populate the epoch type selection checkboxes."""
@@ -907,6 +917,7 @@ def populate_channels():
         if selected_individual and hasattr(selected_individual, 'epochs'):
             try:
                 # Get bad channels for this individual
+                # selected_individual_epochs = selected_individual.epochs if isinstance(selected_individual.epochs, list) else [selected_individual.epochs]
                 bad_channels = [epoch.info.get("bads", []) for epoch in selected_individual.epochs]
                 bad_channels = list(set([ch for sublist in bad_channels for ch in sublist]))
 
@@ -928,7 +939,7 @@ def populate_channels():
                     cb.grid(row=i // 3, column=i % 3, sticky="w")
                     
                 # Update the canvas scroll region after adding new widgets
-                update_canvas_scroll(channel_container, channel_canvas)
+                update_canvas_scroll(channel_container, channel_canvas, channel_scrollbar)
             except Exception as e:
                 print(f"Error accessing channels for {selected_individual_name}: {e}")
     
@@ -975,10 +986,12 @@ def populate_channels():
                     cb.grid(row=i // 3, column=i % 3, sticky="w")
                 
                 # Update the canvas scroll region after adding new widgets
-                update_canvas_scroll(channel_container, channel_canvas)
+                update_canvas_scroll(channel_container, channel_canvas, channel_scrollbar)
+
             else:
                 # If no common channels, ensure container is empty
-                update_canvas_scroll(channel_container, channel_canvas)
+                update_canvas_scroll(channel_container, channel_canvas, channel_scrollbar)
+
     
     elif current_plot_type == "Standard fNIRS Response Plot":
         # Show channel selection
@@ -1023,10 +1036,12 @@ def populate_channels():
                     cb.grid(row=i // 3, column=i % 3, sticky="w")
                 
                 # Update the canvas scroll region after adding new widgets
-                update_canvas_scroll(channel_container, channel_canvas)
+                update_canvas_scroll(channel_container, channel_canvas, channel_scrollbar)
+
             else:
                 # If no common channels, ensure container is empty
-                update_canvas_scroll(channel_container, channel_canvas)
+                update_canvas_scroll(channel_container, channel_canvas, channel_scrollbar)
+
     
     # For other plot types that don't need channel selection, hide the channel frame
     else:
@@ -1100,8 +1115,7 @@ def populate_individuals():
             cb.grid(row=i // 3, column=i % 3, sticky="w")
     
     # Update scroll region
-    individual_container.update_idletasks()
-    individual_canvas.config(scrollregion=individual_canvas.bbox("all"))
+    update_canvas_scroll(individual_container, individual_canvas, individual_scrollbar)
     
     attach_checkbox_callbacks()
 
@@ -1125,13 +1139,47 @@ def setup_ui_callbacks():
     haemo_type_var.trace_add("write", update_channels_on_haemo_type_change)
 
 # Pack the scrollable frame
-def setup_scrollable_frame(canvas, v_scrollbar, h_scrollbar):
-    canvas.pack(side="left", fill="both", expand=True)
-    v_scrollbar.pack(side="right", fill="y")
-    h_scrollbar.pack(side="bottom", fill="x")
+def setup_scrollable_frame(frame, canvas, v_scrollbar, h_scrollbar):
+    # Configure grid weights
+    frame.grid_columnconfigure(0, weight=1)
+    frame.grid_rowconfigure(0, weight=1)
+    
+    # Grid the components
+    canvas.grid(row=0, column=0, sticky="nsew")
+    v_scrollbar.grid(row=0, column=1, sticky="ns")
+    h_scrollbar.grid(row=1, column=0, sticky="ew")
 
-setup_scrollable_frame(channel_canvas, channel_scrollbar, channel_scrollbar_horizontal)
-setup_scrollable_frame(individual_canvas, individual_scrollbar, individual_scrollbar_horizontal)
+# Setup channel frame
+channel_canvas.pack(side="left", fill="both", expand=True)
+
+# Setup individual frame  
+individual_canvas.pack(side="left", fill="both", expand=True)
+
+# Mouse wheel binding function
+def bind_mousewheel_to_canvas(canvas):
+    """Bind mouse wheel to specific canvas only when mouse is over it and scrolling is needed"""
+    def _on_mousewheel(event):
+        # Only scroll if there's actually content to scroll
+        if canvas.canvasy(canvas.winfo_height()) < canvas.bbox("all")[3]:
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+    
+    def _bind_mousewheel(event):
+        # Only bind if scrolling is actually needed
+        canvas.update_idletasks()
+        bbox = canvas.bbox("all")
+        if bbox and bbox[3] > canvas.winfo_height():
+            canvas.bind_all("<MouseWheel>", _on_mousewheel)
+    
+    def _unbind_mousewheel(event):
+        canvas.unbind_all("<MouseWheel>")
+    
+    # Bind to canvas and its container
+    canvas.bind('<Enter>', _bind_mousewheel)
+    canvas.bind('<Leave>', _unbind_mousewheel)
+
+# Apply to both canvases
+bind_mousewheel_to_canvas(channel_canvas)
+bind_mousewheel_to_canvas(individual_canvas)
 
 # Area of Interest selection for Statistical Analysis
 area_of_interest_label = tk.Label(top_left_frame, text="Area of Interest:", font=("Arial", 12))
@@ -1173,8 +1221,6 @@ dataset2_menu.pack_forget()   # Initially hidden
     
 def _on_mousewheel(event):
     channel_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-
-channel_canvas.bind_all("<MouseWheel>", _on_mousewheel)  # For Windows and Mac
 
 dataset2_menu["postcommand"] = lambda: adjust_combobox_width(dataset2_menu)
 

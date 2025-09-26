@@ -2481,7 +2481,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
                 Participant_i.raw_haemo = raw_haemo
                 Participant_i.raw_epochs = raw_epochs
-                Participant_i.epochs = epochs
+                Participant_i.epochs = [epochs]
                 
                 for name in self.data_types:
                     getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
