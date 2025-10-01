@@ -10,7 +10,7 @@ from statistical_analysis import statistical_analysis
 from dataset_info_panel import show_dataset_info_in_container
 from preprocessing_dialog import show_preprocessing_dialog
 from plot_settings_dialog import show_plot_settings_dialog
-from data_analysis import glm_analysis
+from data_analysis.glm_analysis import run_glm_analysis
 
 
 
@@ -336,7 +336,7 @@ def run_analysis():
 
     # Get selected base channels (without hbo/hbr endings)
     selected_base_channels = [channel for channel, var in channel_vars.items() if var.get()]
-    run_glm_analysis(current_loader.Individual_participants)
+    run_glm_analysis(current_loader.Individual_participants, current_loader)
     # Handle channel selection based on plot type
     if settings["plot_type"] == "paradigm_plot":
         # For paradigm plot, add the selected hemoglobin type to base channels
