@@ -3175,6 +3175,20 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
 
         raw_intensity.set_annotations(new_annotations)
         return raw_intensity
+    
+    def crop_data(self, raw_intensity, crop_event):
+        events, event_dict = mne.events_from_annotations(raw_intensity)
+        crop_event_key = event_dict[crop_event]
+        sfreq = raw_intensity.info["sfreq"]
+        new_tmin = events[:,0][np.max(np.where(events[:, 2] == crop_event_key)) + 2] / sfreq # We add one to use the control period afterwards, as this one might be affected by the increasing signal from the last active period
+        # Updating the self.annotation and self. stimulus duration
+        for event_key in np.unique(events[:np.max(np.where(events[:, 2] == crop_event_key)) + 2][:,2]):
+            if self.annotation_names[str(event_key)] != "Control":
+                if self.annotation_names[str(event_key)] in self.data_types: self.data_types.remove(self.annotation_names[str(event_key)])
+                self.annotation_names.pop(event_key, None)
+                self.stimulus_duration.pop(event_key, None)
+        raw_intensity.crop(tmin=new_tmin)
+        return raw_intensity
 
     def load_data(self):
         # Get all folders and sort them (works for both P folders and random named folders)
@@ -3195,6 +3209,8 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                         unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
                         raw_intensity.annotations.delete(unwanted)
 
+                raw_intensity = self.crop_data(raw_intensity, "TongueIM")
+                
                 if self.snr_rejection != "None":
                     snr = snr_rejection(raw_intensity, self.snr_rejection)
                     

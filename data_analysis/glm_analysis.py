@@ -42,14 +42,14 @@ def run_glm_analysis(subjects, class_instance):
                             'onset': onsets,
                             'duration': duration})
         drift_model="cosine"
-        hrf_model="glover"
+        hrf_model="fir"
         min_onset = 0 # Normally used for fMRI in case events are coded relative to a trigger that happens before scanning. Not relevant here.
         high_pass = high_pass_value
         add_regs = short_channel_haemo.get_data().T
         oversampling = 50 # Default value.
         drift_order = 1 # When we use the cosine drift model this parameter doesn't really matter, as the drift order is then actually determined by the high_pass argument
         add_reg_names = short_channel_haemo.ch_names
-        fir_delays = None # Default when we don't use a FIR model
+        fir_delays = range(100) # Default when we don't use a FIR model
         
         
         design_matrix = make_first_level_design_matrix(frame_times, events,
@@ -66,12 +66,12 @@ def run_glm_analysis(subjects, class_instance):
         glm_estimates = run_glm(haemo, design_matrix)
 
         # Get column labels (conditions, drift terms, constant, etc.)
-        regressor_names = [regressor_name for regressor_name in design_matrix.columns if ("drift" not in regressor_name) & ("constant" not in regressor_name)]
-
+        # regressor_names = [regressor_name for regressor_name in design_matrix.columns if ("drift" not in regressor_name) & ("constant" not in regressor_name)]
+        regressor_names = design_matrix.columns
         for ch_name, result in glm_estimates.data.items():
             betas = result.theta.flatten()  # 1 beta per regressor
             for cond_name, beta in zip(regressor_names, betas):
-                if cond_name in np.unique(haemo.annotations.description):
+                if any (c in cond_name for c in np.unique(haemo.annotations.description)):
                     all_betas.append({
                         "participant": subject.name,
                         "channel": ch_name,
@@ -93,7 +93,13 @@ def run_glm_analysis(subjects, class_instance):
     nullModel <- lmer(beta ~ channel + (1 | participant), data=rdf, REML=FALSE)
     print(summary(model))
     print(summary(nullModel))
-    
+    coefs <- as.data.frame(coef(summary(model)))
     anova_result <- anova(model, nullModel)
     print(anova_result)
     ''')
+    
+    # Convert to pandas
+    with localconverter(pandas2ri.converter):
+        coefs_df = r('coefs')
+
+    print(coefs_df.head())
