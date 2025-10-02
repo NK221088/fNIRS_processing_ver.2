@@ -3032,10 +3032,10 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         self.annotation_names = {"1": "TonguePhysical",
                                  "2": "Control",
                                  "3": "TongueIM",
-                                 "4": "0_back_start",
-                                 "5": "1_back_start",
-                                 "6": "2_back_start",
-                                 "7": "3_back_start"
+                                 "4": "n_back/0_back",
+                                 "5": "n_back/1_back",
+                                 "6": "n_back/2_back",
+                                 "7": "n_back/3_back"
                                 }
         self.file_path = Path(os.getenv(file_path.replace(" ", "_").replace("-", "_")))
         self.short_channel_correction = short_channel_correction
@@ -3053,7 +3053,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         self.tmin = tmin
         self.tmax = 20
         self.baseline = (None, 0)
-        self.data_types = ['TonguePhysical', 'TongueIM', '0_back_start', '1_back_start', '2_back_start', '3_back_start']
+        self.data_types = ['n_back/0_back', 'n_back/1_back', 'n_back/2_back', 'n_back/3_back']
         self.data_name = data_name
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = []

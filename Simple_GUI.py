@@ -24,7 +24,7 @@ plotTypesList = ["Epoch Plot",
 
 # Default settings (add hemoglobin type to settings)
 settings = {
-    "data_set": dataSetList[12],  # Default to first dataset
+    "data_set": dataSetList[15],  # Default to first dataset
     "epoch_type": "HandMI",
     "individual": "All Individuals",
     "short_channel_correction": True,
@@ -336,7 +336,6 @@ def run_analysis():
 
     # Get selected base channels (without hbo/hbr endings)
     selected_base_channels = [channel for channel, var in channel_vars.items() if var.get()]
-    run_glm_analysis(current_loader.Individual_participants, current_loader)
     # Handle channel selection based on plot type
     if settings["plot_type"] == "paradigm_plot":
         # For paradigm plot, add the selected hemoglobin type to base channels
@@ -1245,4 +1244,5 @@ setup_ui_callbacks()
 # Initialize GUI
 update_epoch_types()
 toggle_individual_menu()
+run_glm_analysis(current_loader.Individual_participants, current_loader)
 root.mainloop()
