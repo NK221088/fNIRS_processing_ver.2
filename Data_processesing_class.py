@@ -2074,10 +2074,10 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         self.number_of_participants = 0
         self.all_tapping = []
         self.all_control = []
-        self.annotation_names = {"1": "HandMI",
+        self.annotation_names = {"1.0": "HandMI",
                                  "Rest": "Control"
                                 }
-        self.file_path = Path(os.getenv('Melika_hand_data_long'))
+        self.file_path = Path(os.getenv(file_path.replace(":","").replace(" ", "_").replace("-", "_")).encode('latin-1').decode('utf-8'))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 21
@@ -2089,7 +2089,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         self.data_types = ["HandMI"]
         self.data_name = "Melika hand data long"
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = ["0"]
+        self.unwanted = ["0.0"]
         self.baseline_correction = baseline_correction
         self.filter_lower_value = filter_lower_value
         self.filter_upper_value = filter_upper_value
@@ -2239,7 +2239,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                 Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
                 Participant_i.raw_haemo = raw_haemo
                 Participant_i.raw_epochs = raw_epochs
-                Participant_i.epochs = epochs
+                Participant_i.epochs = [epochs]
                 
                 for name in self.data_types:
                     getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
@@ -2283,6 +2283,34 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                 cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 10, "Outro")
             cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
         
+        return cropped_raw_data
+    
+    def make_annotations(self, raw_intensity):
+        sampling_frequency = raw_intensity.info["sfreq"]
+        events, event_dict = mne.events_from_annotations(raw_intensity)
+        cropped_raw_data = raw_intensity.copy()
+        cropped_raw_data.annotations.set_durations(self.stimulus_duration)
+        cropped_raw_data.annotations.description[0] = "I"
+        cropped_raw_data.annotations.set_durations({"I" : 80})
+        cropped_raw_data.annotations.rename({"I": "Introduction"})
+        if "0" in cropped_raw_data.annotations.description:
+            cropped_raw_data.annotations.rename({"0": "End"})
+
+        
+        for id,event in enumerate(events):
+            if id == 0:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + 80, 30, "Resting state") # Adding resting state in the beginning
+            elif id == 6:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
+            elif id == 12:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
+            elif id == 18:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 10, "Outro")
+            else:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
         return cropped_raw_data
 
 ###############################################################################################################################################################################################

@@ -15,85 +15,146 @@ from rpy2.robjects import pandas2ri
 import numpy as np
 
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import statsmodels.formula.api as smf
+from mne_nirs.statistics import statsmodels_to_results
 
-def plot_group_fir_response(glm_results, design_matrices, condition, channel_base="S1_D1"):
+def plot_group_fir_model(betas_df, design_matrix, condition="TongueMI"):
     """
-    Plot group-average reconstructed FIR responses (HbO & HbR) with 95% CI.
+    Plot group FIR response using mixed-effects model (HbO & HbR in one plot).
     
-    glm_results: list of glm_estimates (one per subject)
-    design_matrices: list of design matrices (one per subject)
-    condition: str, e.g. "TongueMI"
-    channel_base: str, base name of channel pair (e.g. "S1_D1")
+    betas_df: DataFrame with columns [participant, channel, condition, beta]
+    design_matrix: design matrix from GLM (for one subject, just to get FIR basis)
+    condition: str, condition to plot (e.g., "TongueMI")
     """
-    all_hbo = []
-    all_hbr = []
 
-    for glm_estimate, design_matrix in zip(glm_results, design_matrices):
-        # Get FIR regressors
-        fir_cols = [c for c in design_matrix.columns if condition in c and "delay" in c]
-        dm_cond = design_matrix[fir_cols]
+    
+    # --- Step 1: filter betas to FIR regressors for the condition of interest ---
+    df = betas_df.copy()
+    df = df[df["condition"].str.contains(condition)]
+    df = df[df["condition"].str.contains("delay")]
 
-        # Channel names
-        ch_hbo = f"{channel_base} hbo"
-        ch_hbr = f"{channel_base} hbr"
+    # Extract delay number and chromophore
+    df["delay"] = df["condition"].apply(lambda x: int(x.split("_")[-1]))
+    df["Chroma"] = df["channel"].apply(lambda x: "hbo" if "hbo" in x else "hbr")
+    df["TidyCond"] = condition
 
-        # Extract betas
-        theta_hbo = glm_estimate.data[ch_hbo].theta.flatten()
-        theta_hbr = glm_estimate.data[ch_hbr].theta.flatten()
-        cond_betas_hbo = np.array([theta_hbo[design_matrix.columns.get_loc(c)] for c in fir_cols])
-        cond_betas_hbr = np.array([theta_hbr[design_matrix.columns.get_loc(c)] for c in fir_cols])
+    # --- Step 2: fit mixed-effects model ---
+    # Use C(delay) to treat delay as categorical
+    model = smf.mixedlm("beta ~ -1 + C(delay):TidyCond:Chroma",
+                        df, groups=df["participant"])
+    lme = model.fit()
+    df_sum = statsmodels_to_results(lme)
 
+    # Debug: show actual index format
+    print(f"\nActual index format (first 3):")
+    for idx in df_sum.index[:3]:
+        print(f"  '{idx}'")
 
-        # Scale FIR
-        dm_cond_scaled_hbo = dm_cond.values * cond_betas_hbo
-        dm_cond_scaled_hbr = dm_cond.values * cond_betas_hbr
+    # Extract numeric delay, TidyCond, and Chroma from the index
+    # Try multiple regex patterns
+    # Pattern 1: C(delay)[0]:TidyCond[TongueMI]:Chroma[hbo]
+    df_sum["delay"] = df_sum.index.str.extract(r'C\(delay\)\[(\d+)\]', expand=False)
+    df_sum["TidyCond"] = df_sum.index.str.extract(r'TidyCond\[([^\]]+)\]', expand=False)
+    df_sum["Chroma"] = df_sum.index.str.extract(r'Chroma\[([^\]]+)\]', expand=False)
+    
+    print(f"\nAfter extraction:")
+    print(df_sum[["delay", "TidyCond", "Chroma"]].head(10))
+    
+    # If still NaN, try alternative: maybe it's "delay[T.0]" format
+    if df_sum["delay"].isna().all():
+        print("\nFirst pattern failed, trying alternative patterns...")
+        df_sum["delay"] = df_sum.index.str.extract(r'\[T\.(\d+)\]', expand=False)
+        print(df_sum[["delay", "TidyCond", "Chroma"]].head(10))
+    
+    # Convert delay to int
+    df_sum["delay"] = pd.to_numeric(df_sum["delay"], errors='coerce')
+    df_sum = df_sum.dropna(subset=["delay"])
+    
+    if len(df_sum) == 0:
+        print("ERROR: Could not extract delay values from index!")
+        print("Full index:")
+        print(df_sum.index.tolist())
+        return
+    
+    df_sum["delay"] = df_sum["delay"].astype(int)
+    df_sum = df_sum.sort_values("delay")
 
-        # Reconstruct
-        reconstructed_hbo = dm_cond_scaled_hbo.sum(axis=1)
-        reconstructed_hbr = dm_cond_scaled_hbr.sum(axis=1)
+    print(f"\nFinal df_sum shape: {df_sum.shape}")
+    print(f"Unique delays: {sorted(df_sum['delay'].unique())}")
+    print(f"Unique TidyCond: {df_sum['TidyCond'].unique()}")
+    print(f"Unique Chroma: {df_sum['Chroma'].unique()}")
 
-        all_hbo.append(reconstructed_hbo)
-        all_hbr.append(reconstructed_hbr)
-
-    # Convert to arrays [n_subjects x n_timepoints]
-    all_hbo = np.vstack(all_hbo)
-    all_hbr = np.vstack(all_hbr)
-
-    # Mean and 95% CI
-    mean_hbo = all_hbo.mean(axis=0)
-    mean_hbr = all_hbr.mean(axis=0)
-
-    se_hbo = all_hbo.std(axis=0, ddof=1) / np.sqrt(all_hbo.shape[0])
-    se_hbr = all_hbr.std(axis=0, ddof=1) / np.sqrt(all_hbr.shape[0])
-
-    # 95% CI = mean ± 1.96 * SE
-    l95_hbo, u95_hbo = mean_hbo - 1.96 * se_hbo, mean_hbo + 1.96 * se_hbo
-    l95_hbr, u95_hbr = mean_hbr - 1.96 * se_hbr, mean_hbr + 1.96 * se_hbr
-
-    # Time axis (use first subject’s design matrix index)
+    # --- Step 3: reconstruct responses for both chromas ---
+    fir_cols = [c for c in design_matrix.columns if condition in c and "delay" in c]
+    dm_cond = design_matrix[fir_cols]
     time = dm_cond.index.values
 
-    # --- Plot ---
-    fig, ax = plt.subplots(figsize=(8, 6))
+    results = {}
+    for chroma, color in [("hbo", "red"), ("hbr", "blue")]:
+        df_chroma = df_sum.query(f"TidyCond == '{condition}' and Chroma == '{chroma}'")
+        
+        print(f"\nFiltering for TidyCond='{condition}' and Chroma='{chroma}': {len(df_chroma)} rows")
+        if len(df_chroma) == 0:
+            print(f"WARNING: No data found for {chroma}")
+            continue
 
-    ax.plot(time, mean_hbo, "r", label="HbO")
-    ax.fill_between(time, l95_hbo, u95_hbo, color="red", alpha=0.3)
+        vals = df_chroma["Coef."].astype(float).values
+        l95 = df_chroma["[0.025"].astype(float).values
+        u95 = df_chroma["0.975]"].astype(float).values
 
-    ax.plot(time, mean_hbr, "b", label="HbR")
-    ax.fill_between(time, l95_hbr, u95_hbr, color="blue", alpha=0.3)
+        dm_scaled = dm_cond.values * vals
+        dm_scaled_l95 = dm_cond.values * l95
+        dm_scaled_u95 = dm_cond.values * u95
 
-    ax.set_title(f"Group FIR Response ({condition}, {channel_base})")
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Haemoglobin (ΔμMol)")
-    ax.legend()
-    ax.set_xlim(time.min(), time.max())
+        results[chroma] = dict(
+            color=color,
+            total=np.sum(dm_scaled, axis=1),
+            l95=np.sum(dm_scaled_l95, axis=1),
+            u95=np.sum(dm_scaled_u95, axis=1),
+        )
+
+    if len(results) == 0:
+        print("ERROR: No results generated. Cannot plot.")
+        return
+
+    # --- Step 4: plots ---
+    fig, axes = plt.subplots(1, 3, figsize=(20, 7))
+
+    # Panel 1: FIR basis
+    axes[0].plot(time, dm_cond.values)
+    axes[0].set_title("FIR Basis (Unscaled)")
+    axes[0].set_xlabel("Time (s)")
+    axes[0].set_ylabel("Basis amplitude")
+
+    # Panel 2: Scaled FIR components (HbO only)
+    df_hbo = df_sum.query(f"TidyCond == '{condition}' and Chroma == 'hbo'")
+    if len(df_hbo) > 0:
+        vals_hbo = df_hbo["Coef."].astype(float).values
+        axes[1].plot(time, dm_cond.values * vals_hbo)
+        axes[1].set_title(f"FIR Components Scaled ({condition}, HbO)")
+    else:
+        axes[1].set_title(f"No HbO data available")
+    axes[1].set_xlabel("Time (s)")
+    axes[1].set_ylabel("ΔμMol")
+
+    # Panel 3: Evoked response (HbO + HbR with CIs)
+    for chroma in ["hbo", "hbr"]:
+        if chroma in results:
+            r = results[chroma]
+            axes[2].plot(time, r["total"], color=r["color"], label=chroma.upper())
+            axes[2].fill_between(time, r["l95"], r["u95"], alpha=0.3, color=r["color"])
+    axes[2].set_title(f"Group Evoked Response ({condition})")
+    axes[2].set_xlabel("Time (s)")
+    axes[2].set_ylabel("Haemoglobin (ΔμMol)")
+    axes[2].legend()
 
     plt.tight_layout()
     plt.show()
-    plt.savefig(f"Group_FIR_Response_{condition}_{channel_base}.png")
-
+    plt.savefig(f"Group_FIR_Response_{condition}.png")
     
-def run_glm_analysis(subjects, class_instance, hrf_model="fir"):
+def run_glm_analysis(subjects, class_instance, hrf_model="glover"):
     
     print("Running GLM analysis")
     def glm_subject(subject, idx, data_types, hrf_model):
@@ -127,7 +188,7 @@ def run_glm_analysis(subjects, class_instance, hrf_model="fir"):
         oversampling = 1 # Default value.
         drift_order = 1 # When we use the cosine drift model this parameter doesn't really matter, as the drift order is then actually determined by the high_pass argument
         add_reg_names = short_channel_haemo.ch_names
-        fir_delays = range(10) # Default when we don't use a FIR model
+        fir_delays = None # Default when we don't use a FIR model
         
         
         design_matrix = make_first_level_design_matrix(frame_times, events,
@@ -157,7 +218,35 @@ def run_glm_analysis(subjects, class_instance, hrf_model="fir"):
                         "condition": cond_name,
                         "beta": beta
                     })
-                    
+        
+        glm_est = glm_estimates
+        glm_hbo = glm_est.copy().pick(picks="hbo", exclude='bads')
+        conditions = ["HandMI"]
+
+        left_hem_end = len(glm_hbo)//2
+
+        # Create the plot
+        fig, axes = plt.subplots(
+            nrows=1, ncols=2, figsize=(10, 6), gridspec_kw=dict(width_ratios=[0.92, 1])
+        )
+
+        # Plot all channels smoothed
+        glm_hbo.plot_topo(axes=axes[0], colorbar=False, conditions=conditions)
+
+        # Plot left hemisphere
+        glm_hbo.copy().pick(picks=range(0, left_hem_end)).plot_topo(
+            conditions=conditions, axes=axes[1], colorbar=False, vlim=(-16, 16)
+        )
+
+        # Plot right hemisphere
+        glm_hbo.copy().pick(picks=range(left_hem_end, len(glm_hbo.ch_names))).plot_topo(
+            conditions=conditions, axes=axes[1], colorbar=False, vlim=(-16, 16)
+        )
+
+        axes[1].set_title("Hemispheres plotted independently")
+        plt.tight_layout()
+        plt.show()
+        
         return pd.DataFrame(betas), glm_estimates, design_matrix
     
     results = Parallel(n_jobs=1)(
@@ -169,17 +258,11 @@ def run_glm_analysis(subjects, class_instance, hrf_model="fir"):
     
     # Pick the first subject’s GLM + design matrix and plot TongueMI
     # Example: plot TongueMI for the first subject, channel pair S1_D1
-    conditions = ["TongueMI", "Control"]
 
-    for cond in conditions:
-        try:
-            plot_group_fir_response(glm_results, design_matrices, condition=cond, channel_base="S1_D1")
-        except Exception as e:
-            print(f"Skipping {cond} due to error: {e}")
-
-
-    
     betas_df = pd.concat(subject_dfs, ignore_index=True)
+    
+    # plot_group_fir_model(betas_df, design_matrices[0], condition="TongueMI")
+    # plot_group_fir_model(betas_df, design_matrices[0], condition="Control")
 
     with localconverter(pandas2ri.converter):
         globalenv["rdf"] = betas_df
@@ -188,13 +271,40 @@ def run_glm_analysis(subjects, class_instance, hrf_model="fir"):
 
     r('''
     library(lme4)
-    model <- lmer(beta ~ condition + channel + (1 | participant), data=rdf, REML=FALSE)
-    nullModel <- lmer(beta ~ channel + (1 | participant), data=rdf, REML=FALSE)
-    print(summary(model))
-    print(summary(nullModel))
-    coefs <- as.data.frame(coef(summary(model)))
-    anova_result <- anova(model, nullModel)
-    print(anova_result)
+    modelCondition <- lmer(beta ~ condition + channel + (1 | participant), data=rdf, REML=FALSE)
+    nullModelCondition <- lmer(beta ~ channel + (1 | participant), data=rdf, REML=FALSE)
+    print(summary(modelCondition))
+    print(summary(nullModelCondition))
+    coefs <- as.data.frame(coef(summary(modelCondition)))
+    anova_result_condition <- anova(modelCondition, nullModelCondition)
+    print(anova_result_condition)
+    
+    nullModelChannel <- lmer(beta ~ condition + (1 | participant), data=rdf, REML=FALSE)
+    anova_result_channel <- anova(modelCondition, nullModelChannel)
+    print(anova_result_channel)
+    
+    model_interaction <- lmer(beta ~ condition * channel + (1 | participant), data=rdf, REML=FALSE)
+    print(summary(model_interaction)$coefficients)
+    coefs <- as.data.frame(coef(summary(model_interaction)))
+    sig_channels <- subset(coefs, abs(`t value`) > 2)
+    print(sig_channels)
+    
+    library(lmerTest)
+    modelCondition2 <- lmer(beta ~ condition * channel + (1 | participant), data=rdf, REML=FALSE)
+    print(summary(modelCondition2))
+        
+    # Residual plots
+    par(mfrow=c(1,2))  # two plots side by side
+    
+    # Residuals vs fitted
+    plot(fitted(modelCondition), resid(modelCondition),
+         main="Residuals vs Fitted",
+         xlab="Fitted values", ylab="Residuals")
+    abline(h=0, col="red")
+
+    # Normal Q-Q plot
+    qqnorm(resid(modelCondition), main="Normal Q-Q")
+    qqline(resid(modelCondition), col="red")
     ''')
     
     # Convert to pandas
