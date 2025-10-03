@@ -106,3 +106,36 @@ def run_glm_analysis(subjects, class_instance, hrf_model="glover"):
         coefs_df = r('coefs')
 
     print(coefs_df.head())
+
+'''
+Draft for plotting code:
+
+glm_est = glm_estimates
+glm_hbo = glm_est.copy().pick(picks="hbo", exclude='bads')
+conditions = ["TongueMI"]
+
+left_hem_end = len(glm_hbo)//2
+
+# Create the plot
+fig, axes = plt.subplots(
+    nrows=1, ncols=2, figsize=(10, 6), gridspec_kw=dict(width_ratios=[0.92, 1])
+)
+
+# Plot all channels smoothed
+glm_hbo.plot_topo(axes=axes[0], colorbar=False, conditions=conditions)
+
+# Plot left hemisphere
+glm_hbo.copy().pick(picks=range(0, left_hem_end)).plot_topo(
+    conditions=conditions, axes=axes[1], colorbar=False, vlim=(-16, 16)
+)
+
+# Plot right hemisphere
+glm_hbo.copy().pick(picks=range(left_hem_end, len(glm_hbo.ch_names))).plot_topo(
+    conditions=conditions, axes=axes[1], colorbar=False, vlim=(-16, 16)
+)
+
+axes[1].set_title("Hemispheres plotted independently")
+plt.tight_layout()
+plt.show()
+
+'''
