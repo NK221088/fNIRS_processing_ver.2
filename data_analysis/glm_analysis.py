@@ -6,19 +6,18 @@ from mne_nirs.statistics import run_glm
 from mne_nirs.channels import get_short_channels
 from pandas import DataFrame
 
+from joblib import Parallel, delayed
+
 from rpy2.robjects import r, globalenv
 from rpy2.robjects.packages import importr
 from rpy2.robjects.conversion import localconverter
 from rpy2.robjects import pandas2ri
 import numpy as np
 
-def run_glm_analysis(subjects, class_instance):
+def run_glm_analysis(subjects, class_instance, hrf_model="glover"):
     
     print("Running GLM analysis")
-
-    all_betas = []
-
-    for idx, subject in enumerate(subjects):
+    def glm_subject(subject, idx, class_instance, hrf_model):
         print(f"Constructing design matrix and running GLM on subject {idx+1}/{len(subjects)}")
         haemo = subject.raw_haemo.copy()
         redundant_annotations = [x for x in np.unique(haemo.annotations.description) if x not in set(class_instance.data_types)]
@@ -42,14 +41,14 @@ def run_glm_analysis(subjects, class_instance):
                             'onset': onsets,
                             'duration': duration})
         drift_model="cosine"
-        hrf_model="fir"
+        hrf_model=hrf_model
         min_onset = 0 # Normally used for fMRI in case events are coded relative to a trigger that happens before scanning. Not relevant here.
         high_pass = high_pass_value
         add_regs = short_channel_haemo.get_data().T
         oversampling = 50 # Default value.
         drift_order = 1 # When we use the cosine drift model this parameter doesn't really matter, as the drift order is then actually determined by the high_pass argument
         add_reg_names = short_channel_haemo.ch_names
-        fir_delays = range(100) # Default when we don't use a FIR model
+        fir_delays = None # Default when we don't use a FIR model
         
         
         design_matrix = make_first_level_design_matrix(frame_times, events,
@@ -62,25 +61,29 @@ def run_glm_analysis(subjects, class_instance):
                                         oversampling=oversampling,
                                         add_reg_names=add_reg_names,
                                         fir_delays=fir_delays)
-
-        glm_estimates = run_glm(haemo, design_matrix)
+        
+        glm_estimates = run_glm(haemo, design_matrix, n_jobs=1)
 
         # Get column labels (conditions, drift terms, constant, etc.)
         # regressor_names = [regressor_name for regressor_name in design_matrix.columns if ("drift" not in regressor_name) & ("constant" not in regressor_name)]
         regressor_names = design_matrix.columns
+        betas = []
         for ch_name, result in glm_estimates.data.items():
-            betas = result.theta.flatten()  # 1 beta per regressor
-            for cond_name, beta in zip(regressor_names, betas):
+            thetas = result.theta.flatten()  # 1 beta per regressor
+            for cond_name, beta in zip(regressor_names, thetas):
                 if any (c in cond_name for c in np.unique(haemo.annotations.description)):
-                    all_betas.append({
+                    betas.append({
                         "participant": subject.name,
                         "channel": ch_name,
                         "condition": cond_name,
                         "beta": beta
                     })
+        return pd.DataFrame(betas)
+    
+    subject_dfs = Parallel(n_jobs=-1)(delayed(glm_subject)(subject, idx, class_instance, hrf_model) for idx, subject in enumerate(subjects))
 
-    betas_df = pd.DataFrame(all_betas)
-    betas_df.to_csv(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\glm_betas.csv", index=False) # Not permanent
+    betas_df = pd.concat(subject_dfs, ignore_index = True)
+    betas_df.to_csv(rf"C:\Users\NKUE0003\OneDrive - Region Hovedstaden\Bachelor\results\glm_betas.csv", index=False) # Not permanent
 
     with localconverter(pandas2ri.converter):
         globalenv["rdf"] = betas_df
