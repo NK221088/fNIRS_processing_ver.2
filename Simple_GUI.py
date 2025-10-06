@@ -24,7 +24,7 @@ plotTypesList = ["Epoch Plot",
 
 # Default settings (add hemoglobin type to settings)
 settings = {
-    "data_set": dataSetList[2],  # Default to first dataset
+    "data_set": dataSetList[12],  # Default to first dataset
     "epoch_type": "HandMI",
     "individual": "All Individuals",
     "short_channel_correction": True,
@@ -329,6 +329,7 @@ def run_analysis():
         previous_apply_tddr = settings["Apply_TDDR"]
         toggle_individual_menu()
     
+    run_glm_analysis(current_loader.Individual_participants, current_loader)
     first_data_load = False
     # Clear previous plots
     for widget in right_frame.winfo_children():
