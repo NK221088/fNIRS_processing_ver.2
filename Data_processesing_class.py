@@ -346,7 +346,7 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
         self.tmin = tmin
         self.tmax = 15
         self.baseline = (None, 0)
-        self.data_types = ["Tapping"]
+        self.data_types = ["Tapping/Left", "Tapping/Right"]
         self.data_name = "Dr. Luke: full motor data"
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["15.0"]
