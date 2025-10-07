@@ -2321,8 +2321,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None",
                  snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 0
-        self.all_tapping = []
-        self.all_control = []
+        self.all_Control = []
         self.annotation_names = {"1.0": "TongueMI",
                                  "Rest": "Control",
                                 }
@@ -2503,17 +2502,29 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
                 Participant_i = individual_participant_class(epochs.info["subject_info"]["his_id"])
-                Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
                 Participant_i.raw_intensity = raw_intensity
                 Participant_i.raw_od = raw_od
                 Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
                 Participant_i.raw_haemo = raw_haemo
-                Participant_i.raw_epochs = raw_epochs
-                Participant_i.epochs = [epochs]
-                
-                for name in self.data_types:
-                    getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
-                    Participant_i.events.update({name: epochs[name].get_data(copy=True)})
+                for name in self.data_types + ["Control"]:
+                    # Crop to stimulus duration per condition
+                    if len(epochs[name]) != 0:
+                        epochs_cond = epochs[name].copy().crop(tmin=self.tmin, tmax=self.tmax)
+                        
+                        # Store in Participant_i as a separate attribute
+                        setattr(Participant_i, f'epochs_{name}', epochs_cond)
+                        
+                        # Store raw data for later extraction
+                        Participant_i.events[name] = epochs_cond.get_data(copy=True)
+                        Participant_i.epochs.append(epochs_cond)
+                        
+                        # Append to global lists
+                        if not hasattr(self, f'all_{name}_epochs'):
+                            setattr(self, f'all_{name}_epochs', [])
+                        else:
+                            getattr(self, f'all_{name}_epochs').append(epochs_cond)
+                        getattr(self, f'all_{name}').append(epochs_cond.get_data(copy=True))
+
                 
                 getattr(self, 'Individual_participants').append(Participant_i)
                 
@@ -3327,19 +3338,12 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                             epochs,
                             data_types=self.data_types,
                         )
-
-                    # self.all_raw_epochs.append(raw_epochs)
-                    # self.all_epochs.append(epochs)
-                    # self.all_control.append(epochs["Control"].get_data(copy=True))
                     
                     Participant_i = individual_participant_class(f"Participant_{i}")
-                    # Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
                     Participant_i.raw_intensity = raw_intensity
                     Participant_i.raw_od = raw_od
                     Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
                     Participant_i.raw_haemo = raw_haemo
-                    # Participant_i.raw_epochs = raw_epochs
-                    # Instead of a single epochs object
                     for name in self.data_types + ["Control"]:
                         # Crop to stimulus duration per condition
                         if len(epochs[name]) != 0:

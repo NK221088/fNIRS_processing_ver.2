@@ -329,7 +329,7 @@ def run_analysis():
         previous_apply_tddr = settings["Apply_TDDR"]
         toggle_individual_menu()
     
-    run_glm_analysis(current_loader.Individual_participants, current_loader)
+    # run_glm_analysis(current_loader.Individual_participants, current_loader)
     first_data_load = False
     # Clear previous plots
     for widget in right_frame.winfo_children():

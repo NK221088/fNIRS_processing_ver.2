@@ -16,12 +16,11 @@ from rpy2.robjects import pandas2ri
 import numpy as np
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
 from mne_nirs.statistics import statsmodels_to_results
 
-def plot_group_fir_model(betas_df, design_matrix, raw_haemo=None):
+def plot_group_fir_model(betas_df, condition, design_matrix, raw_haemo=None):
     """
     Plot group FIR response (HbO & HbR) using mixed-effects model,
     reconstructed into a single haemodynamic 'wave'.
@@ -32,13 +31,13 @@ def plot_group_fir_model(betas_df, design_matrix, raw_haemo=None):
 
     df = betas_df.copy()
     dm = design_matrix.copy()
-    df["isTapping"] = ["Tongue" in n for n in df["Condition"]]
+    df["isCondition"] = [condition in n for n in df["Condition"]]
     df["isDelay"] = ["delay" in n for n in df["Condition"]]
-    df = df.query("isDelay in [True]").query("isTapping in [True]").copy()
+    df = df.query("isDelay in [True]").query("isCondition in [True]").copy()
     df.loc[:, "TidyCond"] = ""
-    df.loc[df["isTapping"] == True, "TidyCond"] = "Tapping"  # noqa: E712
+    df.loc[df["isCondition"] == True, "TidyCond"] = condition  # noqa: E712
     df.loc[:, "delay"] = [n.split("_")[-1] for n in df.Condition]
-    dm_cols_not_left = np.where(["Right" in c for c in dm.columns])[0]
+    dm_cols_not_left = np.where([condition in c for c in dm.columns])[0]
     dm = dm[[dm.columns[i] for i in dm_cols_not_left]]
     lme = smf.mixedlm("theta ~ -1 + delay:TidyCond:Chroma", df, groups=df["ID"]).fit()
     
@@ -48,19 +47,19 @@ def plot_group_fir_model(betas_df, design_matrix, raw_haemo=None):
     df_sum = df_sum.sort_values("delay")
 
     # Print the result for the oxyhaemoglobin data in the tapping condition
-    df_sum.query("TidyCond in ['Tapping']").query("Chroma in ['hbo']")
+    df_sum.query(f"TidyCond in ['{condition}']").query("Chroma in ['hbo']")
 
     # Extract design matrix columns that correspond to the condition of interest
-    dm_cond_idxs = np.where(["Tapping" in n for n in dm.columns])[0]
+    dm_cond_idxs = np.where([condition in n for n in dm.columns])[0]
     dm_cond = dm[[dm.columns[i] for i in dm_cond_idxs]]
 
     # Extract the corresponding estimates from the lme dataframe for hbo
-    df_hbo = df_sum.query("TidyCond in ['Tapping']").query("Chroma in ['hbo']")
+    df_hbo = df_sum.query(f"TidyCond in ['{condition}']").query("Chroma in ['hbo']")
     vals_hbo = [float(v) for v in df_hbo["Coef."]]
     dm_cond_scaled_hbo = dm_cond * vals_hbo
 
     # Extract the corresponding estimates from the lme dataframe for hbr
-    df_hbr = df_sum.query("TidyCond in ['Tapping']").query("Chroma in ['hbr']")
+    df_hbr = df_sum.query(f"TidyCond in ['{condition}']").query("Chroma in ['hbr']")
     vals_hbr = [float(v) for v in df_hbr["Coef."]]
     dm_cond_scaled_hbr = dm_cond * vals_hbr
 
@@ -105,7 +104,7 @@ def plot_group_fir_model(betas_df, design_matrix, raw_haemo=None):
 
     # Format the plot
     for ax in range(3):
-        axes[ax].set_xlim(40, 80)
+        axes[ax].set_xlim(100, 150)
         axes[ax].set_xlabel("Time (s)")
     # axes[0].set_ylim(-0.5, 1.3)
     # axes[1].set_ylim(-3, 8)
@@ -117,7 +116,7 @@ def plot_group_fir_model(betas_df, design_matrix, raw_haemo=None):
     axes[1].set_ylabel("Oyxhaemoglobin (ΔμMol)")
     axes[2].set_ylabel("Haemoglobin (ΔμMol)")
     axes[2].legend(["Oyxhaemoglobin", "Deoyxhaemoglobin"])
-    plt.savefig("group_fir_response.png"),
+    plt.savefig(rf"C:\Users\NKUE0003\OneDrive - Region Hovedstaden\Bachelor\results\group_fir_response.png")
     print("DONE")
     
 def run_glm_analysis(subjects, class_instance, hrf_model="fir"):
@@ -193,4 +192,4 @@ def run_glm_analysis(subjects, class_instance, hrf_model="fir"):
 
     betas_df = pd.concat(subject_dfs, ignore_index=True)
 
-    plot_group_fir_model(betas_df, design_matrices[0], raw_haemo=subjects[0].raw_haemo)
+    plot_group_fir_model(betas_df, "Tongue", design_matrices[0], raw_haemo=subjects[0].raw_haemo)

@@ -88,7 +88,7 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
     
     # Assign colors automatically from colormap (one per event type)
     cmap = plt.cm.get_cmap("tab10", len(data_types))
-    base_colors = {evt: mpl.colors.to_hex(cmap(i)) for i, evt in enumerate(data_types)}
+    base_colors = {evt.split("/")[0]: mpl.colors.to_hex(cmap(i)) for i, evt in enumerate(data_types)}
 
     # Expand to exact evoked_dict keys (event/chromophore)
     color_dict = {key: base_colors[key.split("/")[0]] for key in evoked_dict.keys()}
