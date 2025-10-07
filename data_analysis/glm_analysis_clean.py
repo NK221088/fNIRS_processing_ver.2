@@ -178,7 +178,8 @@ def run_glm_analysis(subjects, class_instance, hrf_model="spm"):
         glm_estimates = run_glm(haemo, design_matrix, n_jobs=1)
         
         # Create a single ROI that includes all channels for example
-        rois = dict(AllChannels=range(len(haemo.ch_names)))
+        # rois = dict(AllChannels=range(len(haemo.ch_names)))
+        rois = dict(AllChannels=[i for i, ch in enumerate(haemo.ch_names) if ("S2" in ch) or ("S10" in ch)])
         # rois = dict(
         # Left=[i for i, ch in enumerate(haemo.ch_names) if "S2" in ch],
         # Right=[i for i, ch in enumerate(haemo.ch_names) if "S10" in ch]
@@ -216,7 +217,9 @@ def run_glm_analysis(subjects, class_instance, hrf_model="spm"):
         betas_cha_df = pd.concat(cha_dfs, ignore_index=True)
         
         grp_results = betas_roi_df.query("Condition in @data_types")
-        roi_model = smf.mixedlm("theta ~ -1 + ROI:Condition:Chroma", grp_results, groups=grp_results["ID"]).fit(method="nm")
+        roi_model = smf.mixedlm("theta ~ Condition * Chroma", 
+                        grp_results, 
+                        groups=grp_results["ID"]).fit(method="nm")
         roi_model.summary()
         grp_results = grp_results.query("Chroma in ['hbo']")
         df = statsmodels_to_results(roi_model)
@@ -336,3 +339,4 @@ def run_glm_analysis(subjects, class_instance, hrf_model="spm"):
         print("\n")
         print("fold channel specificity")
         print(fold_channel_specificity(raw_channel)[0])
+        print("stopklods")
