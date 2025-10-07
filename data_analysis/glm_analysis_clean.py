@@ -14,11 +14,18 @@ from rpy2.robjects.packages import importr
 from rpy2.robjects.conversion import localconverter
 from rpy2.robjects import pandas2ri
 import numpy as np
+import seaborn as sns
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import statsmodels.formula.api as smf
 from mne_nirs.statistics import statsmodels_to_results
+
+import os
+from dotenv import load_dotenv
+from pathlib import Path
+load_dotenv()
+save_path = Path(os.getenv("data_save_path"))
 
 def plot_group_fir_model(betas_df, condition, design_matrix, raw_haemo=None):
     """
@@ -77,7 +84,8 @@ def plot_group_fir_model(betas_df, condition, design_matrix, raw_haemo=None):
     u95_hbr = [float(v) for v in df_hbr["0.975]"]]  # upper estimate
     dm_cond_scaled_hbr_l95 = dm_cond * l95_hbr
     dm_cond_scaled_hbr_u95 = dm_cond * u95_hbr
-
+    fir_delays = np.arange(0, 20, 1)
+    delays = np.asarray(list(fir_delays), dtype=float)
     
     fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(20, 10))
     
@@ -104,7 +112,7 @@ def plot_group_fir_model(betas_df, condition, design_matrix, raw_haemo=None):
 
     # Format the plot
     for ax in range(3):
-        axes[ax].set_xlim(100, 150)
+        axes[ax].set_xlim(150, 250)
         axes[ax].set_xlabel("Time (s)")
     # axes[0].set_ylim(-0.5, 1.3)
     # axes[1].set_ylim(-3, 8)
@@ -116,10 +124,10 @@ def plot_group_fir_model(betas_df, condition, design_matrix, raw_haemo=None):
     axes[1].set_ylabel("Oyxhaemoglobin (ΔμMol)")
     axes[2].set_ylabel("Haemoglobin (ΔμMol)")
     axes[2].legend(["Oyxhaemoglobin", "Deoyxhaemoglobin"])
-    plt.savefig(rf"C:\Users\NKUE0003\OneDrive - Region Hovedstaden\Bachelor\results\group_fir_response.png")
+    plt.savefig(os.path.join(save_path, f"group_spm_response.png"))
     print("DONE")
     
-def run_glm_analysis(subjects, class_instance, hrf_model="fir"):
+def run_glm_analysis(subjects, class_instance, hrf_model="spm"):
     
     print("Running GLM analysis")
     def glm_subject(subject, idx, data_types, hrf_model):
@@ -149,15 +157,15 @@ def run_glm_analysis(subjects, class_instance, hrf_model="fir"):
         drift_model="cosine"
         hrf_model=hrf_model
         min_onset = 0 # Normally used for fMRI in case events are coded relative to a trigger that happens before scanning. Not relevant here.
-        high_pass = 0.01 #high_pass_value
+        high_pass = high_pass_value #high_pass_value
         add_regs = short_channel_haemo.get_data().T
         oversampling = 1 # Default value.
         drift_order = 1 # When we use the cosine drift model this parameter doesn't really matter, as the drift order is then actually determined by the high_pass argument
         add_reg_names = short_channel_haemo.ch_names
-        fir_delays = range(10) # Default when we don't use a FIR model
+        fir_delays = range(21) # Default when we don't use a FIR model
         
-        
-        design_matrix = make_first_level_design_matrix(frame_times, events,
+        design_matrix = make_first_level_design_matrix(frame_times,
+                                        events,
                                         drift_model=drift_model,
                                         drift_order=drift_order,
                                         hrf_model=hrf_model,
@@ -165,31 +173,166 @@ def run_glm_analysis(subjects, class_instance, hrf_model="fir"):
                                         high_pass=high_pass,
                                         add_regs=add_regs,
                                         oversampling=oversampling,
-                                        add_reg_names=add_reg_names,
-                                        fir_delays=fir_delays)
+                                        add_reg_names=add_reg_names,)
         
         glm_estimates = run_glm(haemo, design_matrix, n_jobs=1)
         
         # Create a single ROI that includes all channels for example
         rois = dict(AllChannels=range(len(haemo.ch_names)))
+        # rois = dict(
+        # Left=[i for i, ch in enumerate(haemo.ch_names) if "S2" in ch],
+        # Right=[i for i, ch in enumerate(haemo.ch_names) if "S10" in ch]
+        # )
+
         # Calculate ROI for all conditions
         conditions = design_matrix.columns
         # Compute output metrics by ROI
         df_ind = glm_estimates.to_dataframe_region_of_interest(rois, conditions)
+        cha = glm_estimates.to_dataframe()
 
-        df_ind["ID"] = subject.name
+        df_ind["ID"] = cha["ID"] = subject.name
+        
+        # Convert to uM for nicer plotting below.
         df_ind["theta"] = [t * 1.0e6 for t in df_ind["theta"]]
+        cha["theta"] = [t * 1.0e6 for t in cha["theta"]]
 
         
-        return df_ind, haemo, design_matrix
+        return df_ind, haemo, design_matrix, cha
     
     results = Parallel(n_jobs=1)(
     delayed(glm_subject)(subject, idx, class_instance.data_types, hrf_model)
     for idx, subject in enumerate(subjects)
     )
 
-    subject_dfs, glm_results, design_matrices = zip(*results)
+    subject_dfs, haemos, design_matrices, cha_dfs = zip(*results)
 
-    betas_df = pd.concat(subject_dfs, ignore_index=True)
+    betas_roi_df = pd.concat(subject_dfs, ignore_index=True)
 
-    plot_group_fir_model(betas_df, "Tongue", design_matrices[0], raw_haemo=subjects[0].raw_haemo)
+    if hrf_model == "fir":
+        plot_group_fir_model(betas_roi_df, "Tongue", design_matrices[0], raw_haemo=subjects[0].raw_haemo)
+    
+    if hrf_model == "spm":
+        data_types = list(np.unique(haemos[0].annotations.description))
+        betas_cha_df = pd.concat(cha_dfs, ignore_index=True)
+        
+        grp_results = betas_roi_df.query("Condition in @data_types")
+        roi_model = smf.mixedlm("theta ~ -1 + ROI:Condition:Chroma", grp_results, groups=grp_results["ID"]).fit(method="nm")
+        roi_model.summary()
+        grp_results = grp_results.query("Chroma in ['hbo']")
+        df = statsmodels_to_results(roi_model)
+        
+        
+        fig = sns.catplot(
+        x="Condition",
+        y="theta",
+        col="ID",
+        hue="ROI",
+        data=grp_results,
+        col_wrap=5,
+        errorbar=None,
+        palette="muted",
+        height=4,
+        s=10,
+        )
+        plt.savefig(os.path.join(save_path, f"individual_results.png"))
+        
+        
+        sns.catplot(
+        x="Condition",
+        y="Coef.",
+        hue="ROI",
+        data=df.query("Chroma == 'hbo'"),
+        errorbar=None,
+        palette="muted",
+        height=4,
+        s=10,
+        )
+        plt.savefig(os.path.join(save_path, f"group_results.png"))
+        
+        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(10, 10), gridspec_kw=dict(width_ratios=[1, 1]))
+        # Cut down the dataframe just to the conditions we are interested in
+        data_types = [data_types[0], data_types[-1]]
+        ch_summary = betas_cha_df.query("Condition in @data_types")
+        ch_summary = ch_summary.query("Chroma in ['hbo']")
+        ch_model = smf.mixedlm("theta ~ -1 + ch_name:Chroma:Condition", ch_summary, groups=ch_summary["ID"]).fit(method="nm")
+        ch_model_df = statsmodels_to_results(ch_model)
+        
+        from mne_nirs.visualisation import plot_glm_group_topo, plot_glm_surface_projection
+        
+        raw_haemo=subjects[0].raw_haemo
+        channels = [ch for ch in raw_haemo.copy().ch_names if ch not in raw_haemo.copy().info["bads"]]        # Plot the two conditions
+        plot_glm_group_topo(
+            raw_haemo.copy().pick(picks=channels).pick(picks="hbo"),
+            ch_model_df.query("Condition == @data_types[0]"),
+            colorbar=False,
+            axes=axes[0, 0],
+            vlim=(0, 20),
+            cmap=plt.cm.Oranges,
+        )
+
+        plot_glm_group_topo(
+            raw_haemo.copy().pick(picks=channels).pick(picks="hbo"),
+            ch_model_df.query("Condition == @data_types[1]"),
+            colorbar=True,
+            axes=axes[0, 1],
+            vlim=(0, 20),
+            cmap=plt.cm.Oranges,
+        )
+
+        # Cut down the dataframe just to the conditions we are interested in
+        ch_summary = betas_cha_df.query("Condition in @data_types")
+        ch_summary = ch_summary.query("Chroma in ['hbr']")
+
+        # Run group level model and convert to dataframe
+        ch_model = smf.mixedlm("theta ~ -1 + ch_name:Chroma:Condition", ch_summary, groups=ch_summary["ID"]).fit(method="nm")
+        ch_model_df = statsmodels_to_results(ch_model)
+
+        # Plot the two conditions
+        plot_glm_group_topo(
+            raw_haemo.copy().pick(picks=channels).pick(picks="hbr"),
+            ch_model_df.query("Condition == @data_types[0]"),
+            colorbar=False,
+            axes=axes[1, 0],
+            vlim=(-10, 0),
+            cmap=plt.cm.Blues_r,
+        )
+        plot_glm_group_topo(
+            raw_haemo.copy().pick(picks=channels).pick(picks="hbr"),
+            ch_model_df.query("Condition == @data_types[1]"),
+            colorbar=True,
+            axes=axes[1, 1],
+            vlim=(-10, 0),
+            cmap=plt.cm.Blues_r,
+        )
+        
+        plt.savefig(os.path.join(save_path, f"group_results_topo.png"))
+        
+        ch_summary = betas_cha_df.query("Condition in @class_instance.data_types")
+        ch_summary = ch_summary.query("Chroma in ['hbo']")
+
+        # Run group level model and convert to dataframe
+        ch_model = smf.mixedlm("theta ~ -1 + ch_name:Chroma:Condition", ch_summary, groups=ch_summary["ID"]).fit(method="nm")
+
+        # Here we can use the order argument to ensure the channel name order
+        ch_model_df = statsmodels_to_results(
+            ch_model, order=raw_haemo.copy().pick(picks="hbo").ch_names
+        )
+        # And make the table prettier
+        ch_model_df.reset_index(drop=True, inplace=True)
+        ch_model_df = ch_model_df.set_index(["ch_name", "Condition"])
+        print(ch_model_df)
+        print("\n")
+        print("Significant results:")
+        print(ch_model_df[ch_model_df["Significant"] == True])
+        
+        largest_response_channel = ch_model_df.loc[ch_model_df["Coef."].idxmax()]
+        print("\n")
+        print("Largest response channel:")
+        print(largest_response_channel)
+        
+        from mne_nirs.io.fold import fold_channel_specificity
+        
+        raw_channel = raw_haemo.copy().pick(largest_response_channel.name[0])
+        print("\n")
+        print("fold channel specificity")
+        print(fold_channel_specificity(raw_channel)[0])
