@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import statsmodels.formula.api as smf
 from mne_nirs.statistics import statsmodels_to_results
+from mne_nirs.visualisation import plot_glm_group_topo, plot_glm_surface_projection
 
 import os
 from dotenv import load_dotenv
@@ -140,8 +141,8 @@ def run_glm_analysis(subjects, class_instance, hrf_model="spm"):
         renames = {cond: cond.replace("/", "_") if "/" in cond else cond for cond in haemo.annotations.description}
         haemo.annotations.rename(renames)
         short_channel_haemo = get_short_channels(subject.raw_haemo_unfiltered)
-        haemo.resample(0.5, npad="auto")
-        short_channel_haemo.resample(0.5, npad="auto")
+        # haemo.resample(1, npad="auto")
+        # short_channel_haemo.resample(1, npad="auto")
         isis, names = longest_inter_annotation_interval(haemo)
         
         conditions = haemo.annotations.description
@@ -179,11 +180,11 @@ def run_glm_analysis(subjects, class_instance, hrf_model="spm"):
         
         # Create a single ROI that includes all channels for example
         # rois = dict(AllChannels=range(len(haemo.ch_names)))
-        rois = dict(AllChannels=[i for i, ch in enumerate(haemo.ch_names) if ("S2" in ch) or ("S10" in ch)])
-        # rois = dict(
-        # Left=[i for i, ch in enumerate(haemo.ch_names) if "S2" in ch],
-        # Right=[i for i, ch in enumerate(haemo.ch_names) if "S10" in ch]
-        # )
+        # rois = dict(AllChannels=[i for i, ch in enumerate(haemo.ch_names) if ("S2" in ch) or ("S10" in ch)])
+        rois = dict(
+        Left=[i for i, ch in enumerate(haemo.ch_names) if "S2" in ch],
+        Right=[i for i, ch in enumerate(haemo.ch_names) if "S12" in ch]
+        )
 
         # Calculate ROI for all conditions
         conditions = design_matrix.columns
@@ -214,14 +215,10 @@ def run_glm_analysis(subjects, class_instance, hrf_model="spm"):
     
     if hrf_model == "spm":
         data_types = list(np.unique(haemos[0].annotations.description))
-        betas_cha_df = pd.concat(cha_dfs, ignore_index=True)
         
         grp_results = betas_roi_df.query("Condition in @data_types")
-        roi_model = smf.mixedlm("theta ~ Condition * Chroma", 
-                        grp_results, 
-                        groups=grp_results["ID"]).fit(method="nm")
+        roi_model = smf.mixedlm("theta ~ -1 + ROI:Condition:Chroma", grp_results, groups=grp_results["ID"]).fit(method="nm")
         roi_model.summary()
-        grp_results = grp_results.query("Chroma in ['hbo']")
         df = statsmodels_to_results(roi_model)
         
         
@@ -230,7 +227,7 @@ def run_glm_analysis(subjects, class_instance, hrf_model="spm"):
         y="theta",
         col="ID",
         hue="ROI",
-        data=grp_results,
+        data=grp_results.query("Chroma in ['hbo']"),
         col_wrap=5,
         errorbar=None,
         palette="muted",
@@ -240,30 +237,139 @@ def run_glm_analysis(subjects, class_instance, hrf_model="spm"):
         plt.savefig(os.path.join(save_path, f"individual_results.png"))
         
         
+        # sns.catplot(
+        # x="Condition",
+        # y="Coef.",
+        # hue="ROI",
+        # data=df.query("Chroma == 'hbo'"),
+        # errorbar=None,
+        # palette="muted",
+        # height=4,
+        # s=10,
+        # )
+        # plt.savefig(os.path.join(save_path, f"group_results.png"))
+
+        betas_cha_df = pd.concat(cha_dfs, ignore_index=True)
+        betas_cha_df = betas_cha_df.query("Condition in @data_types")
+        raw_haemo=subjects[0].raw_haemo
+        relevant_channels = [ch for ch in raw_haemo.ch_names if ("S2" in ch) or ("S10" in ch)]
+        # Cut down the dataframe just to the conditions we are interested in
+        data_types = [data_types[0], data_types[-1]]
+        ch_summary = betas_cha_df.query("Condition in @data_types")
+        ch_summary = ch_summary.query("Chroma in ['hbo']")
+        # ch_summary = ch_summary.query("ch_name in @relevant_channels")
+        
+        with localconverter(pandas2ri.converter):
+            globalenv["rdf"] = ch_summary
+
+        lme4 = importr("lme4")
+        
+        r('''
+        library(lme4)
+        library(lmerTest)
+        
+        modelCondition <- lmer(theta ~ Condition + (1 + Condition | ch_name) + (1 | ID), data=rdf, REML=FALSE)
+        nullModelCondition <- lmer(theta ~ (1 | ch_name) + (1 | ID), data=rdf, REML=FALSE)
+        print(summary(modelCondition))
+        print(summary(nullModelCondition))
+        anova_result_condition <- anova(modelCondition, nullModelCondition)
+        print(anova_result_condition)
+        
+        #Extract coefficents for plotting:
+        coef_summary <- as.data.frame(summary(modelCondition)$coefficients)
+        coef_summary$Parameter <- rownames(coef_summary)
+        colnames(coef_summary) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+    
+        results <- data.frame(
+            Coef = numeric(),
+            Std_Error = numeric(),
+            z = numeric(),
+            P_z = numeric(),
+            CI_lower = numeric(),
+            CI_upper = numeric(),
+            ch_name = character(),
+            Chroma = character(),
+            Condition = character(),
+            Significant = logical(),
+            stringsAsFactors = FALSE
+        )
+
+        for (ch in unique(rdf$ch_name)) {
+            ch_data <- subset(rdf, ch_name == ch)
+            mod <- lmer(theta ~ Condition + (1 | ID), data=ch_data, REML=FALSE)
+            res <- summary(mod)$coefficients
+            
+            # Calculate confidence intervals
+            conf_int <- confint(mod, parm="beta_", method="Wald")
+            
+            # Get the chromophore for this channel (assuming it's consistent within channel)
+            chroma_val <- unique(ch_data$Chroma)[1]
+            
+            # Calculate p_adj for this row (will recalculate for all at the end)
+            p_value <- res["ConditionTongueMI", "Pr(>|t|)"]
+            
+            results <- rbind(results, data.frame(
+                Coef = res["ConditionTongueMI", "Estimate"],
+                Std_Error = res["ConditionTongueMI", "Std. Error"],
+                z = res["ConditionTongueMI", "t value"],
+                P_z = p_value,
+                CI_lower = conf_int["ConditionTongueMI", 1],
+                CI_upper = conf_int["ConditionTongueMI", 2],
+                ch_name = ch,
+                Chroma = chroma_val,
+                Condition = "TongueMI",
+                Significant = FALSE  # Will update after p-adjustment
+            ))
+        }
+
+        # Calculate adjusted p-values
+        results$p_adj <- p.adjust(results$P_z, method="fdr")
+        results$Significant <- results$p_adj < 0.05
+
+        # Reorder columns and rename to match your exact specification
+        results_for_plotting <- results[, c("Coef", "Std_Error", "z", "P_z", "CI_lower", "CI_upper", "ch_name", "Chroma", "Condition", "Significant")]
+
+        colnames(results_for_plotting) <- c("Coef.", "Std_Error", "z", "P>|z|", "[0.025", "0.975]", "ch_name", "Chroma", "Condition", "Significant")
+
+        print(results_for_plotting)
+        
+        ''')
+        with localconverter(pandas2ri.converter):
+            modelCondition = globalenv["coef_summary"]
+            results = globalenv["results_for_plotting"]
+        control_estimate = modelCondition[modelCondition['Parameter'] == '(Intercept)']['Estimate'].values[0]
+        tongueMI_estimate = control_estimate + modelCondition[modelCondition['Parameter'] == 'ConditionTongueMI']['Estimate'].values[0]
+        plot_df = pd.DataFrame({
+        'Condition': ['Control', 'TongueMI'],
+        'Estimate': [control_estimate, tongueMI_estimate]
+        })
         sns.catplot(
         x="Condition",
-        y="Coef.",
-        hue="ROI",
-        data=df.query("Chroma == 'hbo'"),
+        y="Estimate",
+        data=plot_df,
         errorbar=None,
         palette="muted",
         height=4,
         s=10,
         )
-        plt.savefig(os.path.join(save_path, f"group_results.png"))
+        plt.savefig(os.path.join(save_path, f"R_model_group_results.png"))
+        
+        channels = [ch for ch in raw_haemo.copy().ch_names if ch not in raw_haemo.copy().info["bads"]]        # Plot the two conditions
+        fig = plot_glm_group_topo(
+            raw_haemo.copy().pick(picks=channels).pick(picks="hbo"),
+            results.query("Condition == @data_types[1]"),
+            colorbar=True,
+            vlim=(0, 20),
+            cmap=plt.cm.Oranges,
+        )
+        plt.savefig(os.path.join(save_path, f"R_topo_model.png"))
         
         fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(10, 10), gridspec_kw=dict(width_ratios=[1, 1]))
-        # Cut down the dataframe just to the conditions we are interested in
-        data_types = [data_types[0], data_types[-1]]
-        ch_summary = betas_cha_df.query("Condition in @data_types")
-        ch_summary = ch_summary.query("Chroma in ['hbo']")
         ch_model = smf.mixedlm("theta ~ -1 + ch_name:Chroma:Condition", ch_summary, groups=ch_summary["ID"]).fit(method="nm")
         ch_model_df = statsmodels_to_results(ch_model)
         
-        from mne_nirs.visualisation import plot_glm_group_topo, plot_glm_surface_projection
         
-        raw_haemo=subjects[0].raw_haemo
-        channels = [ch for ch in raw_haemo.copy().ch_names if ch not in raw_haemo.copy().info["bads"]]        # Plot the two conditions
+        
         plot_glm_group_topo(
             raw_haemo.copy().pick(picks=channels).pick(picks="hbo"),
             ch_model_df.query("Condition == @data_types[0]"),

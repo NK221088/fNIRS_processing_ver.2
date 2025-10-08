@@ -24,7 +24,7 @@ plotTypesList = ["Epoch Plot",
 
 # Default settings (add hemoglobin type to settings)
 settings = {
-    "data_set": dataSetList[11],  # Default to first dataset
+    "data_set": dataSetList[12],  # Default to first dataset
     "epoch_type": "HandMI",
     "individual": "All Individuals",
     "short_channel_correction": True,
@@ -36,10 +36,10 @@ settings = {
     "scalp_coupling_threshold": 0.8,
     "reject_criteria": dict(hbo=80e-6),
     "unwanted": ["15.0"],
-    "filter_lower_value": 0.05,
-    "filter_upper_value": 0.7,
+    "filter_lower_value": 0.01,
+    "filter_upper_value": 0.5,
     "h_trans_bandwidth": 0.2,           
-    "l_trans_bandwidth": 0.02,
+    "l_trans_bandwidth": 0.01,
     "snr_rejection": "None",  # Default to None, can be set to "SNR" or "CV"
     "snr_threshold": 8,  # Default threshold for SNR
     "Apply_TDDR": True,
@@ -1245,5 +1245,5 @@ setup_ui_callbacks()
 # Initialize GUI
 update_epoch_types()
 toggle_individual_menu()
-# run_glm_analysis(current_loader.Individual_participants, current_loader)
+run_glm_analysis(current_loader.Individual_participants, current_loader)
 root.mainloop()
