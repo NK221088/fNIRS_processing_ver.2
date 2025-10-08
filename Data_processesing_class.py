@@ -2073,7 +2073,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                  snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 0
         self.all_tapping = []
-        self.all_control = []
+        self.all_Control = []
         self.annotation_names = {"1.0": "HandMI",
                                  "Rest": "Control"
                                 }
@@ -2232,18 +2232,30 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
                 
-                Participant_i = individual_participant_class(f"Participant_{i}")
-                Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
+                Participant_i = individual_participant_class(epochs.info["subject_info"]["his_id"])
                 Participant_i.raw_intensity = raw_intensity
                 Participant_i.raw_od = raw_od
                 Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
                 Participant_i.raw_haemo = raw_haemo
-                Participant_i.raw_epochs = raw_epochs
-                Participant_i.epochs = [epochs]
-                
-                for name in self.data_types:
-                    getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
-                    Participant_i.events.update({name: epochs[name].get_data(copy=True)})
+                for name in self.data_types + ["Control"]:
+                    # Crop to stimulus duration per condition
+                    if len(epochs[name]) != 0:
+                        epochs_cond = epochs[name].copy().crop(tmin=self.tmin, tmax=self.tmax)
+                        
+                        # Store in Participant_i as a separate attribute
+                        setattr(Participant_i, f'epochs_{name}', epochs_cond)
+                        
+                        # Store raw data for later extraction
+                        Participant_i.events[name] = epochs_cond.get_data(copy=True)
+                        Participant_i.epochs.append(epochs_cond)
+                        
+                        # Append to global lists
+                        if not hasattr(self, f'all_{name}_epochs'):
+                            setattr(self, f'all_{name}_epochs', [])
+                        else:
+                            getattr(self, f'all_{name}_epochs').append(epochs_cond)
+                        getattr(self, f'all_{name}').append(epochs_cond.get_data(copy=True))
+
                 
                 getattr(self, 'Individual_participants').append(Participant_i)
                 
@@ -3092,10 +3104,10 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         self.tmin = tmin
         self.tmax = 20
         self.baseline = (None, 0)
-        self.data_types = ['n_back/0_back', 'n_back/1_back', 'n_back/2_back', 'n_back/3_back']
+        self.data_types = ["TonguePhysical", "TongueIM"]
         self.data_name = data_name
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = []
+        self.unwanted = ['n_back/0_back', 'n_back/1_back', 'n_back/2_back', 'n_back/3_back']
         self.baseline_correction = baseline_correction
         self.filter_lower_value = filter_lower_value
         self.filter_upper_value = filter_upper_value
@@ -3215,18 +3227,12 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         raw_intensity.set_annotations(new_annotations)
         return raw_intensity
     
-    def crop_data(self, raw_intensity, crop_event):
+    def crop_data(self, raw_intensity):
         events, event_dict = mne.events_from_annotations(raw_intensity)
-        crop_event_key = event_dict[crop_event]
         sfreq = raw_intensity.info["sfreq"]
-        new_tmin = events[:,0][np.max(np.where(events[:, 2] == crop_event_key)) + 2] / sfreq # We add one to use the control period afterwards, as this one might be affected by the increasing signal from the last active period
-        # Updating the self.annotation and self. stimulus duration
-        for event_key in np.unique(events[:np.max(np.where(events[:, 2] == crop_event_key)) + 2][:,2]):
-            if self.annotation_names[str(event_key)] != "Control":
-                if self.annotation_names[str(event_key)] in self.data_types: self.data_types.remove(self.annotation_names[str(event_key)])
-                self.annotation_names.pop(event_key, None)
-                self.stimulus_duration.pop(event_key, None)
-        raw_intensity.crop(tmin=new_tmin)
+        new_tmin = events[0][0] / sfreq - 10
+        new_tmax = events[-1][0] / sfreq + self.stimulus_duration[str(events[-1][2])] + 5
+        raw_intensity.crop(tmin=new_tmin, tmax=new_tmax)
         return raw_intensity
 
     def load_data(self):
@@ -3245,10 +3251,11 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 self.tmax = max(self.stimulus_duration.values())
                 raw_intensity.annotations.rename(self.annotation_names)
                 for _unwanted in self.unwanted:
-                        unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
-                        raw_intensity.annotations.delete(unwanted)
-
-                raw_intensity = self.crop_data(raw_intensity, "TongueIM")
+                        unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)[0]
+                        before_after_unwanted = np.append(unwanted - 1, unwanted + 1)
+                        before_after_unwanted_control = before_after_unwanted[np.isin(before_after_unwanted, np.nonzero(raw_intensity.annotations.description == "Control")[0])]
+                        raw_intensity.annotations.delete(np.append(unwanted, before_after_unwanted_control))
+                raw_intensity = self.crop_data(raw_intensity)
                 
                 if self.snr_rejection != "None":
                     snr = snr_rejection(raw_intensity, self.snr_rejection)
