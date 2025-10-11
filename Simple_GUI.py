@@ -24,7 +24,7 @@ plotTypesList = ["Epoch Plot",
 
 # Default settings (add hemoglobin type to settings)
 settings = {
-    "data_set": dataSetList[12],  # Default to first dataset
+    "data_set": dataSetList[15],  # Default to first dataset
     "epoch_type": "HandMI",
     "individual": "All Individuals",
     "short_channel_correction": True,
@@ -1245,5 +1245,5 @@ setup_ui_callbacks()
 # Initialize GUI
 update_epoch_types()
 toggle_individual_menu()
-run_glm_analysis(current_loader.Individual_participants, current_loader)
+# run_glm_analysis(current_loader.Individual_participants, current_loader)
 root.mainloop()
