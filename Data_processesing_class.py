@@ -3104,10 +3104,10 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         self.tmin = tmin
         self.tmax = 20
         self.baseline = (None, 0)
-        self.data_types = ["TonguePhysical", "TongueIM"]
+        self.data_types = ['n_back/0_back', 'n_back/1_back', 'n_back/2_back', 'n_back/3_back']
         self.data_name = data_name
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = ['n_back/0_back', 'n_back/1_back', 'n_back/2_back', 'n_back/3_back']
+        self.unwanted = ["TonguePhysical", "TongueIM"]
         self.baseline_correction = baseline_correction
         self.filter_lower_value = filter_lower_value
         self.filter_upper_value = filter_upper_value
@@ -3231,7 +3231,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         events, event_dict = mne.events_from_annotations(raw_intensity)
         sfreq = raw_intensity.info["sfreq"]
         new_tmin = events[0][0] / sfreq - 10
-        new_tmax = events[-1][0] / sfreq + self.stimulus_duration[str(events[-1][2])] + 5
+        new_tmax = events[-1][0] / sfreq + self.stimulus_duration[str(events[-1][2])] + 3
         raw_intensity.crop(tmin=new_tmin, tmax=new_tmax)
         return raw_intensity
 

@@ -26,7 +26,7 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 load_dotenv()
-save_path = Path(os.getenv("data_save_path"))
+save_path = Path(os.getenv(rf"data_save_path"))
 
 def plot_group_fir_model(betas_df, condition, design_matrix, raw_haemo=None):
     """
@@ -128,7 +128,7 @@ def plot_group_fir_model(betas_df, condition, design_matrix, raw_haemo=None):
     plt.savefig(os.path.join(save_path, f"group_spm_response.png"))
     print("DONE")
     
-def run_glm_analysis(subjects, class_instance, hrf_model="spm"):
+def run_glm_analysis(subjects, class_instance, hrf_model="glover", number_of_subjects=[]):
     
     print("Running GLM analysis")
     def glm_subject(subject, idx, data_types, hrf_model):
@@ -138,11 +138,11 @@ def run_glm_analysis(subjects, class_instance, hrf_model="spm"):
         if len(redundant_annotations) != 0:
             for annotation in redundant_annotations:
                 haemo.annotations.delete(haemo.annotations.description == annotation)
-        renames = {cond: cond.replace("/", "_") if "/" in cond else cond for cond in haemo.annotations.description}
+        renames = {cond: cond.split("/")[0] if "/" in cond else cond for cond in haemo.annotations.description}
         haemo.annotations.rename(renames)
         short_channel_haemo = get_short_channels(subject.raw_haemo_unfiltered)
-        # haemo.resample(1, npad="auto")
-        # short_channel_haemo.resample(1, npad="auto")
+        # haemo.resample(2.5, npad="auto")
+        # short_channel_haemo.resample(2.5, npad="auto")
         isis, names = longest_inter_annotation_interval(haemo)
         
         conditions = haemo.annotations.description
@@ -180,11 +180,11 @@ def run_glm_analysis(subjects, class_instance, hrf_model="spm"):
         
         # Create a single ROI that includes all channels for example
         # rois = dict(AllChannels=range(len(haemo.ch_names)))
-        # rois = dict(AllChannels=[i for i, ch in enumerate(haemo.ch_names) if ("S2" in ch) or ("S10" in ch)])
-        rois = dict(
-        Left=[i for i, ch in enumerate(haemo.ch_names) if "S2" in ch],
-        Right=[i for i, ch in enumerate(haemo.ch_names) if "S12" in ch]
-        )
+        rois = dict(AllChannels=[i for i, ch in enumerate(haemo.ch_names) if ("S2" in ch) or ("S10" in ch)])
+        # rois = dict(
+        # Left=[i for i, ch in enumerate(haemo.ch_names) if "S2" in ch],
+        # Right=[i for i, ch in enumerate(haemo.ch_names) if "S12" in ch]
+        # )
 
         # Calculate ROI for all conditions
         conditions = design_matrix.columns
@@ -192,7 +192,8 @@ def run_glm_analysis(subjects, class_instance, hrf_model="spm"):
         df_ind = glm_estimates.to_dataframe_region_of_interest(rois, conditions)
         cha = glm_estimates.to_dataframe()
 
-        df_ind["ID"] = cha["ID"] = subject.name
+        df_ind["ID"] = cha["ID"] = subject.name + "_" + "HC" if idx < number_of_subjects[0] else subject.name + "_" + "Patient"
+        cha["Group"] = "HC" if idx < number_of_subjects[0] else "Patient"
         
         # Convert to uM for nicer plotting below.
         df_ind["theta"] = [t * 1.0e6 for t in df_ind["theta"]]
@@ -213,12 +214,12 @@ def run_glm_analysis(subjects, class_instance, hrf_model="spm"):
     if hrf_model == "fir":
         plot_group_fir_model(betas_roi_df, "Tongue", design_matrices[0], raw_haemo=subjects[0].raw_haemo)
     
-    if hrf_model == "spm":
+    else:
         data_types = list(np.unique(haemos[0].annotations.description))
         
         grp_results = betas_roi_df.query("Condition in @data_types")
         roi_model = smf.mixedlm("theta ~ -1 + ROI:Condition:Chroma", grp_results, groups=grp_results["ID"]).fit(method="nm")
-        roi_model.summary()
+        # roi_model.summary()
         df = statsmodels_to_results(roi_model)
         
         
@@ -252,12 +253,12 @@ def run_glm_analysis(subjects, class_instance, hrf_model="spm"):
         betas_cha_df = pd.concat(cha_dfs, ignore_index=True)
         betas_cha_df = betas_cha_df.query("Condition in @data_types")
         raw_haemo=subjects[0].raw_haemo
-        relevant_channels = [ch for ch in raw_haemo.ch_names if ("S2" in ch) or ("S10" in ch)]
+        relevant_channels = [ch for ch in raw_haemo.ch_names if ("S1" in ch) or ("S2" in ch)]
         # Cut down the dataframe just to the conditions we are interested in
         data_types = [data_types[0], data_types[-1]]
         ch_summary = betas_cha_df.query("Condition in @data_types")
         ch_summary = ch_summary.query("Chroma in ['hbo']")
-        # ch_summary = ch_summary.query("ch_name in @relevant_channels")
+        ch_summary = ch_summary.query("ch_name in @relevant_channels")
         
         with localconverter(pandas2ri.converter):
             globalenv["rdf"] = ch_summary
@@ -268,75 +269,135 @@ def run_glm_analysis(subjects, class_instance, hrf_model="spm"):
         library(lme4)
         library(lmerTest)
         
-        modelCondition <- lmer(theta ~ Condition + (1 + Condition | ch_name) + (1 | ID), data=rdf, REML=FALSE)
-        nullModelCondition <- lmer(theta ~ (1 | ch_name) + (1 | ID), data=rdf, REML=FALSE)
-        print(summary(modelCondition))
-        print(summary(nullModelCondition))
-        anova_result_condition <- anova(modelCondition, nullModelCondition)
-        print(anova_result_condition)
+        modelConch <- lmer(theta ~ Condition + ch_name + Condition:ch_name + (1 | ID), data=rdf, REML=FALSE)
+        nullModelConch <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
+        anova_result_Condch <- anova(modelConch, nullModelConch)
+        anova_Condch_df <- as.data.frame(anova_result_Condch)
+        #print(anova_result_Condch)
+        print(isSingular(modelConch, tol = 1e-4))
+        print(summary(modelConch)$varcor)
+        X <- model.matrix(~ Condition * ch_name, data = rdf)
+        print(qr(X)$rank)
+        print(ncol(X))
+        
+        #Extract coefficents as dataframe:
+        coef_summary_modelConch <- as.data.frame(summary(modelConch)$coefficients)
+        coef_summary_modelConch$Parameter <- rownames(coef_summary_modelConch)
+        colnames(coef_summary_modelConch) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+
+        #Extract coefficents for plotting:
+        coef_summary_nullModelConch <- as.data.frame(summary(nullModelConch)$coefficients)
+        coef_summary_nullModelConch$Parameter <- rownames(coef_summary_nullModelConch)
+        colnames(coef_summary_nullModelConch) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+        
+        modelchannel <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
+        nullModelchannel <- lmer(theta ~ Condition + (1 | ID), data=rdf, REML=FALSE)
+        anova_result_channel <- anova(modelchannel, nullModelchannel)
+        anova_channel_df <- as.data.frame(anova_result_channel)
+        #print(anova_result_channel)
+        
+        #Extract coefficents as dataframe:
+        coef_summary_modelchannel <- as.data.frame(summary(modelchannel)$coefficients)
+        coef_summary_modelchannel$Parameter <- rownames(coef_summary_modelchannel)
+        colnames(coef_summary_modelchannel) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
         
         #Extract coefficents for plotting:
-        coef_summary <- as.data.frame(summary(modelCondition)$coefficients)
-        coef_summary$Parameter <- rownames(coef_summary)
-        colnames(coef_summary) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
-    
-        results <- data.frame(
-            Coef = numeric(),
-            Std_Error = numeric(),
-            z = numeric(),
-            P_z = numeric(),
-            CI_lower = numeric(),
-            CI_upper = numeric(),
-            ch_name = character(),
-            Chroma = character(),
-            Condition = character(),
-            Significant = logical(),
-            stringsAsFactors = FALSE
-        )
-
-        for (ch in unique(rdf$ch_name)) {
-            ch_data <- subset(rdf, ch_name == ch)
-            mod <- lmer(theta ~ Condition + (1 | ID), data=ch_data, REML=FALSE)
-            res <- summary(mod)$coefficients
-            
-            # Calculate confidence intervals
-            conf_int <- confint(mod, parm="beta_", method="Wald")
-            
-            # Get the chromophore for this channel (assuming it's consistent within channel)
-            chroma_val <- unique(ch_data$Chroma)[1]
-            
-            # Calculate p_adj for this row (will recalculate for all at the end)
-            p_value <- res["ConditionTongueMI", "Pr(>|t|)"]
-            
-            results <- rbind(results, data.frame(
-                Coef = res["ConditionTongueMI", "Estimate"],
-                Std_Error = res["ConditionTongueMI", "Std. Error"],
-                z = res["ConditionTongueMI", "t value"],
-                P_z = p_value,
-                CI_lower = conf_int["ConditionTongueMI", 1],
-                CI_upper = conf_int["ConditionTongueMI", 2],
-                ch_name = ch,
-                Chroma = chroma_val,
-                Condition = "TongueMI",
-                Significant = FALSE  # Will update after p-adjustment
-            ))
-        }
-
-        # Calculate adjusted p-values
-        results$p_adj <- p.adjust(results$P_z, method="fdr")
-        results$Significant <- results$p_adj < 0.05
-
-        # Reorder columns and rename to match your exact specification
-        results_for_plotting <- results[, c("Coef", "Std_Error", "z", "P_z", "CI_lower", "CI_upper", "ch_name", "Chroma", "Condition", "Significant")]
-
-        colnames(results_for_plotting) <- c("Coef.", "Std_Error", "z", "P>|z|", "[0.025", "0.975]", "ch_name", "Chroma", "Condition", "Significant")
-
-        print(results_for_plotting)
+        coef_summary_nullModelchannel <- as.data.frame(summary(nullModelchannel)$coefficients)
+        coef_summary_nullModelchannel$Parameter <- rownames(coef_summary_nullModelchannel)
+        colnames(coef_summary_nullModelchannel) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+        
+        modelCondition <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
+        nullModelCondition <- lmer(theta ~ ch_name + (1 | ID), data=rdf, REML=FALSE)
+        anova_result_condition <- anova(modelCondition, nullModelCondition)
+        anova_condition_df <- as.data.frame(anova_result_condition)
+        
+        #Extract coefficents as dataframe:
+        coef_summary_modelCondition <- as.data.frame(summary(modelCondition)$coefficients)
+        coef_summary_modelCondition$Parameter <- rownames(coef_summary_modelCondition)
+        colnames(coef_summary_modelCondition) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+        
+        #Extract coefficents for plotting:
+        coef_summary_nullModelCondition<- as.data.frame(summary(modelCondition)$coefficients)
+        coef_summary_nullModelCondition$Parameter <- rownames(coef_summary_nullModelCondition)
+        colnames(coef_summary_nullModelCondition) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+        
         
         ''')
         with localconverter(pandas2ri.converter):
-            modelCondition = globalenv["coef_summary"]
-            results = globalenv["results_for_plotting"]
+            anova_Condch_df = globalenv["anova_Condch_df"]
+            coef_summary_modelConch = globalenv["coef_summary_modelConch"]
+            coef_summary_nullModelConch = globalenv["coef_summary_nullModelConch"]
+            
+            
+            anova_channel_df = globalenv["anova_channel_df"]
+            coef_summary_modelchannel = globalenv["coef_summary_modelchannel"]
+            coef_summary_nullModelchannel = globalenv["coef_summary_nullModelchannel"]
+            
+            anova_condition_df = globalenv["anova_condition_df"]
+            coef_summary_modelCondition = globalenv["coef_summary_modelCondition"]
+            coef_summary_nullModelCondition = globalenv["coef_summary_nullModelCondition"]
+            
+            # results = globalenv["results_for_plotting"]
+        anova_Condch_df.to_csv(os.path.join(save_path, f"anova_Condch_df.csv"))
+        anova_channel_df.to_csv(os.path.join(save_path, f"anova_channel_df.csv"))
+        anova_condition_df.to_csv(os.path.join(save_path, f"anova_condition_df.csv"))
+        print("stopklods")
+
+'''
+        
+    
+        # results <- data.frame(
+        #     Coef = numeric(),
+        #     Std_Error = numeric(),
+        #     z = numeric(),
+        #     P_z = numeric(),
+        #     CI_lower = numeric(),
+        #     CI_upper = numeric(),
+        #     ch_name = character(),
+        #     Chroma = character(),
+        #     Condition = character(),
+        #     Significant = logical(),
+        #     stringsAsFactors = FALSE
+        # )
+        # for (ch in unique(rdf$ch_name)) {
+        #     ch_data <- subset(rdf, ch_name == ch)
+        #     mod <- lmer(theta ~ Condition + (1 | ID), data=ch_data, REML=FALSE)
+        #     res <- summary(mod)$coefficients
+            
+        #     # Calculate confidence intervals
+        #     conf_int <- confint(mod, parm="beta_", method="Wald")
+            
+        #     # Get the chromophore for this channel (assuming it's consistent within channel)
+        #     chroma_val <- unique(ch_data$Chroma)[1]
+            
+        #     # Calculate p_adj for this row (will recalculate for all at the end)
+        #     p_value <- res["ConditionTongueMI", "Pr(>|t|)"]
+            
+        #     results <- rbind(results, data.frame(
+        #         Coef = res["ConditionTongueMI", "Estimate"],
+        #         Std_Error = res["ConditionTongueMI", "Std. Error"],
+        #         z = res["ConditionTongueMI", "t value"],
+        #         P_z = p_value,
+        #         CI_lower = conf_int["ConditionTongueMI", 1],
+        #         CI_upper = conf_int["ConditionTongueMI", 2],
+        #         ch_name = ch,
+        #         Chroma = chroma_val,
+        #         Condition = "TongueMI",
+        #         Significant = FALSE  # Will update after p-adjustment
+        #     ))
+        # }
+
+        # # Calculate adjusted p-values
+        # results$p_adj <- p.adjust(results$P_z, method="fdr")
+        # results$Significant <- results$p_adj < 0.05
+
+        # # Reorder columns and rename to match your exact specification
+        # results_for_plotting <- results[, c("Coef", "Std_Error", "z", "P_z", "CI_lower", "CI_upper", "ch_name", "Chroma", "Condition", "Significant")]
+
+        # colnames(results_for_plotting) <- c("Coef.", "Std_Error", "z", "P>|z|", "[0.025", "0.975]", "ch_name", "Chroma", "Condition", "Significant")
+
+        # print(results_for_plotting)
+
         control_estimate = modelCondition[modelCondition['Parameter'] == '(Intercept)']['Estimate'].values[0]
         tongueMI_estimate = control_estimate + modelCondition[modelCondition['Parameter'] == 'ConditionTongueMI']['Estimate'].values[0]
         plot_df = pd.DataFrame({
@@ -446,3 +507,64 @@ def run_glm_analysis(subjects, class_instance, hrf_model="spm"):
         print("fold channel specificity")
         print(fold_channel_specificity(raw_channel)[0])
         print("stopklods")
+'''
+
+
+import sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(parent_dir)
+from collections import defaultdict
+from load_data_function import data_loaders
+
+dataSetList = list(data_loaders.keys())
+dataLoaders = [dataSetList[15], dataSetList[17]]
+datasets = defaultdict(defaultdict)
+
+for data_loader in dataLoaders:
+    settings = {
+        "data_set": data_loader,  # Default to first dataset
+        "epoch_type": "HandMI",
+        "individual": "All Individuals",
+        "short_channel_correction": True,
+        "negative_correlation_enhancement": False,
+        "haemo_type": "hbo",
+        "baseline_correction": "Previous rest period",
+        "tmin": 0,
+        "stimulus_duration": 5,
+        "scalp_coupling_threshold": 0.8,
+        "reject_criteria": dict(hbo=80e-6),
+        "unwanted": ["15.0"],
+        "filter_lower_value": 0.01,
+        "filter_upper_value": 0.5,
+        "h_trans_bandwidth": 0.2,           
+        "l_trans_bandwidth": 0.01,
+        "snr_rejection": "None",  # Default to None, can be set to "SNR" or "CV"
+        "snr_threshold": 8,  # Default threshold for SNR
+        "Apply_TDDR": True,
+        "interpolate_bad_channels": False,
+    }
+    current_loader = data_loaders[data_loader](
+                    data_name = data_loader,
+                    file_path = data_loader,
+                    short_channel_correction=settings["short_channel_correction"],
+                    negative_correlation_enhancement=settings["negative_correlation_enhancement"],
+                    interpolate_bad_channels=settings["interpolate_bad_channels"],
+                    baseline_correction=settings["baseline_correction"],
+                    tmin=settings["tmin"],
+                    filter_lower_value=settings["filter_lower_value"],
+                    filter_upper_value=settings["filter_upper_value"],
+                    l_trans_bandwidth=settings["l_trans_bandwidth"],
+                    h_trans_bandwidth=settings["h_trans_bandwidth"],
+                    scalp_coupling_threshold=settings["scalp_coupling_threshold"],
+                    reject_criteria=settings["reject_criteria"],
+                    snr_rejection=settings["snr_rejection"],
+                    snr_threshold=settings["snr_threshold"],
+                    apply_tddr=settings["Apply_TDDR"]
+                )
+    data = current_loader.load_data()
+    variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
+    datasets[data_loader] = {key: value for key, value in zip(variables, data)}
+
+all_participants = datasets['EEG fNIRS HC baseline data']["all_individuals"] + datasets['EEG fNIRS patient baseline data']["all_individuals"]
+number_of_subjects = [len(datasets['EEG fNIRS HC baseline data']["all_individuals"]), len((datasets['EEG fNIRS patient baseline data']["all_individuals"]))]
+run_glm_analysis(all_participants, current_loader, "glover", number_of_subjects)

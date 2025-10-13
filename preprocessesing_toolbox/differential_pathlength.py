@@ -18,7 +18,7 @@ def compute_differential_pathlength(raw_od, alpha=223.3, beta=0.05624, delta=-5.
       return TypeError("Subject birthday of invalid data format.")
     # 
     _lambda = tuple([float(raw_od.ch_names[:2][i][-3:]) for i in range(2)])
-    dpf = ()
+    dpf = 0
     for wavelength in _lambda:
-        dpf += (alpha + beta * age**gamma + delta*wavelength**3 + epsilon*wavelength**2 + zeta * wavelength,)
+        dpf += alpha + beta * age**gamma + delta*wavelength**3 + epsilon*wavelength**2 + zeta * wavelength
     return dpf
