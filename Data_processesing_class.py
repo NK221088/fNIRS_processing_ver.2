@@ -63,7 +63,10 @@ class fNIRS_data_load:
         return raw_intensity
 
     def load_data(self):
-        for i, filename in enumerate(sorted(os.listdir(self.file_path)), start=1):
+        all_folders = [f for f in sorted(os.listdir(self.file_path)) 
+                    if os.path.isdir(os.path.join(self.file_path, f))]
+        
+        for i, folder_name in enumerate(all_folders, start=1):
             self.number_of_participants += 1
             sub_id = str(i).zfill(2)  # Pad with zeros to get "01", "02", etc.
             raw_intensity = self.define_raw_intensity(sub_id)
@@ -337,7 +340,7 @@ class fNIRS_full_motor_data_load(fNIRS_data_load):
         self.annotation_names = {"1.0": "Control",
                                  "2.0": "Tapping/Left",
                                  "3.0": "Tapping/Right"}
-        self.file_path = Path(os.getenv('Luke_full_motor'))
+        self.file_path = Path(os.getenv(data_name.replace(" ", "_").replace(".", "").replace(":", "").replace("-", "_")))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 5
@@ -3149,8 +3152,9 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         # Look for .snirf files recursively in the folder
         snirf_files = glob.glob(os.path.join(folder_path, "**", "*.snirf"), recursive=True)
         
-        if snirf_files:
-            return snirf_files[0]  # Return the first .snirf file found
+        if snirf_files:                
+            creation_times = [snirf_file.split("\\")[-1].replace(".snirf", "")[-3:] for snirf_file in snirf_files]
+            return snirf_files[np.argmax(creation_times)]  # Return the last created .snirf file found
         return None
     
     def find_excel_file(self, folder_path):
@@ -3162,7 +3166,8 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         excel_files = glob.glob(os.path.join(folder_path, "**", "*.xlsx"), recursive=True)
 
         if excel_files:
-            return excel_files[0]  # Return the first .snirf file found
+            creation_times = [excel_file.split("\\")[-1].replace(".xlsx", "")[-4:] for excel_file in excel_files]
+            return excel_files[np.argmax(creation_times)]  # Return the last created  .xlsx file found
         return None
 
     def define_raw_intensity(self, folder_name):
@@ -3204,7 +3209,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
             except:
                 print("No markers available for the events")
                 if self.stimulus_duration[str(actual_events[:,2][-1])] == 0:
-                    self.stimulus_duration[str(actual_events[:,2][-1])] = times[-1] - (actual_events[:,0] / sfreq)[-1] + 3 # We add 3 as the compute the time from the last trigger, but the duration of this event has to be accounted for
+                    self.stimulus_duration[str(actual_events[:,2][-1])] = times[-1] - (actual_events[:,0] / sfreq)[-1] + 1 # We add 1 as the compute the time from the last trigger, but the duration of this event has to be accounted for
 
                 
             print("Sucessfully added all events")
@@ -3231,7 +3236,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         events, event_dict = mne.events_from_annotations(raw_intensity)
         sfreq = raw_intensity.info["sfreq"]
         new_tmin = events[0][0] / sfreq - 10
-        new_tmax = events[-1][0] / sfreq + self.stimulus_duration[str(events[-1][2])] + 3
+        new_tmax = events[-1][0] / sfreq + self.stimulus_duration[str(events[-1][2])] + 1
         raw_intensity.crop(tmin=new_tmin, tmax=new_tmax)
         return raw_intensity
 
@@ -3241,6 +3246,8 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                     if os.path.isdir(os.path.join(self.file_path, f))]
         
         for i, folder_name in enumerate(all_folders, start=1):
+            # if ("C7" in folder_name) or ("P9" in folder_name):
+            #     continue
             try:
                 
                 
