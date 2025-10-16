@@ -3342,19 +3342,21 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                     for idx, event in enumerate(events):
                         if str(previous_event[2]) in annotations.keys():
                             if annotations[str(previous_event[2])] == "Control":
-                                print("test")
+                                control_event_start = previous_event[0]
+                                control_event_end = control_event_start + int(stimulus_duration[str(previous_event[2])]*sfreq)
+                                event_start = event[0]
+                                event_end = event_start + int(stimulus_duration[str(event[2])]*sfreq)
+                                control_average = np.mean(channel_values[control_event_start:control_event_end])
+                                channel_values[event_start:event_end] - control_average
+                                previous_event = event
                         else:
                             previous_event = event
                             continue
-                        event_start = event[0]
-                        event_end = event[0] + int(stimulus_duration[str(event[2])]*sfreq)
-                        event_p2p = np.max(channel_values[event_start:event_end]) - np.min(channel_values[event_start:event_end])
+                    return channel_values
+                        # event_start = event[0]
+                        # event_end = event[0] + int(stimulus_duration[str(event[2])]*sfreq)
+                        # event_p2p = np.max(channel_values[event_start:event_end]) - np.min(channel_values[event_start:event_end])
                         # if event_p2p > reject_criteria:
-                            
-
-                        channel_values = channel_values
-                        previous_event = event
-                    return channel_values*1000
                 
                 raw_haemo.apply_function(apply_p2p, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names, reject_criteria=self.reject_criteria["hbo"])
                 raw_haemo.apply_function(apply_p2p, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names, reject_criteria=self.reject_criteria["hbr"])
