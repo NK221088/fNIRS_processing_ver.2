@@ -581,15 +581,58 @@ root = tk.Tk()
 root.title("fNIRS Data Analysis")
 root.geometry("800x600")
 
-left_container = tk.Frame(root, width=300)  # Set desired width
-left_container.pack(side="left", padx=20, pady=20, fill="y")
-left_container.pack_propagate(True)  # Resizing based on content
+# Create top-level notebook for main tabs
+main_notebook = ttk.Notebook(root)
+main_notebook.pack(fill="both", expand=True, padx=5, pady=5)
 
-top_left_frame = tk.Frame(left_container)
+# Create Visualization tab
+visualization_tab = tk.Frame(main_notebook)
+main_notebook.add(visualization_tab, text="Visualization")
+
+# Create GLM Analysis tab
+glm_tab = tk.Frame(main_notebook)
+main_notebook.add(glm_tab, text="GLM Analysis")
+
+# ===== Visualization Tab Layout =====
+# Create left and right containers within visualization tab
+viz_left_container = tk.Frame(visualization_tab, width=300)
+viz_left_container.pack(side="left", padx=20, pady=20, fill="y")
+viz_left_container.pack_propagate(True)
+
+viz_right_frame = tk.Frame(visualization_tab)
+viz_right_frame.pack(side="right", padx=20, pady=20, expand=True, fill="both")
+
+# ===== GLM Analysis Tab Layout (Empty for now) =====
+glm_left_container = tk.Frame(glm_tab, width=300)
+glm_left_container.pack(side="left", padx=20, pady=20, fill="y")
+glm_left_container.pack_propagate(True)
+
+glm_right_frame = tk.Frame(glm_tab)
+glm_right_frame.pack(side="right", padx=20, pady=20, expand=True, fill="both")
+
+# Add placeholder label in GLM tab
+tk.Label(glm_left_container, text="GLM Analysis Controls", font=("Arial", 14, "bold")).pack(pady=20)
+tk.Label(glm_right_frame, text="GLM Results will appear here", font=("Arial", 12)).pack(pady=50)
+
+# Use viz_left_container instead of left_container
+top_left_frame = tk.Frame(viz_left_container)
 top_left_frame.pack(side="top", fill="y", expand=True)
 
-bottom_left_frame = tk.Frame(left_container)
+bottom_left_frame = tk.Frame(viz_left_container)
 bottom_left_frame.pack(side="bottom", fill="x")
+
+# Update right_frame reference to viz_right_frame
+right_frame = viz_right_frame  # This creates an alias so existing code still works
+
+# left_container = tk.Frame(root, width=300)  # Set desired width
+# left_container.pack(side="left", padx=20, pady=20, fill="y")
+# left_container.pack_propagate(True)  # Resizing based on content
+
+# top_left_frame = tk.Frame(left_container)
+# top_left_frame.pack(side="top", fill="y", expand=True)
+
+# bottom_left_frame = tk.Frame(left_container)
+# bottom_left_frame.pack(side="bottom", fill="x")
 
 # Helper function to create labels
 def create_label(parent, text, pack_immediately=True):
@@ -1230,8 +1273,8 @@ run_button.pack(pady=20, padx=10, fill="x")
 
 
 # Right panel for displaying the plot
-right_frame = tk.Frame(root)
-right_frame.pack(side="right", padx=20, pady=20, expand=True, fill="both")
+# right_frame = tk.Frame(root)
+# right_frame.pack(side="right", padx=20, pady=20, expand=True, fill="both")
 
 # Add trace to Individual_var to update individual checkboxes when selection changes
 Individual_var.trace_add("write", lambda *args: populate_individuals())
