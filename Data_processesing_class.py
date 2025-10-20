@@ -3237,20 +3237,31 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         description = actual_events[:, 2].astype(str)
         new_annotations = mne.Annotations(onset=onset, 
                                  duration=duration, 
-                                 description=description)
+                                 description=description,
+                                 orig_time=None
+                                 )
 
         raw_intensity.set_annotations(new_annotations)
         return raw_intensity
     
+    
     def crop_data(self, raw_intensity):
         event_dict_trans = {val: int(key) for key, val in self.annotation_names.items()}
         events, event_dict = mne.events_from_annotations(raw_intensity, event_dict_trans)
-        
         sfreq = raw_intensity.info["sfreq"]
         new_tmin = max(events[0][0] / sfreq - 10, 0) #Always ensure the tmin is non-negative.
         new_tmax = events[-1][0] / sfreq + self.stimulus_duration[str(events[-1][2])] + 3
-        raw_intensity.crop(tmin=new_tmin, tmax=new_tmax)
+        from datetime import timedelta
+        new_onset = raw_intensity.annotations.onset - new_tmin
+        new_annotations = mne.Annotations(onset=new_onset, 
+                                duration=raw_intensity.annotations.duration, 
+                                description=raw_intensity.annotations.description,
+                                )
+        raw_intensity = raw_intensity.set_annotations(new_annotations, verbose=True, emit_warning=False)
+        raw_intensity = raw_intensity.crop(tmin=new_tmin, tmax=new_tmax)
+        
         return raw_intensity
+
 
     def load_data(self):
         # Get all folders and sort them (works for both P folders and random named folders)
@@ -3337,7 +3348,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
                 
                 
-                def apply_p2p(channel_values, times, sfreq, events, stimulus_duration, annotations, reject_criteria):
+                def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_duration, annotations, reject_criteria):
                     previous_event = np.array([None, None, None])
                     for idx, event in enumerate(events):
                         if str(previous_event[2]) in annotations.keys():
@@ -3358,9 +3369,27 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                         # event_p2p = np.max(channel_values[event_start:event_end]) - np.min(channel_values[event_start:event_end])
                         # if event_p2p > reject_criteria:
                 
-                raw_haemo.apply_function(apply_p2p, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names, reject_criteria=self.reject_criteria["hbo"])
-                raw_haemo.apply_function(apply_p2p, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names, reject_criteria=self.reject_criteria["hbr"])
+                raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names, reject_criteria=self.reject_criteria["hbo"])
+                raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names, reject_criteria=self.reject_criteria["hbr"])
                 
+                def apply_p2p_rejection(channel_values, events, stimulus_durations, sfreq, reject_criteria):
+                    new_event_matrix = events.copy()
+                    for idx, event in enumerate(events):
+                        try:
+                            duration = stimulus_durations[str(event[2])]
+                            event_start = event[0]
+                            event_end = event_start + int(duration*sfreq)
+                            event_p2p = np.max(channel_values[event_start:event_end]) - np.min(channel_values[event_start:event_end])
+                            if event_p2p > reject_criteria:
+                                new_event_matrix = np.delete(new_event_matrix, idx)
+                        except Exception as e:
+                            print(f"Error processing event {event} at index {idx}: {e}")
+                            continue
+                    return new_event_matrix
+                
+                test = apply_p2p_rejection(channel_values=raw_haemo.pick("S1_D1 hbo").get_data()[0], events=events, stimulus_durations=self.stimulus_duration, sfreq=raw_haemo.info["sfreq"], reject_criteria=self.reject_criteria["hbo"])
+                if np.shape(events) != np.shape(test):
+                    print("test")
                 
                 epochs = mne.Epochs(
                     raw_haemo,
