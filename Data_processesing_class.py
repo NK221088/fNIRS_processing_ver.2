@@ -2349,7 +2349,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         np.str_('Resting state'): 6,
         np.str_('TongueMI'): 7
         }
-        self.file_path = Path(os.getenv('Melika_tongue_long_data').encode('latin-1').decode('utf-8'))
+        self.file_path = Path(os.getenv('Melika_tongue_long_data')) #.encode('latin-1').decode('utf-8'))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 21
