@@ -1,5 +1,5 @@
 import scipy.stats as stats
-from load_data_function import data_loaders
+from preprocessing_toolbox.load_data_function import data_loaders
 import numpy as np
 import matplotlib.pyplot as plt
 

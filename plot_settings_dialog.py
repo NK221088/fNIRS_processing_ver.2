@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import tkinter.messagebox
-from preprocessesing_toolbox.plot_settings_info import PlotSettingsInfo
+from preprocessing_toolbox.plot_settings_info import PlotSettingsInfo
 
 
 class PlotSettingsDialog:

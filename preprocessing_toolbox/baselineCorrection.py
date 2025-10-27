@@ -1,4 +1,4 @@
-from preprocessesing_toolbox.extractEpochDataFromTime import ExtractRawDataFromAbsoluteTime
+from preprocessing_toolbox.extractEpochDataFromTime import ExtractRawDataFromAbsoluteTime
 import numpy as np
 
 class baselineCorrection:

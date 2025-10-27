@@ -8,11 +8,11 @@ from Participant_class import individual_participant_class
 import glob
 from pathlib import Path
 from dotenv import load_dotenv
-from preprocessesing_toolbox.baselineCorrection import baselineCorrection
-from preprocessesing_toolbox.post_rejection import reject_if_single_event_type
-from preprocessesing_toolbox.SNR_rejection import snr_rejection, get_bad_channels_by_pairs
-from preprocessesing_toolbox.differential_pathlength import compute_differential_pathlength
-from preprocessesing_toolbox.p2p import compute_p2p
+from preprocessing_toolbox.baselineCorrection import baselineCorrection
+from preprocessing_toolbox.post_rejection import reject_if_single_event_type
+from preprocessing_toolbox.SNR_rejection import snr_rejection, get_bad_channels_by_pairs
+from preprocessing_toolbox.differential_pathlength import compute_differential_pathlength
+from preprocessing_toolbox.p2p import compute_p2p
 import pandas as pd
 
 load_dotenv()

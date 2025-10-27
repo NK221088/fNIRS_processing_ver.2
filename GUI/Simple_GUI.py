@@ -1,9 +1,15 @@
+import sys
+import os
+
+# Add the project root (one folder up) to Python's module search path
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
 import tkinter as tk
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from load_data_function import data_loaders
-from epoch_plot import epoch_plot
-from standard_fNIRS_response_plot import standard_fNIRS_response_plot
+from preprocessing_toolbox.load_data_function import data_loaders
+from plotting_functions.epoch_plot import epoch_plot
+from plotting_functions.standard_fNIRS_response_plot import standard_fNIRS_response_plot
 from paradigm_plot import paradigm_plot
 from individual_frequency_plot import individual_frequency_plot
 from statistical_analysis import statistical_analysis
@@ -11,6 +17,9 @@ from dataset_info_panel import show_dataset_info_in_container
 from preprocessing_dialog import show_preprocessing_dialog
 from plot_settings_dialog import show_plot_settings_dialog
 # from data_analysis.glm_analysis_clean import run_glm_analysis
+
+# Import the GLM tab module
+from glm_tab import create_glm_tab
 
 
 
@@ -589,9 +598,8 @@ main_notebook.pack(fill="both", expand=True, padx=5, pady=5)
 visualization_tab = tk.Frame(main_notebook)
 main_notebook.add(visualization_tab, text="Visualization")
 
-# Create GLM Analysis tab
-glm_tab = tk.Frame(main_notebook)
-main_notebook.add(glm_tab, text="GLM Analysis")
+# Create GLM Analysis tab using the separate module
+glm_tab, glm_left_container, glm_right_frame = create_glm_tab(main_notebook)
 
 # ===== Visualization Tab Layout =====
 # Create left and right containers within visualization tab
@@ -602,19 +610,7 @@ viz_left_container.pack_propagate(True)
 viz_right_frame = tk.Frame(visualization_tab)
 viz_right_frame.pack(side="right", padx=20, pady=20, expand=True, fill="both")
 
-# ===== GLM Analysis Tab Layout (Empty for now) =====
-glm_left_container = tk.Frame(glm_tab, width=300)
-glm_left_container.pack(side="left", padx=20, pady=20, fill="y")
-glm_left_container.pack_propagate(True)
-
-glm_right_frame = tk.Frame(glm_tab)
-glm_right_frame.pack(side="right", padx=20, pady=20, expand=True, fill="both")
-
-# Add placeholder label in GLM tab
-tk.Label(glm_left_container, text="GLM Analysis Controls", font=("Arial", 14, "bold")).pack(pady=20)
-tk.Label(glm_right_frame, text="GLM Results will appear here", font=("Arial", 12)).pack(pady=50)
-
-# Use viz_left_container instead of left_container
+# Create top and bottom sections within the left container
 top_left_frame = tk.Frame(viz_left_container)
 top_left_frame.pack(side="top", fill="y", expand=True)
 
@@ -622,17 +618,7 @@ bottom_left_frame = tk.Frame(viz_left_container)
 bottom_left_frame.pack(side="bottom", fill="x")
 
 # Update right_frame reference to viz_right_frame
-right_frame = viz_right_frame  # This creates an alias so existing code still works
-
-# left_container = tk.Frame(root, width=300)  # Set desired width
-# left_container.pack(side="left", padx=20, pady=20, fill="y")
-# left_container.pack_propagate(True)  # Resizing based on content
-
-# top_left_frame = tk.Frame(left_container)
-# top_left_frame.pack(side="top", fill="y", expand=True)
-
-# bottom_left_frame = tk.Frame(left_container)
-# bottom_left_frame.pack(side="bottom", fill="x")
+right_frame = viz_right_frame
 
 # Helper function to create labels
 def create_label(parent, text, pack_immediately=True):
