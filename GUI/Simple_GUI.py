@@ -13,15 +13,45 @@ from plotting_functions.standard_fNIRS_response_plot import standard_fNIRS_respo
 from paradigm_plot import paradigm_plot
 from individual_frequency_plot import individual_frequency_plot
 from statistical_analysis import statistical_analysis
-from dataset_info_panel import show_dataset_info_in_container
 from preprocessing_dialog import show_preprocessing_dialog
 from plot_settings_dialog import show_plot_settings_dialog
+from shared_GUI_functions import *
 # from data_analysis.glm_analysis_clean import run_glm_analysis
 
 # Import the GLM tab module
 from glm_tab import create_glm_tab
 
+# Create GUI window
+root = tk.Tk()
+root.title("fNIRS Data Analysis")
+root.geometry("800x600")
 
+# Create top-level notebook for main tabs
+main_notebook = ttk.Notebook(root)
+main_notebook.pack(fill="both", expand=True, padx=5, pady=5)
+
+# Create Visualization tab
+visualization_tab = tk.Frame(main_notebook)
+main_notebook.add(visualization_tab, text="Visualization")
+
+# ===== Visualization Tab Layout =====
+# Create left and right containers within visualization tab
+viz_left_container = tk.Frame(visualization_tab, width=300)
+viz_left_container.pack(side="left", padx=20, pady=20, fill="y")
+viz_left_container.pack_propagate(True)
+
+viz_right_frame = tk.Frame(visualization_tab)
+viz_right_frame.pack(side="right", padx=20, pady=20, expand=True, fill="both")
+
+# Create top and bottom sections within the left container
+top_left_frame = tk.Frame(viz_left_container)
+top_left_frame.pack(side="top", fill="y", expand=True)
+
+bottom_left_frame = tk.Frame(viz_left_container)
+bottom_left_frame.pack(side="bottom", fill="x")
+
+# Update right_frame reference to viz_right_frame
+right_frame = viz_right_frame
 
 dataSetList = list(data_loaders.keys())
 plotTypesList = ["Epoch Plot",
@@ -239,30 +269,6 @@ def toggle_individual_menu(*args):
         
     # Force the UI to update
     root.update_idletasks()
-        
-def show_dataset_info_view():
-    """Render Dataset Info inside the main plot area (right_frame)."""
-    try:
-        if 'all_epochs' in globals() and all_epochs:
-            # Clear the right-side plot area before showing info
-            for widget in right_frame.winfo_children():
-                widget.destroy()
-
-            # Mount the info panel inside right_frame
-            show_dataset_info_in_container(
-                class_instance=current_loader,
-                parent_container=right_frame,
-                all_epochs=all_epochs,
-                data_name=data_name,
-                all_data=all_data,
-                freq=freq,
-                data_types=data_types,
-                all_individuals=all_individuals
-            )
-        else:
-            tk.messagebox.showwarning("No Data", "Please load a dataset first by selecting one from the dropdown.")
-    except Exception as e:
-        tk.messagebox.showerror("Error", f"Failed to show dataset info: {str(e)}")
 
 # Updated run_analysis function
 def run_analysis():
@@ -585,41 +591,6 @@ def update_ui_elements(*args):
     populate_channels()
     populate_individuals()
 
-# Create GUI window
-root = tk.Tk()
-root.title("fNIRS Data Analysis")
-root.geometry("800x600")
-
-# Create top-level notebook for main tabs
-main_notebook = ttk.Notebook(root)
-main_notebook.pack(fill="both", expand=True, padx=5, pady=5)
-
-# Create Visualization tab
-visualization_tab = tk.Frame(main_notebook)
-main_notebook.add(visualization_tab, text="Visualization")
-
-# Create GLM Analysis tab using the separate module
-glm_tab, glm_left_container, glm_right_frame = create_glm_tab(main_notebook)
-
-# ===== Visualization Tab Layout =====
-# Create left and right containers within visualization tab
-viz_left_container = tk.Frame(visualization_tab, width=300)
-viz_left_container.pack(side="left", padx=20, pady=20, fill="y")
-viz_left_container.pack_propagate(True)
-
-viz_right_frame = tk.Frame(visualization_tab)
-viz_right_frame.pack(side="right", padx=20, pady=20, expand=True, fill="both")
-
-# Create top and bottom sections within the left container
-top_left_frame = tk.Frame(viz_left_container)
-top_left_frame.pack(side="top", fill="y", expand=True)
-
-bottom_left_frame = tk.Frame(viz_left_container)
-bottom_left_frame.pack(side="bottom", fill="x")
-
-# Update right_frame reference to viz_right_frame
-right_frame = viz_right_frame
-
 # Helper function to create labels
 def create_label(parent, text, pack_immediately=True):
     label = tk.Label(parent, text=text, font=("Arial", 12))
@@ -635,9 +606,7 @@ def create_combobox_with_label(parent, label_text, values=None, default_value=""
     combo.pack(pady=5)
     return label, var, combo
 
-# Helper function to adjust combobox width
-def adjust_combobox_width(combobox):
-    combobox["width"] = max(len(item) for item in combobox["values"])
+
 
 # Dataset selection with info button
 dataset_frame = tk.Frame(top_left_frame)
@@ -656,11 +625,28 @@ dataset_menu["postcommand"] = lambda: adjust_combobox_width(dataset_menu)
 
 # Dataset info button
 info_button = tk.Button(
-    dataset_selection_frame, text="Info",
-    command=show_dataset_info_view,   # <-- changed
-    bg="lightblue", fg="black", font=("Arial", 10), padx=10, pady=2
+    dataset_selection_frame, 
+    text="Info",
+    command=lambda: show_dataset_info_view(
+        right_frame=right_frame,
+        current_loader=current_loader,
+        all_epochs=all_epochs,
+        data_name=data_name,
+        all_data=all_data,
+        freq=freq,
+        data_types=data_types,
+        all_individuals=all_individuals
+    ),
+    bg="lightblue", 
+    fg="black", 
+    font=("Arial", 10), 
+    padx=10, 
+    pady=2
 )
 info_button.pack(side="left")
+
+# Create GLM Analysis tab using the separate module
+glm_tab, glm_left, glm_right = create_glm_tab(main_notebook, dataset_var, dataSetList)
 
 # Helper function to toggle widget visibility
 def toggle_widgets(show, *widgets):
