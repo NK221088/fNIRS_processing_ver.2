@@ -56,10 +56,9 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
             epochs[i].info['bads'] = []
         
     elif bad_channels_strategy == "all":
-        bad_channels = list(set(channel for epoch in epochs for ep in epoch for channel in ep.info['bads']))
+        bad_channels = list(set(channel for epoch in epochs for channel in epoch.info['bads']))
         for epoch in epochs:
-            for ep in epoch:
-                ep.info['bads'] = bad_channels
+            epoch.info['bads'] = bad_channels
 
     elif bad_channels_strategy == "threshold":
         if threshold is None:
@@ -76,7 +75,7 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
     for data_type in data_types:
         for hemoglobin in ("HbO", "HbR"):
             # Compute evoked responses per subject
-            evoked_list = [next(ep for ep in sub_ep if data_type in ep.event_id).average(picks=hemoglobin.lower()) for sub_ep in epochs]
+            evoked_list = [epoch[data_type].average(picks=hemoglobin.lower()) for epoch in epochs if data_type in epoch.event_id]
 
 
             # Rename channels inside each evoked object

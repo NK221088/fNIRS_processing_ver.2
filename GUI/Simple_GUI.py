@@ -436,7 +436,7 @@ def run_analysis():
             for name in selected_individuals:
                 individual = next((ind for ind in all_individuals if getattr(ind, "name", "") == name), None)
                 if individual is not None:
-                    selected_all_epochs.extend(individual.epochs)
+                    selected_all_epochs.append(individual.epochs)
 
             if selected_all_epochs:
                 figures = [epoch_plot(
@@ -460,8 +460,7 @@ def run_analysis():
             for individual in all_individuals:
                 if hasattr(individual, 'epochs'):
                     number_of_data_types = len(data_types)
-                    attributes = list(vars(individual))
-                    number_of_data_types_contained = sum(1 if "epoch" in val else 0 for val in attributes) - 2 # Subtract 2 as all individuals have 2 attributes containing name epoch
+                    number_of_data_types_contained = len(set(individual.epochs.annotations.description))
                     has_all_data_types = number_of_data_types_contained == number_of_data_types
                     if has_all_data_types:
                         valid_individuals.append(individual)
@@ -1100,10 +1099,9 @@ def populate_individuals():
         valid_individuals = []
         for individual in all_individuals:
             if hasattr(individual, 'epochs'):
-                number_of_data_types = len(data_types)
-                attributes = list(vars(individual))
-                number_of_data_types_contained = sum(1 if "epoch" in val else 0 for val in attributes) - 2 # Subtract 2 as all individuals have 2 attributes containing name epoch
-                has_all_data_types = number_of_data_types_contained == number_of_data_types
+                selected_epoch_types = [epoch_type for epoch_type, var in epoch_type_vars.items() if var.get()]
+                number_of_data_types_contained = len(individual.epochs[selected_epoch_types].event_id)
+                has_all_data_types = number_of_data_types_contained == len(selected_epoch_types)
                 if has_all_data_types:
                     valid_individuals.append(individual)
 

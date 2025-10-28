@@ -3121,9 +3121,10 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         self.apply_tddr = apply_tddr
         self.subjects_to_exclude = {"EEG fNIRS HC baseline data": ["C5", "C7"], #
                                     "EEG fNIRS HC follow up data": [],
-                                    "EEG fNIRS patient baseline data": ["P6",  "P10", "P9","P11"], #
+                                    "EEG fNIRS patient baseline data": ["P6",  "P10", "P9","P11", "P20"], #
                                     "EEG fNIRS patient follow up data": []
                                     }
+        self.age_file = Path(os.getenv("demographic_data_path".replace(" ", "_").replace("-", "_")))
         super().__init__(
             file_path=self.file_path,
             annotation_names=self.annotation_names,
@@ -3272,6 +3273,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         return raw_intensity
     
     def load_ages(self, age_file):
+        all_ages = {}
         df = pd.read_excel(age_file, sheet_name=None)
         sheets = list(df.keys())
         for sheet in sheets:
@@ -3280,21 +3282,21 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 ID_column = next(ID_generator, None)
                 age_generator = (item for item in df[sheet].columns if "age" in item.lower())
                 age_column = next(age_generator, None)
-                ages = {ID: age for ID, age in zip(df[sheet][ID_column], df[sheet][age_column])}
-                return ages
+                for id, age in zip(df[sheet][ID_column], df[sheet][age_column]):
+                    all_ages[id] = age
             except:
                 ValueError("Data is not available")
-        return ages
+        return all_ages
 
     import matplotlib.pyplot as plt
     def load_data(self):
         # Get all folders and sort them (works for both P folders and random named folders)
-        ages = self.load_ages(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Arbejde_Rigshospitalet\HC_ICU_TongueMI\Data\Demographic_Clinical.xlsx")
+        ages = self.load_ages(self.age_file)
         all_folders = [f for f in sorted(os.listdir(self.file_path)) 
                     if os.path.isdir(os.path.join(self.file_path, f))]
         
         for i, folder_name in enumerate(all_folders, start=1):
-            if folder_name[:3].replace("-", "").replace(" ", "") in ["P11"]:
+            if folder_name[:3].replace("-", "").replace(" ", "") in ["P27"]:
                 print("HEJ")
             if folder_name[:3].replace("-", "").replace(" ", "") in self.subjects_to_exclude[self.data_name]:
                 continue
@@ -3444,8 +3446,62 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                     detrend=None,
                     verbose=True,
                 )
+                        
+                self.drop_log.append(epochs.drop_log)
+                if len(epochs) != 0:
+                    # Apply custom baseline correction if needed
+                    if self.baseline_correction != "xSecondsBefore":
+                        corrector = baselineCorrection(self.baseline_correction)
+                        epochs = corrector.apply_correction(
+                            self.baseline_correction,
+                            epochs,
+                            data_types=self.data_types,
+                        )
+
+                    self.all_raw_epochs.append(raw_epochs)
+                    self.all_epochs.append(epochs)
+                    self.all_control.append(epochs["Control"].get_data(copy=True))
+                    
+                    Participant_i = individual_participant_class(f"Participant_{i}")
+                    Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
+                    Participant_i.raw_intensity = raw_intensity
+                    Participant_i.raw_od = raw_od
+                    Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
+                    Participant_i.raw_haemo = raw_haemo
+                    Participant_i.raw_epochs = raw_epochs
+                    Participant_i.epochs = epochs
+                    
+                    for name in self.data_types:
+                        getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
+                        Participant_i.events.update({name: epochs[name].get_data(copy=True)})
+                    
+                    getattr(self, 'Individual_participants').append(Participant_i)
+            except FileNotFoundError as e:
+                print(f"Error loading {folder_name}: {e}")
+            except Exception as e:
+                print(f"Unexpected error with {folder_name}: {e}")
                 
-                
+
+        # Concatenate the control data
+        self.all_control = np.concatenate(self.all_control, axis=0)
+
+        # Concatenate the data for each data type
+        for name in self.data_types:
+            setattr(self, f'all_{name}', np.concatenate(getattr(self, f'all_{name}'), axis=0))
+
+        # Create the dictionary all_data with Control and data for each data type
+        all_data = {"Control": self.all_control}
+        for name in self.data_types:
+            all_data.update({name: getattr(self, f'all_{name}')})
+
+        # Update all_data with control_dict
+        all_freq = self.all_epochs[0].info['sfreq']
+        self.data_types.append("Control")
+        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
+    
+    
+    
+    """
                 self.drop_log.append(epochs.drop_log)
                 if len(epochs) != 0:
                     # Apply custom baseline correction if needed
@@ -3484,10 +3540,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
 
                     
                     getattr(self, 'Individual_participants').append(Participant_i)
-            except FileNotFoundError as e:
-                print(f"Error loading {folder_name}: {e}")
-            except Exception as e:
-                print(f"Unexpected error with {folder_name}: {e}")
+
 
         # Concatenate the control data
         self.all_control = np.concatenate(self.all_Control, axis=0)
@@ -3504,6 +3557,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         self.data_types.append("Control")
         return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
     
+    """
 ###############################################################################################################################################################################################
 
 fNIRS_EEG_HC_follow_up_data_load = fNIRS_EEG_HC_baseline_data_load
