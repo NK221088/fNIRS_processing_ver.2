@@ -514,7 +514,7 @@ import sys
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
 from collections import defaultdict
-from load_data_function import data_loaders
+from preprocessing_toolbox.load_data_function import data_loaders
 
 dataSetList = list(data_loaders.keys())
 dataLoaders = [dataSetList[15], dataSetList[17]]

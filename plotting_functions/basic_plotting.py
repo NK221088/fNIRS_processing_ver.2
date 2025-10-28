@@ -1,7 +1,7 @@
 from datetime import datetime
-from load_data_function import load_data
-from epoch_plot import epoch_plot
-from standard_fNIRS_response_plot import standard_fNIRS_response_plot
+from preprocessing_toolbox.load_data_function import load_data
+from plotting_functions.epoch_plot import epoch_plot
+from plotting_functions.standard_fNIRS_response_plot import standard_fNIRS_response_plot
 from paradigm_plot import paradigm_plot
 from individual_frequency_plot import individual_frequency_plot
 import mne

@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
-from preprocessesing_toolbox.baselineCorrection import baselineCorrection
-from preprocessesing_toolbox.preprocessing_info import PreprocessingInfo
+from preprocessing_toolbox.baselineCorrection import baselineCorrection
+from preprocessing_toolbox.preprocessing_info import PreprocessingInfo
 
 class PreprocessingDialog:
     def __init__(self, parent, current_settings):
