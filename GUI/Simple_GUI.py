@@ -895,8 +895,20 @@ def populate_epoch_types():
                 is_checked = True  # Default: all epoch types checked
                 
             epoch_type_vars[epoch_type] = tk.BooleanVar(value=is_checked)
-            cb = tk.Checkbutton(epoch_type_selection_frame, text=epoch_type, variable=epoch_type_vars[epoch_type])
+            cb = tk.Checkbutton(
+                epoch_type_selection_frame, 
+                text=epoch_type, 
+                variable=epoch_type_vars[epoch_type],
+                command=on_epoch_type_changed  # Add this callback
+            )
             cb.grid(row=i // 3, column=i % 3, sticky="w")
+
+
+def on_epoch_type_changed():
+    """Called when epoch type selection changes."""
+    # Only update individuals if we're in Standard fNIRS Response Plot mode
+    if plot_type_var.get() == "Standard fNIRS Response Plot":
+        populate_individuals()
     
 def populate_channels():
     # Clear existing checkboxes
@@ -931,12 +943,10 @@ def populate_channels():
         if selected_individual and hasattr(selected_individual, 'epochs'):
             try:
                 # Get bad channels for this individual
-                # selected_individual_epochs = selected_individual.epochs if isinstance(selected_individual.epochs, list) else [selected_individual.epochs]
-                bad_channels = [epoch.info.get("bads", []) for epoch in selected_individual.epochs]
-                bad_channels = list(set([ch for sublist in bad_channels for ch in sublist]))
+                bad_channels = selected_individual.epochs.info.get("bads", [])
 
                 # Get all channels and extract unique base channel names
-                all_channels = selected_individual.epochs[0].ch_names
+                all_channels = selected_individual.epochs.ch_names
                 unique_base_channels = set()
                 
                 for channel in all_channels:
@@ -1097,20 +1107,30 @@ def populate_individuals():
     # Filter individuals based on plot type
     if current_plot_type == "Standard fNIRS Response Plot":
         valid_individuals = []
+        selected_epoch_types = [epoch_type for epoch_type, var in epoch_type_vars.items() if var.get()]
+        
         for individual in all_individuals:
-            if hasattr(individual, 'epochs'):
-                selected_epoch_types = [epoch_type for epoch_type, var in epoch_type_vars.items() if var.get()]
-                number_of_data_types_contained = len(individual.epochs[selected_epoch_types].event_id)
-                has_all_data_types = number_of_data_types_contained == len(selected_epoch_types)
-                if has_all_data_types:
-                    valid_individuals.append(individual)
-
-            
+            if hasattr(individual, 'epochs') and selected_epoch_types:
+                try:
+                    # Check if individual has all selected epoch types
+                    individual_epochs = individual.epochs[selected_epoch_types]
+                    number_of_data_types_contained = len(individual_epochs.event_id)
+                    has_all_data_types = number_of_data_types_contained == len(selected_epoch_types)
+                    
+                    if has_all_data_types:
+                        valid_individuals.append(individual)
+                except (KeyError, ValueError):
+                    # Individual doesn't have these epoch types
+                    continue
+        
         # Use filtered list for Standard fNIRS Response Plot
         individuals_to_display = valid_individuals
     else:
         # For all other plot types, use all individuals
         individuals_to_display = all_individuals
+    
+    # Clear the dictionary before repopulating
+    individual_selection_vars.clear()
     
     # Add checkboxes for each valid individual
     if individuals_to_display:
