@@ -14,7 +14,7 @@ def compute_differential_pathlength(raw_od, alpha=223.3, beta=0.05624, delta=-5.
     if type(birthday) == tuple:
       age = (datetime.date(measuring_date) - datetime.date(datetime(*birthday))).days / 365.2425
     elif isinstance(birthday, date):
-      age = (datetime.date(measuring_date) - birthday).days / 365.2425
+      age = (datetime.date(measuring_date) - datetime.date(birthday)).days / 365.2425
     else:
       return 6
     # 

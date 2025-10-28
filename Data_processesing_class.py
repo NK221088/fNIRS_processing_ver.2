@@ -3119,9 +3119,9 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
-        self.subjects_to_exclude = {"EEG fNIRS HC baseline data": ["C5", "C7"],
+        self.subjects_to_exclude = {"EEG fNIRS HC baseline data": ["C5", "C7"], #
                                     "EEG fNIRS HC follow up data": [],
-                                    "EEG fNIRS patient baseline data": ["P6", "P9", "P10", "P11"],
+                                    "EEG fNIRS patient baseline data": ["P6",  "P10", "P9","P11"], #
                                     "EEG fNIRS patient follow up data": []
                                     }
         super().__init__(
@@ -3159,7 +3159,9 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         
         if snirf_files:                
             creation_times = [snirf_file.split("\\")[-1].replace(".snirf", "")[-3:] for snirf_file in snirf_files]
-            return snirf_files[np.argmax(creation_times)]  # Return the last created .snirf file found
+            snirf_file = snirf_files[np.argmax(creation_times)]  #  Find the last created .snirf file found
+            snirf_file_folder = snirf_file[:-(len(snirf_file.split("\\")[-1])+1)]
+            return snirf_file_folder
         return None
     
     def find_excel_file(self, folder_path):
@@ -3171,7 +3173,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         excel_files = glob.glob(os.path.join(folder_path, "**", "*.xlsx"), recursive=True)
 
         if excel_files:
-            creation_times = [excel_file.split("\\")[-1].replace(".xlsx", "")[-4:] for excel_file in excel_files]
+            creation_times = [excel_file.split("\\")[0].replace(".xlsx", "")[-4:] for excel_file in excel_files]
             return excel_files[np.argmax(creation_times)]  # Return the last created  .xlsx file found
         return None
 
@@ -3188,8 +3190,9 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         if not snirf_file_path:
             raise FileNotFoundError(f"No .snirf file found in {folder_path}")
         
-        raw_intensity = mne.io.read_raw_snirf(snirf_file_path, verbose=True)
-        raw_intensity.load_data()
+        raw_intensity = mne.io.read_raw_nirx(snirf_file_path, verbose=True, preload=True)
+        
+        # raw_intensity.load_data()
         return raw_intensity
     
     def get_actual_event(self, df, sheets, events, sfreq):
@@ -3199,6 +3202,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
             generator = (item for item in df[sheet].columns if "started_mean" in item)
             time_column = next(generator, None)
             df[sheet] = df[sheet].sort_values(by=time_column).reset_index(drop=True)
+            assert df[sheet]["order"].dropna().is_monotonic_increasing
             times = list(df[sheet][time_column])
             times = [time for time in times if str(time) != 'nan']
             time_corrected_events = events[:,0] / sfreq
@@ -3253,27 +3257,56 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         new_tmax = events[-1][0] / sfreq + self.stimulus_duration[str(events[-1][2])] + 3
         from datetime import timedelta
         new_onset = raw_intensity.annotations.onset - new_tmin
+        time_format = "%Y-%m-%d %H:%M:%S.%f"
+        meas_date = raw_intensity.info["meas_date"]
+        new_orig_time = (meas_date + timedelta(seconds=new_tmin)).strftime(time_format)
+        raw_intensity = raw_intensity.crop(tmin=new_tmin, tmax=new_tmax)
+        raw_intensity.set_meas_date(new_orig_time)
         new_annotations = mne.Annotations(onset=new_onset, 
                                 duration=raw_intensity.annotations.duration, 
                                 description=raw_intensity.annotations.description,
+                                orig_time=new_orig_time
                                 )
         raw_intensity = raw_intensity.set_annotations(new_annotations, verbose=True, emit_warning=False)
-        raw_intensity = raw_intensity.crop(tmin=new_tmin, tmax=new_tmax)
         
         return raw_intensity
+    
+    def load_ages(self, age_file):
+        df = pd.read_excel(age_file, sheet_name=None)
+        sheets = list(df.keys())
+        for sheet in sheets:
+            try:
+                ID_generator = (item for item in df[sheet].columns if "id" in item.lower())
+                ID_column = next(ID_generator, None)
+                age_generator = (item for item in df[sheet].columns if "age" in item.lower())
+                age_column = next(age_generator, None)
+                ages = {ID: age for ID, age in zip(df[sheet][ID_column], df[sheet][age_column])}
+                return ages
+            except:
+                ValueError("Data is not available")
+        return ages
 
-
+    import matplotlib.pyplot as plt
     def load_data(self):
         # Get all folders and sort them (works for both P folders and random named folders)
+        ages = self.load_ages(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Arbejde_Rigshospitalet\HC_ICU_TongueMI\Data\Demographic_Clinical.xlsx")
         all_folders = [f for f in sorted(os.listdir(self.file_path)) 
                     if os.path.isdir(os.path.join(self.file_path, f))]
         
         for i, folder_name in enumerate(all_folders, start=1):
+            if folder_name[:3].replace("-", "").replace(" ", "") in ["P11"]:
+                print("HEJ")
             if folder_name[:3].replace("-", "").replace(" ", "") in self.subjects_to_exclude[self.data_name]:
                 continue
             try:
                 excel_path = self.find_excel_file(os.path.join(self.file_path, folder_name))
                 raw_intensity = self.define_raw_intensity(folder_name)
+                from dateutil.relativedelta import relativedelta
+                try:
+                    approx_birth = raw_intensity.info["meas_date"].replace(tzinfo=None) - relativedelta(years=ages[folder_name[:2]])
+                    raw_intensity.info["subject_info"]["birthday"] = approx_birth
+                except:
+                    print("No age data available for participant")
                 self.number_of_participants += 1
                 raw_intensity = self.make_annotations(excel_path, raw_intensity)
                 self.tmax = max(self.stimulus_duration.values())
@@ -3283,8 +3316,10 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                         before_after_unwanted = np.append(unwanted - 1, unwanted + 1)
                         before_after_unwanted_control = before_after_unwanted[np.isin(before_after_unwanted, np.nonzero(raw_intensity.annotations.description == "Control")[0])]
                         raw_intensity.annotations.delete(np.append(unwanted, before_after_unwanted_control))
-                raw_intensity = self.crop_data(raw_intensity)
+                # raw_intensity = self.crop_data(raw_intensity)
                 
+                fig = raw_intensity.plot_sensors()
+                plt.savefig(f"sensors_{folder_name}.jpg")
                 if self.snr_rejection != "None":
                     snr = snr_rejection(raw_intensity, self.snr_rejection)
                     
@@ -3328,7 +3363,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 if self.interpolate_bad_channels:
                     raw_od.interpolate_bads()
                 
-                dpf = compute_differential_pathlength(raw_od)
+                dpf = 6 #compute_differential_pathlength(raw_od)
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
                 raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=6).copy()
@@ -3343,7 +3378,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 # Set baseline parameter based on correction method
                 baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
                 
-                raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
+                raw_epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
                 
                 self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
                 
@@ -3351,45 +3386,49 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_duration, annotations, reject_criteria):
                     previous_event = np.array([None, None, None])
                     for idx, event in enumerate(events):
-                        if str(previous_event[2]) in annotations.keys():
-                            if annotations[str(previous_event[2])] == "Control":
-                                control_event_start = previous_event[0]
-                                control_event_end = control_event_start + int(stimulus_duration[str(previous_event[2])]*sfreq)
-                                event_start = event[0]
-                                event_end = event_start + int(stimulus_duration[str(event[2])]*sfreq)
-                                control_average = np.mean(channel_values[control_event_start:control_event_end])
-                                channel_values[event_start:event_end] - control_average
-                                previous_event = event
-                        else:
-                            previous_event = event
-                            continue
-                    return channel_values
-                        # event_start = event[0]
-                        # event_end = event[0] + int(stimulus_duration[str(event[2])]*sfreq)
-                        # event_p2p = np.max(channel_values[event_start:event_end]) - np.min(channel_values[event_start:event_end])
-                        # if event_p2p > reject_criteria:
-                
-                raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names, reject_criteria=self.reject_criteria["hbo"])
-                raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names, reject_criteria=self.reject_criteria["hbr"])
-                
-                def apply_p2p_rejection(channel_values, events, stimulus_durations, sfreq, reject_criteria):
-                    new_event_matrix = events.copy()
-                    for idx, event in enumerate(events):
                         try:
-                            duration = stimulus_durations[str(event[2])]
-                            event_start = event[0]
-                            event_end = event_start + int(duration*sfreq)
-                            event_p2p = np.max(channel_values[event_start:event_end]) - np.min(channel_values[event_start:event_end])
-                            if event_p2p > reject_criteria:
-                                new_event_matrix = np.delete(new_event_matrix, idx)
-                        except Exception as e:
-                            print(f"Error processing event {event} at index {idx}: {e}")
+                            if str(previous_event[2]) in annotations.keys():
+                                if annotations[str(previous_event[2])] == "Control":
+                                    control_event_start = previous_event[0]
+                                    control_event_end = control_event_start + int(stimulus_duration[str(previous_event[2])]*sfreq)
+                                    event_start = event[0]
+                                    event_end = event_start + int(stimulus_duration[str(event[2])]*sfreq)
+                                    control_average = np.mean(channel_values[control_event_start:control_event_end])
+                                    segment = channel_values[event_start:event_end]
+                                    if segment.size == 0:
+                                        print("FUCK")
+                                    segment -= control_average
+                                    previous_event = event
+                                else:
+                                    previous_event = event
+                            else:
+                                previous_event = event
+                                continue
+                        
                             continue
-                    return new_event_matrix
+                        except RuntimeWarning as e:
+                            print(f"Error processing event {event} at index {idx}: {e}")
+                    return channel_values
                 
-                test = apply_p2p_rejection(channel_values=raw_haemo.pick("S1_D1 hbo").get_data()[0], events=events, stimulus_durations=self.stimulus_duration, sfreq=raw_haemo.info["sfreq"], reject_criteria=self.reject_criteria["hbo"])
-                if np.shape(events) != np.shape(test):
-                    print("test")
+                # raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names, reject_criteria=self.reject_criteria["hbo"])
+                # raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names, reject_criteria=self.reject_criteria["hbr"])
+                
+                # def apply_p2p_rejection(channel_values, events, stimulus_durations, sfreq, reject_criteria):
+                #     new_event_matrix = events.copy()
+                #     for idx, event in enumerate(events):
+                #         try:
+                #             duration = stimulus_durations[str(event[2])]
+                #             event_start = event[0]
+                #             event_end = event_start + int(duration*sfreq)
+                #             event_p2p = np.max(channel_values[event_start:event_end]) - np.min(channel_values[event_start:event_end])
+                #             if event_p2p > reject_criteria:
+                #                 new_event_matrix = np.delete(new_event_matrix, idx)
+                #         except Exception as e:
+                #             print(f"Error processing event {event} at index {idx}: {e}")
+                #             continue
+                #     return new_event_matrix
+                
+                # test = apply_p2p_rejection(channel_values=raw_haemo.pick("S1_D1 hbo").get_data()[0], events=events, stimulus_durations=self.stimulus_duration, sfreq=raw_haemo.info["sfreq"], reject_criteria=self.reject_criteria["hbo"])
                 
                 epochs = mne.Epochs(
                     raw_haemo,
