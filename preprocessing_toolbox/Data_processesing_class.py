@@ -3243,35 +3243,20 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         new_annotations = mne.Annotations(onset=onset, 
                                  duration=duration, 
                                  description=description,
-                                 orig_time=None
+                                 orig_time=raw_intensity.annotations.orig_time
                                  )
 
         raw_intensity.set_annotations(new_annotations)
         return raw_intensity
-    
     
     def crop_data(self, raw_intensity):
         event_dict_trans = {val: int(key) for key, val in self.annotation_names.items()}
         events, event_dict = mne.events_from_annotations(raw_intensity, event_dict_trans)
         sfreq = raw_intensity.info["sfreq"]
         new_tmin = max(events[0][0] / sfreq - 10, 0) #Always ensure the tmin is non-negative.
-        new_tmax = None # events[-1][0] / sfreq + self.stimulus_duration[str(events[-1][2])] + 3
-        from datetime import timedelta
-        new_onset = raw_intensity.annotations.onset - new_tmin
-        time_format = "%Y-%m-%d %H:%M:%S.%f"
-        meas_date = raw_intensity.info["meas_date"]
-        new_orig_time = meas_date + timedelta(seconds=new_tmin)
-        raw_test = raw_intensity.copy()
-        raw_intensity.set_annotations(mne.Annotations([], [], []))
-        
+        new_tmax = None #events[-1][0] / sfreq + self.stimulus_duration[str(events[-1][2])] + 3
         raw_intensity = raw_intensity.crop(tmin=new_tmin, tmax=new_tmax)
-        # 
-        new_annotations = mne.Annotations(onset=new_onset, 
-                                duration=raw_test.annotations.duration, 
-                                description=raw_test.annotations.description,
-                                orig_time=new_orig_time
-                                )
-        raw_intensity = raw_intensity.set_annotations(new_annotations, verbose=True, emit_warning=False)
+        assert len(events) == len(raw_intensity.annotations)
         return raw_intensity
     
     def load_ages(self, age_file):
@@ -3298,7 +3283,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                     if os.path.isdir(os.path.join(self.file_path, f))]
         
         for i, folder_name in enumerate(all_folders, start=1):
-            if folder_name[:3].replace("-", "").replace(" ", "") in ["P27"]:
+            if folder_name[:3].replace("-", "").replace(" ", "") in ["P2"]:
                 print("HEJ")
             if folder_name[:3].replace("-", "").replace(" ", "") in self.subjects_to_exclude[self.data_name]:
                 continue
@@ -3315,11 +3300,13 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 raw_intensity = self.make_annotations(excel_path, raw_intensity)
                 self.tmax = max(self.stimulus_duration.values())
                 raw_intensity.annotations.rename(self.annotation_names)
+                to_delete = np.array([])
                 for _unwanted in self.unwanted:
-                        unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)[0]
-                        before_after_unwanted = np.append(unwanted - 1, unwanted + 1)
-                        before_after_unwanted_control = before_after_unwanted[np.isin(before_after_unwanted, np.nonzero(raw_intensity.annotations.description == "Control")[0])]
-                        raw_intensity.annotations.delete(np.append(unwanted, before_after_unwanted_control))
+                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)[0]
+                    before_after_unwanted = np.append(unwanted - 1, unwanted + 1)
+                    before_after_unwanted_control = before_after_unwanted[np.isin(before_after_unwanted, np.nonzero(raw_intensity.annotations.description == "Control")[0])]
+                    to_delete = np.append(to_delete, (np.append(unwanted, before_after_unwanted_control)))
+                raw_intensity.annotations.delete((np.array(list(set(to_delete)), dtype=int),))            
                 raw_intensity = self.crop_data(raw_intensity)
                 
                 # fig = raw_intensity.plot_sensors()
@@ -3387,7 +3374,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
                 
                 
-                def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_duration, annotations, reject_criteria):
+                def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_duration, annotations):
                     previous_event = np.array([None, None, None])
                     for idx, event in enumerate(events):
                         try:
@@ -3410,7 +3397,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                                 continue
                         
                             continue
-                        except RuntimeWarning as e:
+                        except Exception as e:
                             print(f"Error processing event {event} at index {idx}: {e}")
                     return channel_values
                 
@@ -3447,10 +3434,14 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                     verbose=True,
                 )
 
-                raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names, reject_criteria=self.reject_criteria["hbo"])
-                raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names, reject_criteria=self.reject_criteria["hbr"])
+                first_samp_correct_events = events.copy()
+                first_samp_correct_events[:,0] = events[:,0] - raw_haemo._first_samps
+                raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
+                raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
                         
                 self.drop_log.append(epochs.drop_log)
+                if len(epochs) == 0:
+                    print("FUCK")
                 if len(epochs) != 0:
                     # Apply custom baseline correction if needed
                     if self.baseline_correction != "xSecondsBefore":
@@ -3465,7 +3456,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                     self.all_epochs.append(epochs)
                     self.all_control.append(epochs["Control"].get_data(copy=True))
                     
-                    Participant_i = individual_participant_class(f"Participant_{i}")
+                    Participant_i = individual_participant_class(f"subject_{folder_name[:3]}".replace("-", ""))
                     Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
                     Participant_i.raw_intensity = raw_intensity
                     Participant_i.raw_od = raw_od
