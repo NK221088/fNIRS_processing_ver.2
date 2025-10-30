@@ -3121,7 +3121,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         self.apply_tddr = apply_tddr
         self.subjects_to_exclude = {"EEG fNIRS HC baseline data": ["C5", "C7", "C8", "C9"],
                                     "EEG fNIRS HC follow up data": [],
-                                    "EEG fNIRS patient baseline data": ["P6", "P9", "P10", "P11"],
+                                    "EEG fNIRS patient baseline data": ["P6", "P9", "P10", "P11"], #"P15", "P23", "P29"
                                     "EEG fNIRS patient follow up data": []
                                     }
         self.age_file = Path(os.getenv("demographic_data_path".replace(" ", "_").replace("-", "_")))
