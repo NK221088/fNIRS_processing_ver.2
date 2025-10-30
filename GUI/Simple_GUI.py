@@ -63,7 +63,7 @@ plotTypesList = ["Epoch Plot",
 
 # Default settings (add hemoglobin type to settings)
 settings = {
-    "data_set": dataSetList[17],  # Default to first dataset
+    "data_set": dataSetList[18],  # Default to first dataset
     "epoch_type": "HandMI",
     "individual": "All Individuals",
     "short_channel_correction": True,
@@ -87,7 +87,7 @@ settings = {
     "save_plot": False,
     "plot_type": "Epoch Plot",
     "combine_strategy": "mean",
-    "interpolate_bad_channels": False,
+    "interpolate_bad_channels": True,
     "bad_channels_strategy": "all",
     "threshold": 3,
     "compare_with_raw": False, 

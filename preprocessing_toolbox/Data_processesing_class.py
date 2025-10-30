@@ -3119,9 +3119,9 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
-        self.subjects_to_exclude = {"EEG fNIRS HC baseline data": ["C5", "C7"], #
+        self.subjects_to_exclude = {"EEG fNIRS HC baseline data": ["C5", "C7", "C8", "C9"],
                                     "EEG fNIRS HC follow up data": [],
-                                    "EEG fNIRS patient baseline data": ["P6",  "P10", "P9","P11", "P20"], #
+                                    "EEG fNIRS patient baseline data": ["P6", "P9", "P10", "P11"],
                                     "EEG fNIRS patient follow up data": []
                                     }
         self.age_file = Path(os.getenv("demographic_data_path".replace(" ", "_").replace("-", "_")))
@@ -3172,9 +3172,8 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         """
         # Look for .xlsx files recursively in the folder
         excel_files = glob.glob(os.path.join(folder_path, "**", "*.xlsx"), recursive=True)
-
         if excel_files:
-            creation_times = [excel_file.split("\\")[0].replace(".xlsx", "")[-4:] for excel_file in excel_files]
+            creation_times = [excel_file.split("\\")[-1].replace(".xlsx", "")[-4:] for excel_file in excel_files]
             return excel_files[np.argmax(creation_times)]  # Return the last created  .xlsx file found
         return None
 
@@ -3283,7 +3282,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                     if os.path.isdir(os.path.join(self.file_path, f))]
         
         for i, folder_name in enumerate(all_folders, start=1):
-            if folder_name[:3].replace("-", "").replace(" ", "") in ["P2"]:
+            if folder_name[:3].replace("-", "").replace(" ", "") in ["P23"]:
                 print("HEJ")
             if folder_name[:3].replace("-", "").replace(" ", "") in self.subjects_to_exclude[self.data_name]:
                 continue
@@ -3440,8 +3439,6 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
                         
                 self.drop_log.append(epochs.drop_log)
-                if len(epochs) == 0:
-                    print("FUCK")
                 if len(epochs) != 0:
                     # Apply custom baseline correction if needed
                     if self.baseline_correction != "xSecondsBefore":
