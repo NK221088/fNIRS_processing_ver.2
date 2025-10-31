@@ -2511,7 +2511,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                         epochs,
                         data_types=self.data_types,
                     )
-                    
+
                 self.all_raw_epochs.append(raw_epochs)
                 self.all_epochs.append(epochs)
                 self.all_control.append(epochs["Control"].get_data(copy=True))
@@ -3091,7 +3091,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                                  "6": "n_back/2_back",
                                  "7": "n_back/3_back",
                                 }
-        self.file_path = Path(os.getenv(file_path.replace(" ", "_").replace("-", "_")))
+        self.file_path = Path(os.getenv(data_name.replace(" ", "_").replace("-", "_").replace(":", "")))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = {"1": 15,

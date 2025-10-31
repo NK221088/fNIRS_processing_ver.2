@@ -2,13 +2,16 @@ from shared_GUI_functions import *
 import data_analysis.GLM_class as GLM_class
 from collections import defaultdict
 from preprocessing_toolbox.load_data_function import data_loaders
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
+import seaborn as sns
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
 """
 GLM Analysis Tab Module
 This module contains the UI and functionality for the GLM Analysis tab.
 """
-
-
 def create_glm_tab(parent_notebook, dataset_var, dataSetList):
     """
     Create and configure the GLM Analysis tab.
@@ -30,7 +33,6 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
     
     import tkinter as tk
     from tkinter import ttk
-
     # Create GLM Analysis tab
     glm_tab = tk.Frame(parent_notebook)
     parent_notebook.add(glm_tab, text="GLM Analysis")
@@ -42,17 +44,101 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
     glm_right_frame = tk.Frame(glm_tab)
     glm_right_frame.pack(side="right", padx=20, pady=20, expand=True, fill="both")
     
-    # Split right frame into left (editor) and right (plotting) sections
+    # Make the editor area occupy more space
     glm_right_left_frame = tk.Frame(glm_right_frame)
-    glm_right_left_frame.pack(side="left", padx=0, pady=0, fill="both", expand=False)
+    glm_right_left_frame.pack(side="left", fill="both", expand=True, padx=(0, 5))
+
+    # Make the plotting area slightly narrower and reduce inner padding
+    glm_right_right_frame = tk.Frame(glm_right_frame, bg="lightgray", width=500)
+    glm_right_right_frame.pack(side="right", fill="y", expand=False, padx=(5, 0))
+
+    # Plot container with tighter padding
+    plot_container = tk.Frame(glm_right_right_frame, bg="white")
+    plot_container.pack(fill="both", expand=True, padx=5, pady=5)
+
     
-    glm_right_right_frame = tk.Frame(glm_right_frame, bg="lightgray")
-    glm_right_right_frame.pack(side="right", padx=0, pady=0, expand=True, fill="both")
+    # Dropdown frame at the top
+    dropdown_frame = tk.Frame(plot_container, bg="white")
+    dropdown_frame.pack(fill="x", pady=(0, 10))
     
-    # Placeholder for plotting area
-    plot_label = tk.Label(glm_right_right_frame, text="Plotting Area\n(To be implemented)", 
-                          font=("Arial", 14), bg="lightgray", fg="gray")
-    plot_label.pack(expand=True)
+    tk.Label(dropdown_frame, text="Select Figure:", font=("Arial", 10), bg="white").pack(side="left", padx=(0, 10))
+    
+    figure_var = tk.StringVar()
+    figure_dropdown = ttk.Combobox(dropdown_frame, textvariable=figure_var, state="readonly", width=30)
+    figure_dropdown.pack(side="left", padx=(0, 10))
+    
+    # Canvas frame for matplotlib figure
+    canvas_frame = tk.Frame(plot_container, bg="white")
+    canvas_frame.pack(fill="both", expand=True)
+    
+    # Placeholder label (shown when no figure is available)
+    placeholder_label = tk.Label(canvas_frame, text="No figure to display\n\nRun a GLM analysis to generate figures", 
+                                  font=("Arial", 12), bg="white", fg="gray")
+    placeholder_label.pack(expand=True)
+    
+    # Variable to store current canvas
+    current_canvas = {'canvas': None, 'toolbar': None}
+    current_figures = {'figures': None}
+    
+    def display_figure(figure_key):
+        # Hide placeholder
+        placeholder_label.pack_forget()
+        
+        # Get the figure
+        fig = current_figures['figures'][figure_key]
+
+        # ✅ Handle Seaborn FacetGrid objects
+        if isinstance(fig, sns.axisgrid.FacetGrid):
+            fig = fig.fig
+
+        # Create new canvas
+        canvas = FigureCanvasTkAgg(fig, master=canvas_frame)
+        canvas.draw()
+        canvas_widget = canvas.get_tk_widget()
+        canvas_widget.pack(fill="both", expand=True)
+
+        # Add toolbar
+        toolbar = NavigationToolbar2Tk(canvas, canvas_frame)
+        toolbar.update()
+
+        # Store references
+        current_canvas['canvas'] = canvas
+        current_canvas['toolbar'] = toolbar
+
+    
+    def update_figure_dropdown(figures_dict):
+        """Update the dropdown with available figures"""
+        if figures_dict is None or len(figures_dict) == 0:
+            figure_dropdown['values'] = []
+            figure_var.set('')
+            current_figures['figures'] = None
+            
+            # Clear any existing canvas
+            if current_canvas['canvas'] is not None:
+                current_canvas['canvas'].get_tk_widget().destroy()
+                if current_canvas['toolbar'] is not None:
+                    current_canvas['toolbar'].destroy()
+                current_canvas['canvas'] = None
+                current_canvas['toolbar'] = None
+            
+            # Show placeholder
+            placeholder_label.pack(expand=True)
+            return
+        
+        # Store figures
+        current_figures['figures'] = figures_dict
+        
+        # Update dropdown values
+        figure_names = list(figures_dict.keys())
+        figure_dropdown['values'] = figure_names
+        
+        # Select first figure by default
+        if len(figure_names) > 0:
+            figure_var.set(figure_names[0])
+            display_figure(figure_names[0])
+    
+    # Bind dropdown selection to display function
+    figure_dropdown.bind('<<ComboboxSelected>>', lambda e: display_figure(figure_var.get()))
     
     # Subdivide the left container into top and bottom sections
     glm_top_left_frame = tk.Frame(glm_left_container)
@@ -60,7 +146,6 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
     
     glm_bottom_left_frame = tk.Frame(glm_left_container)
     glm_bottom_left_frame.pack(side="bottom", fill="both", expand=True)
-
     ######################################################################################
     # Settings and helper functions
     ######################################################################################
@@ -73,29 +158,22 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
     ######################################################################################
     # Dataset(s) selection — dynamic list version
     ######################################################################################
-
     dataset_frame = tk.Frame(glm_top_left_frame)
     dataset_frame.pack(fill="x", pady=5)
-
     dataset_label = tk.Label(dataset_frame, text="Select Dataset(s):", font=("Arial", 12))
     dataset_label.pack(anchor="w")
-
     dataset_selection_container = tk.Frame(dataset_frame)
     dataset_selection_container.pack(fill="x", pady=5)
-
     # Keep track of dataset selectors
     dataset_vars = []
-
     def add_dataset_selector(initial_value=""):
         """Add a new dataset selector row"""
         row_frame = tk.Frame(dataset_selection_container)
         row_frame.pack(fill="x", pady=2)
-
         var = tk.StringVar(value=initial_value or settings["data_set"])
         combo = ttk.Combobox(row_frame, textvariable=var, values=dataSetList, width=35)
         combo.pack(side="left", padx=(0, 5))
         combo["postcommand"] = lambda: adjust_combobox_width(combo)
-
         # Remove button for this specific row
         remove_btn = tk.Button(
             row_frame,
@@ -105,18 +183,14 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
             command=lambda: remove_dataset_selector(row_frame, var)
         )
         remove_btn.pack(side="left")
-
         dataset_vars.append(var)
-
     def remove_dataset_selector(frame, var):
         """Remove a dataset selector row"""
         dataset_vars.remove(var)
         frame.destroy()
-
     def get_selected_datasets():
         """Return all selected dataset names"""
         return [v.get() for v in dataset_vars if v.get()]
-
     # Add button to add new dataset rows
     add_button = tk.Button(
         dataset_frame,
@@ -128,10 +202,8 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
         pady=2
     )
     add_button.pack(anchor="w", pady=5)
-
     # Initialize with one dataset selector
     add_dataset_selector()
-
     ######################################################################################
     # GLM Analysis
     ######################################################################################
@@ -141,17 +213,13 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
     SPACING_SMALL = 5
     SPACING_MEDIUM = 10
     SPACING_LARGE = 20
-
     # Dataset selection with info button
     GLM_tools_frame = tk.Frame(glm_bottom_left_frame)
     GLM_tools_frame.pack(fill="x", pady=5)
-
     GLM_tools_label = tk.Label(GLM_tools_frame, text="GLM analysis:", font=("Arial", 12))
     GLM_tools_label.pack(anchor="w")
-
     import tkinter as tk
     from tkinter import ttk
-
     class GLMParameterDialog:
         """Dialog for adding a new GLM"""
         
@@ -206,12 +274,10 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
             hrf_options = ["spm", "glover"]
             hrf_combo = ttk.Combobox(params_frame, textvariable=self.param2_var, values=hrf_options, width=28, state="readonly")
             hrf_combo.grid(row=1, column=1, pady=5, padx=(10, 0))
-
             ttk.Label(params_frame, text="Drift model:").grid(row=2, column=0, sticky="w", pady=5)
             drift_options = ["cosine"]
             drift_combo = ttk.Combobox(params_frame, textvariable=self.param3_var, values=drift_options, width=28, state="readonly")
             drift_combo.grid(row=2, column=1, pady=5, padx=(10, 0))
-
             button_frame = ttk.Frame(main_frame)
             button_frame.pack(side="bottom", fill="x", pady=(20, 0))
             
@@ -247,7 +313,6 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
             """Show the dialog and wait for it to close"""
             self.dialog.wait_window()
             return self.result
-
     class GLMParameterEditor:
         """Editor for GLM parameters in the right pane (for editing existing GLMs only)"""
         
@@ -319,7 +384,6 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
             self.hrf_combo = ttk.Combobox(self.params_frame, textvariable=self.param2_var, 
                                          values=hrf_options, width=28, state="readonly")
             self.hrf_combo.grid(row=1, column=1, pady=5, sticky="ew")
-
             # ---- Drift model ----
             ttk.Label(self.params_frame, text="Drift model:").grid(row=2, column=0, sticky="w", pady=5, padx=(0, 10))
             drift_options = ["cosine"]
@@ -332,20 +396,13 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
             
             # --- getResults frame (initially hidden) ---
             self.results_frame = ttk.Frame(self.main_frame)
-
             # Results title
             self.results_title = ttk.Label(self.results_frame, text="GLM Results", 
                                         font=("Arial", 12, "bold"))
             self.results_title.pack(pady=(20, 10))
-
             # Create a notebook for tabbed results view
             self.results_notebook = ttk.Notebook(self.results_frame)
             self.results_notebook.pack(fill="both", expand=True, pady=(0, 10))
-
-            # Summary tab
-            self.summary_tab = ttk.Frame(self.results_notebook)
-            self.results_notebook.add(self.summary_tab, text="Summary")
-
             # Full Results tab
             self.full_results_tab = ttk.Frame(self.results_notebook)
             self.results_notebook.add(self.full_results_tab, text="Full Table")
@@ -389,12 +446,10 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
                 self.results_frame.pack_forget()
             
             self.button_frame.pack(fill="x", pady=(20, 0))
-            
+                    
         def display_results(self, glm_instance):
-            """Display the GLM results in a modern card-based layout with no scrolling"""
+            """Display the GLM results in a simple table view"""
             # Clear previous content
-            for widget in self.summary_tab.winfo_children():
-                widget.destroy()
             for widget in self.full_results_tab.winfo_children():
                 widget.destroy()
             
@@ -404,164 +459,117 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
                 if results and len(results) > 0:
                     anova_df = results[0]
                     
-                    # === SUMMARY TAB: Card-based layout ===
+                    # === FULL TABLE TAB: Simple view ===
                     if not anova_df.empty:
-                        cards_container = ttk.Frame(self.summary_tab)
-                        cards_container.pack(fill="both", expand=True, padx=10, pady=10)
-                        
-                        # Create metric cards in a grid
-                        row = 0
-                        col = 0
-                        max_cols = 2
-                        
-                        for idx, (index, row_data) in enumerate(anova_df.iterrows()):
-                            card = self._create_metric_card(cards_container, index, row_data)
-                            card.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")
-                            
-                            col += 1
-                            if col >= max_cols:
-                                col = 0
-                                row += 1
-                        
-                        # Configure grid weights for responsive layout
-                        for i in range(max_cols):
-                            cards_container.columnconfigure(i, weight=1)
-                        for i in range(row + 1):
-                            cards_container.rowconfigure(i, weight=1)
-                    
-                    # === FULL TABLE TAB: Paginated view ===
-                    self._create_paginated_table(self.full_results_tab, anova_df)
+                        self._create_simple_table(self.full_results_tab, anova_df)
+                    else:
+                        ttk.Label(self.full_results_tab, text="No results available", 
+                                font=("Arial", 11), foreground="gray").pack(pady=50)
                 else:
-                    ttk.Label(self.summary_tab, text="No results available", 
-                            font=("Arial", 11), foreground="gray").pack(pady=50)
                     ttk.Label(self.full_results_tab, text="No results available", 
                             font=("Arial", 11), foreground="gray").pack(pady=50)
-                    
+                        
             except Exception as e:
                 error_msg = f"Error displaying results: {str(e)}"
-                ttk.Label(self.summary_tab, text=error_msg, 
-                        font=("Arial", 11), foreground="red").pack(pady=50)
                 ttk.Label(self.full_results_tab, text=error_msg, 
                         font=("Arial", 11), foreground="red").pack(pady=50)
-
-        def _create_metric_card(self, parent, title, data):
-            """Create a modern card widget for displaying a metric"""
-            card = ttk.Frame(parent, relief="solid", borderwidth=1)
-            card_inner = ttk.Frame(card, padding=15)
-            card_inner.pack(fill="both", expand=True)
+        
+        def _create_simple_table(self, parent, df):
+            """Create a clean, simple table view that shows all results"""
             
-            # Title
-            title_label = ttk.Label(card_inner, text=str(title), 
-                                font=("Arial", 11, "bold"))
-            title_label.pack(anchor="w", pady=(0, 10))
-            
-            # Display each column value in the row
-            for col_name, value in data.items():
-                metric_frame = ttk.Frame(card_inner)
-                metric_frame.pack(fill="x", pady=2)
-                
-                ttk.Label(metric_frame, text=f"{col_name}:", 
-                        font=("Arial", 9)).pack(side="left")
-                
-                # Format numeric values
-                if isinstance(value, (int, float)):
-                    formatted_value = f"{value:.4f}" if isinstance(value, float) else str(value)
-                else:
-                    formatted_value = str(value)
-                
-                ttk.Label(metric_frame, text=formatted_value, 
-                        font=("Arial", 9, "bold")).pack(side="right")
-            
-            return card
-
-        def _create_paginated_table(self, parent, df, rows_per_page=10):
-            """Create a paginated table view with no scrolling"""
-            self.current_page = 0
-            self.rows_per_page = rows_per_page
-            self.total_pages = (len(df) + rows_per_page - 1) // rows_per_page if len(df) > 0 else 1
-            self.df_to_display = df
-            
-            # Container for the entire paginated view
+            # Main container
             container = ttk.Frame(parent)
-            container.pack(fill="both", expand=True, padx=10, pady=10)
+            container.pack(fill="both", expand=True, padx=20, pady=20)
             
-            # Navigation bar at top
-            nav_frame = ttk.Frame(container)
-            nav_frame.pack(fill="x", pady=(0, 10))
+            # Title section
+            title_frame = ttk.Frame(container)
+            title_frame.pack(fill="x", pady=(0, 15))
             
-            self.prev_btn = ttk.Button(nav_frame, text="← Previous", 
-                                        command=lambda: self._change_page(-1))
-            self.prev_btn.pack(side="left", padx=5)
+            ttk.Label(title_frame, text="GLM Analysis Results", 
+                    font=("Arial", 14, "bold")).pack(side="left")
             
-            self.page_label = ttk.Label(nav_frame, text="", font=("Arial", 10))
-            self.page_label.pack(side="left", padx=20)
+            # Info label
+            total_rows = len(df)
+            ttk.Label(title_frame, text=f"{total_rows} contrast{'s' if total_rows != 1 else ''}", 
+                    font=("Arial", 9), foreground="gray").pack(side="right", padx=5)
             
-            self.next_btn = ttk.Button(nav_frame, text="Next →", 
-                                        command=lambda: self._change_page(1))
-            self.next_btn.pack(side="left", padx=5)
+            # Table container with border
+            table_container = tk.Frame(container, bg="#e0e0e0", bd=1, relief="solid")
+            table_container.pack(fill="both", expand=True)
             
-            # Table frame (will be refreshed on page change)
-            self.table_frame = ttk.Frame(container)
-            self.table_frame.pack(fill="both", expand=True)
+            # Inner frame for table content
+            table_frame = tk.Frame(table_container, bg="white")
+            table_frame.pack(fill="both", expand=True, padx=1, pady=1)
             
-            # Initial display
-            self._refresh_table_page()
-
-        def _refresh_table_page(self):
-            """Refresh the table to show the current page"""
-            # Clear existing table
-            for widget in self.table_frame.winfo_children():
-                widget.destroy()
+            # Create header with styling
+            header_frame = tk.Frame(table_frame, bg="#4a4a4a", height=40)
+            header_frame.pack(fill="x", pady=0)
+            header_frame.pack_propagate(False)
             
-            df = self.df_to_display
-            start_idx = self.current_page * self.rows_per_page
-            end_idx = min(start_idx + self.rows_per_page, len(df))
-            page_df = df.iloc[start_idx:end_idx]
+            # Index column header
+            index_header = tk.Label(header_frame, text="Contrast", 
+                                font=("Arial", 10, "bold"), 
+                                bg="#4a4a4a", fg="white",
+                                anchor="w", padx=15)
+            index_header.pack(side="left", fill="both", expand=True)
             
-            # Create header
-            header_frame = ttk.Frame(self.table_frame)
-            header_frame.pack(fill="x", pady=(0, 5))
-            
-            ttk.Label(header_frame, text="Index", font=("Arial", 9, "bold"), 
-                    width=15).pack(side="left", padx=2)
+            # Data column headers
             for col in df.columns:
-                ttk.Label(header_frame, text=col, font=("Arial", 9, "bold"), 
-                        width=15).pack(side="left", padx=2)
+                col_header = tk.Label(header_frame, text=col, 
+                                    font=("Arial", 10, "bold"), 
+                                    bg="#4a4a4a", fg="white",
+                                    anchor="center", padx=10)
+                col_header.pack(side="left", fill="both", expand=True)
             
-            # Create rows
-            for idx, (index, row) in enumerate(page_df.iterrows()):
-                row_frame = ttk.Frame(self.table_frame)
-                row_frame.pack(fill="x", pady=1)
-                
+            # Create data rows with alternating colors
+            for idx, (index, row) in enumerate(df.iterrows()):
                 # Alternate row colors
-                bg_color = "#f0f0f0" if idx % 2 == 0 else "white"
-                row_frame.configure(style="TableRow.TFrame")
+                bg_color = "#f8f9fa" if idx % 2 == 0 else "white"
                 
-                ttk.Label(row_frame, text=str(index), width=15, 
-                        background=bg_color).pack(side="left", padx=2)
+                row_frame = tk.Frame(table_frame, bg=bg_color, height=35)
+                row_frame.pack(fill="x", pady=0)
+                row_frame.pack_propagate(False)
                 
-                for value in row:
+                # Index/Contrast name
+                index_label = tk.Label(row_frame, text=str(index), 
+                                    font=("Arial", 9), 
+                                    bg=bg_color, fg="#2c3e50",
+                                    anchor="w", padx=15)
+                index_label.pack(side="left", fill="both", expand=True)
+                
+                # Data values
+                for col_name, value in row.items():
+                    # Format numeric values
                     if isinstance(value, (int, float)):
-                        formatted_value = f"{value:.4f}" if isinstance(value, float) else str(value)
+                        if isinstance(value, float):
+                            # Format based on magnitude
+                            if abs(value) < 0.0001 and value != 0:
+                                formatted_value = f"{value:.2e}"
+                            else:
+                                formatted_value = f"{value:.4f}"
+                        else:
+                            formatted_value = str(value)
                     else:
                         formatted_value = str(value)
                     
-                    ttk.Label(row_frame, text=formatted_value, width=15, 
-                            background=bg_color).pack(side="left", padx=2)
-            
-            # Update navigation
-            self.page_label.config(text=f"Page {self.current_page + 1} of {self.total_pages}")
-            self.prev_btn.config(state="normal" if self.current_page > 0 else "disabled")
-            self.next_btn.config(state="normal" if self.current_page < self.total_pages - 1 else "disabled")
-
-        def _change_page(self, delta):
-            """Change the current page by delta (-1 or +1)"""
-            new_page = self.current_page + delta
-            if 0 <= new_page < self.total_pages:
-                self.current_page = new_page
-                self._refresh_table_page()
-        
-            
+                    # Color-code p-values if this is a p-value column
+                    fg_color = "#2c3e50"
+                    font_weight = "normal"
+                    if 'p' in col_name.lower() and isinstance(value, float):
+                        if value < 0.001:
+                            fg_color = "#27ae60"  # Green for highly significant
+                            font_weight = "bold"
+                        elif value < 0.05:
+                            fg_color = "#f39c12"  # Orange for significant
+                            font_weight = "bold"
+                        else:
+                            fg_color = "#95a5a6"  # Gray for non-significant
+                    
+                    value_label = tk.Label(row_frame, text=formatted_value, 
+                                        font=("Arial", 9, font_weight), 
+                                        bg=bg_color, fg=fg_color,
+                                        anchor="center", padx=10)
+                    value_label.pack(side="left", fill="both", expand=True)
         def validate_inputs(self):
             """
             Validate the user inputs before accepting
@@ -574,7 +582,7 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
                 return False
             
             return True
-            
+        
         def save(self):
             """Handle Save button click"""
             if self.validate_inputs():
@@ -588,7 +596,7 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
                 self.current_glm.update_parameters(params)
                 update_glm_table()
                 self.show_empty_state()
-        
+
         def cancel(self):
             """Handle Cancel button click"""
             self.show_empty_state()
@@ -597,7 +605,6 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
     glm_editor = GLMParameterEditor(glm_right_left_frame)
     
     glm_instances = dict()
-
     class GLMTable(ttk.Frame):
         def __init__(self, parent):
             super().__init__(parent)
@@ -618,35 +625,28 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
             # Pack canvas and scrollbar to fill available space
             canvas.pack(side="left", fill="both", expand=True)
             scrollbar.pack(side="right", fill="y")
-
             self.rows = []
-
             # Header with adjusted widths
             header = ttk.Frame(self.scrollable_frame)
             header.pack(fill="x", pady=(0, 5))
             ttk.Label(header, text="GLM Name", width=20).pack(side="left", padx=5)
             ttk.Label(header, text="Status", width=12).pack(side="left", padx=5)
             ttk.Label(header, text="Actions", width=15).pack(side="left", padx=5)
-
         def clear_table(self):
             for row in self.rows:
                 row.destroy()
             self.rows.clear()
-
         def add_row(self, name, status, edit_callback, run_callback):
             row = ttk.Frame(self.scrollable_frame)
             row.pack(fill="x", pady=2)
             ttk.Label(row, text=name, width=20).pack(side="left", padx=5)
             ttk.Label(row, text=status, width=12).pack(side="left", padx=5)
-
             # Action buttons in a frame
             action_frame = ttk.Frame(row)
             action_frame.pack(side="left", padx=5)
             ttk.Button(action_frame, text="⚙️ Edit", command=edit_callback, width=8).pack(side="left", padx=2)
             ttk.Button(action_frame, text="▶ Run", command=run_callback, width=8).pack(side="left", padx=2)
-
             self.rows.append(row)
-
     def add_GLM():
         """Show popup dialog for adding a new GLM"""
         dialog = GLMParameterDialog(glm_tab)
@@ -656,11 +656,9 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
             GLM_instance = GLM_class.GLM_class(*params.values())
             glm_instances[GLM_instance.getName()] = GLM_instance
             update_glm_table()
-
     def update_glm_table():
         """Refresh the GLM table with current GLM instances"""
         glm_table.clear_table()
-
         for glm_name, glm_instance in glm_instances.items():
             # Determine status based on whether GLM has been run
             status = "Complete" if glm_instance.getHasRun() else "Ready"
@@ -669,12 +667,10 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
             def edit_callback(g=glm_instance):
                 """Edit this specific GLM in the right pane editor"""
                 glm_editor.show_editor(glm_instance=g)
-
             def run_callback(g=glm_instance):
                 """Run this specific GLM"""
                 dataLoaders = get_selected_datasets()
                 datasets = defaultdict(dict)
-
                 for data_loader in dataLoaders:
                     settings = {
                         "data_set": data_loader,
@@ -698,7 +694,6 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
                         "Apply_TDDR": True,
                         "interpolate_bad_channels": True,
                     }
-
                     current_loader = data_loaders[data_loader](
                         data_name=data_loader,
                         file_path=data_loader,
@@ -717,27 +712,27 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
                         snr_threshold=settings["snr_threshold"],
                         apply_tddr=settings["Apply_TDDR"]
                     )
-
                     data = current_loader.load_data()
                     variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
                     datasets[data_loader] = {key: value for key, value in zip(variables, data)}
-
                 all_participants = []
                 number_of_subjects = []
-
                 for ds_name, ds_data in datasets.items():
                     all_participants += ds_data["all_individuals"]
                     number_of_subjects.append(len(ds_data["all_individuals"]))
-
-                results = g.runGLM(all_participants, current_loader, number_of_subjects)
-                
+                g.runGLM(all_participants, current_loader, number_of_subjects)
+                results = g.getResults()
                 # Store the results in the GLM instance
                 g.setHasRun(True)
+                
+                # Update the figure dropdown with new figures
+                if results and len(results) >= 4:
+                    figures_dict = results[3]  # The 4th element contains the figures dictionary
+                    update_figure_dropdown(figures_dict)
+                
                 update_glm_table()
-
             # Add a row for this GLM with its callbacks
             glm_table.add_row(glm_name, status, edit_callback, run_callback)
-
     # --- Add GLM button (top of bottom-left section) ---
     add_GLM_button = tk.Button(
         glm_bottom_left_frame,
@@ -754,7 +749,6 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
         padx=10,
         fill="x"
     )
-
     # --- GLM Table (directly under Add button) ---
     glm_table = GLMTable(glm_bottom_left_frame)
     glm_table.pack(
@@ -763,6 +757,5 @@ def create_glm_tab(parent_notebook, dataset_var, dataSetList):
         padx=5,
         pady=(SPACING_SMALL, 0)
     )
-
                 
     return glm_tab, glm_left_container, glm_right_frame
