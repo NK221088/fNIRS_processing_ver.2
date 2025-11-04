@@ -260,14 +260,16 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         # ch_summary = ch_summary.query("Chroma in ['hbo']")
         ch_summary = ch_summary.query("ch_name in @relevant_channels")
         
-        print(f"Number of rows in ch_summary: {len(ch_summary)}")
-        print(f"Number of unique subjects: {ch_summary['ID'].nunique()}")
-        print(f"Number of relevant channels: {len(relevant_channels)}")
-        print(f"Relevant channels: {sorted(relevant_channels)}")
-        print(f"Unique ch_names in data: {sorted(ch_summary['ch_name'].unique())}")
-        print(f"Data shape: {ch_summary.shape}")
-        print(f"Conditions: {sorted(ch_summary['Condition'].unique())}")
-        
+        # In Python, before transferring to R:
+        print("Python data check:")
+        print(f"theta mean: {ch_summary['theta'].mean()}")
+        print(f"theta std: {ch_summary['theta'].std()}")
+        print(f"theta min/max: {ch_summary['theta'].min()}, {ch_summary['theta'].max()}")
+        print(f"First 5 theta values: {ch_summary['theta'].head().tolist()}")
+        print(f"Data types:\n{ch_summary.dtypes}")
+
+        # Save the dataframe to verify it's identical
+        ch_summary.to_csv("debug_ch_summary.csv", index=False)
         with localconverter(pandas2ri.converter):
             globalenv["rdf"] = ch_summary
 
@@ -282,9 +284,19 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         print(paste("lmerTest version:", packageVersion("lmerTest")))
         print(sessionInfo())
         
-        rdf$Condition <- factor(rdf$Condition, levels=sort(unique(rdf$Condition)))
-        rdf$ch_name <- factor(rdf$ch_name, levels=sort(unique(rdf$ch_name)))
-        rdf$Group <- factor(rdf$Group, levels=sort(unique(rdf$Group)))
+        print("R data check:")
+        print(paste("theta mean:", mean(rdf$theta, na.rm=TRUE)))
+        print(paste("theta std:", sd(rdf$theta, na.rm=TRUE)))
+        print(paste("theta min/max:", min(rdf$theta, na.rm=TRUE), max(rdf$theta, na.rm=TRUE)))
+        print("First 5 theta values:")
+        print(head(rdf$theta, 5))
+        print("Data structure:")
+        print(str(rdf))
+        print("NA count per column:")
+        print(colSums(is.na(rdf)))
+
+        # Save from R side too
+        write.csv(rdf, "debug_rdf.csv", row.names=FALSE)
                 
         modelConch <- lmer(theta ~ Condition + ch_name + Condition:ch_name + (1 | ID), data=rdf, REML=FALSE)
         nullModelConch <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
