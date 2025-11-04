@@ -223,19 +223,19 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         df = statsmodels_to_results(roi_model)
         
         
-        fig = sns.catplot(
-        x="Condition",
-        y="theta",
-        col="ID",
-        hue="ROI",
-        data=grp_results.query("Chroma in ['hbo']"),
-        col_wrap=5,
-        errorbar=None,
-        palette="muted",
-        height=4,
-        s=10,
-        )
-        plt.savefig(os.path.join(save_path, f"individual_results.png"))
+        # fig = sns.catplot(
+        # x="Condition",
+        # y="theta",
+        # col="ID",
+        # hue="ROI",
+        # data=grp_results.query("Chroma in ['hbo']"),
+        # col_wrap=5,
+        # errorbar=None,
+        # palette="muted",
+        # height=4,
+        # s=10,
+        # )
+        # plt.savefig(os.path.join(save_path, f"individual_results.png"))
         
         
         # sns.catplot(
