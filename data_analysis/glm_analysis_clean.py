@@ -259,14 +259,6 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         ch_summary = betas_cha_df.query("Condition in @data_types")
         # ch_summary = ch_summary.query("Chroma in ['hbo']")
         ch_summary = ch_summary.query("ch_name in @relevant_channels")
-        
-        # In Python, before transferring to R:
-        print("Python data check:")
-        print(f"theta mean: {ch_summary['theta'].mean()}")
-        print(f"theta std: {ch_summary['theta'].std()}")
-        print(f"theta min/max: {ch_summary['theta'].min()}, {ch_summary['theta'].max()}")
-        print(f"First 5 theta values: {ch_summary['theta'].head().tolist()}")
-        print(f"Data types:\n{ch_summary.dtypes}")
 
         # Save the dataframe to verify it's identical
         ch_summary.to_csv("debug_ch_summary.csv", index=False)
@@ -278,25 +270,6 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         r('''
         library(lme4)
         library(lmerTest)
-        
-        print(paste("R version:", R.version.string))
-        print(paste("lme4 version:", packageVersion("lme4")))
-        print(paste("lmerTest version:", packageVersion("lmerTest")))
-        print(sessionInfo())
-        
-        print("R data check:")
-        print(paste("theta mean:", mean(rdf$theta, na.rm=TRUE)))
-        print(paste("theta std:", sd(rdf$theta, na.rm=TRUE)))
-        print(paste("theta min/max:", min(rdf$theta, na.rm=TRUE), max(rdf$theta, na.rm=TRUE)))
-        print("First 5 theta values:")
-        print(head(rdf$theta, 5))
-        print("Data structure:")
-        print(str(rdf))
-        print("NA count per column:")
-        print(colSums(is.na(rdf)))
-
-        # Save from R side too
-        write.csv(rdf, "debug_rdf.csv", row.names=FALSE)
                 
         modelConch <- lmer(theta ~ Condition + ch_name + Condition:ch_name + (1 | ID), data=rdf, REML=FALSE)
         nullModelConch <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
