@@ -322,21 +322,21 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         coef_summary_nullModelCondition$Parameter <- rownames(coef_summary_nullModelCondition)
         colnames(coef_summary_nullModelCondition) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
 
-        modelGroup <- lmer(theta ~ Condition:Group:ch_name + Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        nullModelGroup <- lmer(theta ~ Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        anova_result_group <- anova(modelGroup, nullModelGroup)
-        anova_group_df <- as.data.frame(anova_result_group)
-        print(anova_result_group)
+        # modelGroup <- lmer(theta ~ Condition:Group:ch_name + Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
+        # nullModelGroup <- lmer(theta ~ Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
+        # anova_result_group <- anova(modelGroup, nullModelGroup)
+        # anova_group_df <- as.data.frame(anova_result_group)
+        # print(anova_result_group)
 
-        #Extract coefficents as dataframe:
-        coef_summary_modelGroup <- as.data.frame(summary(modelGroup)$coefficients)
-        coef_summary_modelGroup$Parameter <- rownames(coef_summary_modelGroup)
-        colnames(coef_summary_modelGroup) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+        # #Extract coefficents as dataframe:
+        # coef_summary_modelGroup <- as.data.frame(summary(modelGroup)$coefficients)
+        # coef_summary_modelGroup$Parameter <- rownames(coef_summary_modelGroup)
+        # colnames(coef_summary_modelGroup) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
         
-        #Extract coefficents for plotting:
-        coef_summary_nullModelGroup<- as.data.frame(summary(nullModelGroup)$coefficients)
-        coef_summary_nullModelGroup$Parameter <- rownames(coef_summary_nullModelGroup)
-        colnames(coef_summary_nullModelGroup) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")  
+        # #Extract coefficents for plotting:
+        # coef_summary_nullModelGroup<- as.data.frame(summary(nullModelGroup)$coefficients)
+        # coef_summary_nullModelGroup$Parameter <- rownames(coef_summary_nullModelGroup)
+        # colnames(coef_summary_nullModelGroup) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")  
         ''')
         with localconverter(pandas2ri.converter):
             anova_Condch_df = globalenv["anova_Condch_df"]
@@ -352,35 +352,35 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
             coef_summary_modelCondition = globalenv["coef_summary_modelCondition"]
             coef_summary_nullModelCondition = globalenv["coef_summary_nullModelCondition"]
 
-            anova_Group_df = globalenv["anova_group_df"]
-            coef_summary_modelGroup = globalenv["coef_summary_modelGroup"]
-            coef_summary_nullModelGroup = globalenv["coef_summary_nullModelGroup"]
+            # anova_Group_df = globalenv["anova_group_df"]
+            # coef_summary_modelGroup = globalenv["coef_summary_modelGroup"]
+            # coef_summary_nullModelGroup = globalenv["coef_summary_nullModelGroup"]
             
             # results = globalenv["results_for_plotting"]
         anova_Condch_df.to_csv(os.path.join(save_path, f"anova_Condch_df.csv"))
         anova_channel_df.to_csv(os.path.join(save_path, f"anova_channel_df.csv"))
         anova_condition_df.to_csv(os.path.join(save_path, f"anova_condition_df.csv"))
-        anova_Group_df.to_csv(os.path.join(save_path, f"anova_group_df.csv"))
+        # anova_Group_df.to_csv(os.path.join(save_path, f"anova_group_df.csv"))
         
         control_estimate = coef_summary_modelCondition[coef_summary_modelCondition['Parameter'] == '(Intercept)']['Estimate'].values[0]
         active_estimate = control_estimate + coef_summary_modelCondition[coef_summary_modelCondition['Parameter'] == coef_summary_modelCondition["Parameter"][1]]['Estimate'].values[0]
-        plot_df = pd.DataFrame({
-        'Condition': ['Control', coef_summary_modelCondition["Parameter"][1]],
-        'Estimate': [control_estimate, active_estimate]
-        })
-        fig = sns.catplot(
-        x="Condition",
-        y="Estimate",
-        data=plot_df,
-        errorbar=None,
-        palette="muted",
-        height=4,
-        s=10,
-        )
-        plt.savefig(os.path.join(save_path, f"R_model_group_results.png"))
-        figs = {}
-        figs['individual_results'] = fig
-        return [anova_condition_df, coef_summary_modelCondition, coef_summary_nullModelCondition, figs]
+        # plot_df = pd.DataFrame({
+        # 'Condition': ['Control', coef_summary_modelCondition["Parameter"][1]],
+        # 'Estimate': [control_estimate, active_estimate]
+        # })
+        # fig = sns.catplot(
+        # x="Condition",
+        # y="Estimate",
+        # data=plot_df,
+        # errorbar=None,
+        # palette="muted",
+        # height=4,
+        # s=10,
+        # )
+        # plt.savefig(os.path.join(save_path, f"R_model_group_results.png"))
+        # figs = {}
+        # figs['individual_results'] = fig
+        # return [anova_condition_df, coef_summary_modelCondition, coef_summary_nullModelCondition, figs]
 
 '''
     
@@ -586,6 +586,6 @@ for data_loader in dataLoaders:
     variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
     datasets[data_loader] = {key: value for key, value in zip(variables, data)}
 
-all_participants = datasets['EEG fNIRS HC baseline data']["all_individuals"] + datasets['EEG fNIRS patient baseline data']["all_individuals"]
-number_of_subjects = [len(datasets['EEG fNIRS HC baseline data']["all_individuals"]), len((datasets['EEG fNIRS patient baseline data']["all_individuals"]))]
+all_participants = datasets['EEG fNIRS HC baseline data']["all_individuals"] # + datasets['EEG fNIRS patient baseline data']["all_individuals"]
+number_of_subjects = [len(datasets['EEG fNIRS HC baseline data']["all_individuals"])] #, len((datasets['EEG fNIRS patient baseline data']["all_individuals"]))]
 run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)
