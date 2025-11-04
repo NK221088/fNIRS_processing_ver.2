@@ -260,6 +260,14 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         # ch_summary = ch_summary.query("Chroma in ['hbo']")
         ch_summary = ch_summary.query("ch_name in @relevant_channels")
         
+        print(f"Number of rows in ch_summary: {len(ch_summary)}")
+        print(f"Number of unique subjects: {ch_summary['ID'].nunique()}")
+        print(f"Number of relevant channels: {len(relevant_channels)}")
+        print(f"Relevant channels: {sorted(relevant_channels)}")
+        print(f"Unique ch_names in data: {sorted(ch_summary['ch_name'].unique())}")
+        print(f"Data shape: {ch_summary.shape}")
+        print(f"Conditions: {sorted(ch_summary['Condition'].unique())}")
+        
         with localconverter(pandas2ri.converter):
             globalenv["rdf"] = ch_summary
 
