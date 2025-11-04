@@ -269,6 +269,11 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         library(lme4)
         library(lmerTest)
         
+        print(paste("R version:", R.version.string))
+        print(paste("lme4 version:", packageVersion("lme4")))
+        print(paste("lmerTest version:", packageVersion("lmerTest")))
+        print(sessionInfo())
+                
         modelConch <- lmer(theta ~ Condition + ch_name + Condition:ch_name + (1 | ID), data=rdf, REML=FALSE)
         nullModelConch <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
         anova_result_Condch <- anova(modelConch, nullModelConch)
