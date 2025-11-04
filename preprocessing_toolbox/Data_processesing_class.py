@@ -3121,7 +3121,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         self.apply_tddr = apply_tddr
         self.subjects_to_exclude = {"EEG fNIRS HC baseline data": ["C5", "C7", "C8", "C9"],
                                     "EEG fNIRS HC follow up data": [],
-                                    "EEG fNIRS patient baseline data": ["P6", "P9", "P10", "P11"], #"P15", "P23", "P29"
+                                    "EEG fNIRS patient baseline data": ["P6", "P9", "P10", "P11"],
                                     "EEG fNIRS patient follow up data": []
                                     }
         self.age_file = Path(os.getenv("demographic_data_path".replace(" ", "_").replace("-", "_")))
@@ -3282,8 +3282,6 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                     if os.path.isdir(os.path.join(self.file_path, f))]
         
         for i, folder_name in enumerate(all_folders, start=1):
-            if folder_name[:3].replace("-", "").replace(" ", "") in ["P23"]:
-                print("HEJ")
             if folder_name[:3].replace("-", "").replace(" ", "") in self.subjects_to_exclude[self.data_name]:
                 continue
             try:
@@ -3385,8 +3383,6 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                                     event_end = event_start + int(stimulus_duration[str(event[2])]*sfreq)
                                     control_average = np.mean(channel_values[control_event_start:control_event_end])
                                     segment = channel_values[event_start:event_end]
-                                    if segment.size == 0:
-                                        print("FUCK")
                                     segment -= control_average
                                     previous_event = event
                                 else:
