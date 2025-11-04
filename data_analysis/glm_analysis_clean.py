@@ -273,6 +273,10 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         print(paste("lme4 version:", packageVersion("lme4")))
         print(paste("lmerTest version:", packageVersion("lmerTest")))
         print(sessionInfo())
+        
+        rdf$Condition <- factor(rdf$Condition, levels=sort(unique(rdf$Condition)))
+        rdf$ch_name <- factor(rdf$ch_name, levels=sort(unique(rdf$ch_name)))
+        rdf$Group <- factor(rdf$Group, levels=sort(unique(rdf$Group)))
                 
         modelConch <- lmer(theta ~ Condition + ch_name + Condition:ch_name + (1 | ID), data=rdf, REML=FALSE)
         nullModelConch <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
