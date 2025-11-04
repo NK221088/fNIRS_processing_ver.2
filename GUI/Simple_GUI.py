@@ -63,7 +63,7 @@ plotTypesList = ["Epoch Plot",
 
 # Default settings (add hemoglobin type to settings)
 settings = {
-    "data_set": dataSetList[12],  # Default to first dataset
+    "data_set": dataSetList[19],  # Default to first dataset
     "epoch_type": "HandMI",
     "individual": "All Individuals",
     "short_channel_correction": True,

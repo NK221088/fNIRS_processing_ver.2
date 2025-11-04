@@ -3567,22 +3567,37 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.number_of_participants = 0
         self.all_tapping = []
         self.all_Control = []
-        self.annotation_names = {"1": "TonguePhysical",
-                                }
+        self.annotation_names = {'1.0': 'Random_Noise',
+                                 '2.0': 'Random_Noise',
+                                 '3.0': 'Random_Noise',
+                                 '4.0': 'Math',
+                                 '5.0': 'Math',
+                                 '6.0': 'Math',
+                                 '7.0': 'Math',
+                                 '8.0': 'Math',
+                                 '9.0': 'Hard_math',
+                                 '10.0': 'Hard_math',
+                                 '11.0': 'Hard_math',
+                                 '12.0': 'Hard_math',
+                                 '13.0': 'Hard_math'}
         self.file_path = Path(os.getenv(data_name.replace(" ", "_").replace("-", "_").replace(":", "")))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
-        self.stimulus_duration = {"1": 15,
+        self.stimulus_duration = {'Random_Noise': 10,
+                                  'Math': 25,
+                                  'Hard_math': 25,
+                                  "Control": 20
+                                  
                                 }
         self.scalp_coupling_threshold = scalp_coupling_threshold
         self.reject_criteria = reject_criteria
         self.tmin = tmin
         self.tmax = 20
         self.baseline = (None, 0)
-        self.data_types = ['n_back/0_back', 'n_back/1_back', 'n_back/2_back', 'n_back/3_back']
+        self.data_types = ['Random_Noise', 'Math', 'Hard_math']
         self.data_name = data_name
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = ["TonguePhysical", "TongueIM", ]
+        self.unwanted = []
         self.baseline_correction = baseline_correction
         self.filter_lower_value = filter_lower_value
         self.filter_upper_value = filter_upper_value
@@ -3591,10 +3606,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
-        self.subjects_to_exclude = {"EEG fNIRS HC baseline data": ["C5", "C7", "C8", "C9"],
-                                    "EEG fNIRS HC follow up data": [],
-                                    "EEG fNIRS patient baseline data": ["P6", "P9", "P10", "P11"], #"P15", "P23", "P29"
-                                    "EEG fNIRS patient follow up data": []
+        self.subjects_to_exclude = {
                                     }
         self.age_file = Path(os.getenv("demographic_data_path".replace(" ", "_").replace("-", "_")))
         super().__init__(
@@ -3702,23 +3714,18 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
             print("Sucessfully added all events")
         return actual_events
     
-    def make_annotations(self, excel_path, raw_intensity):
-        df = pd.read_excel(excel_path, sheet_name=None)
-        sheets = list(df.keys())
-        sfreq = raw_intensity.info["sfreq"]
-        events, event_dict = mne.events_from_annotations(raw_intensity)
-        actual_events = self.get_actual_event(df, sheets, events, sfreq)
-        onset = actual_events[:, 0] / sfreq
-        duration = np.array([self.stimulus_duration[str(event)] for event in actual_events[:,2]])
-        description = actual_events[:, 2].astype(str)
-        new_annotations = mne.Annotations(onset=onset, 
-                                 duration=duration, 
-                                 description=description,
-                                 orig_time=raw_intensity.annotations.orig_time
-                                 )
-
-        raw_intensity.set_annotations(new_annotations)
-        return raw_intensity
+    def make_annotations(self, raw_intensity):
+        event_dict_trans = {val: int(float(key)) for key, val in self.annotation_names.items()}
+        events, event_dict = mne.events_from_annotations(raw_intensity, event_dict_trans)
+        cropped_raw_data = raw_intensity.copy()
+        
+        
+        for id,event in enumerate(events):
+            if id == 0:
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + 10, 20, "Control")
+                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + 45, 20, "Control") 
+        cropped_raw_data.annotations.set_durations(self.stimulus_duration)
+        return cropped_raw_data
     
     def crop_data(self, raw_intensity):
         event_dict_trans = {val: int(key) for key, val in self.annotation_names.items()}
@@ -3754,34 +3761,32 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                     if os.path.isdir(os.path.join(self.file_path, f))]
         
         for i, folder_name in enumerate(all_folders, start=1):
-            if folder_name[:3].replace("-", "").replace(" ", "") in ["P23"]:
-                print("HEJ")
-            if folder_name[:3].replace("-", "").replace(" ", "") in self.subjects_to_exclude[self.data_name]:
-                continue
             try:
-                excel_path = self.find_excel_file(os.path.join(self.file_path, folder_name))
                 raw_intensity = self.define_raw_intensity(folder_name)
-                from dateutil.relativedelta import relativedelta
-                try:
-                    approx_birth = raw_intensity.info["meas_date"].replace(tzinfo=None) - relativedelta(years=ages[folder_name[:2]])
-                    raw_intensity.info["subject_info"]["birthday"] = approx_birth
-                except:
-                    print("No age data available for participant")
-                self.number_of_participants += 1
-                raw_intensity = self.make_annotations(excel_path, raw_intensity)
-                self.tmax = max(self.stimulus_duration.values())
                 raw_intensity.annotations.rename(self.annotation_names)
-                to_delete = np.array([])
-                for _unwanted in self.unwanted:
-                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)[0]
-                    before_after_unwanted = np.append(unwanted - 1, unwanted + 1)
-                    before_after_unwanted_control = before_after_unwanted[np.isin(before_after_unwanted, np.nonzero(raw_intensity.annotations.description == "Control")[0])]
-                    to_delete = np.append(to_delete, (np.append(unwanted, before_after_unwanted_control)))
-                raw_intensity.annotations.delete((np.array(list(set(to_delete)), dtype=int),))            
-                raw_intensity = self.crop_data(raw_intensity)
+                raw_intensity = self.make_annotations(raw_intensity)
+                # from dateutil.relativedelta import relativedelta
+                # try:
+                #     approx_birth = raw_intensity.info["meas_date"].replace(tzinfo=None) - relativedelta(years=ages[folder_name[:2]])
+                #     raw_intensity.info["subject_info"]["birthday"] = approx_birth
+                # except:
+                #     print("No age data available for participant")
+                # self.number_of_participants += 1
+                # raw_intensity = self.make_annotations(excel_path, raw_intensity)
+                # self.tmax = max(self.stimulus_duration.values())
+                # raw_intensity.annotations.rename(self.annotation_names)
+                # to_delete = np.array([])
+                # for _unwanted in self.unwanted:
+                #     unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)[0]
+                #     before_after_unwanted = np.append(unwanted - 1, unwanted + 1)
+                #     before_after_unwanted_control = before_after_unwanted[np.isin(before_after_unwanted, np.nonzero(raw_intensity.annotations.description == "Control")[0])]
+                #     to_delete = np.append(to_delete, (np.append(unwanted, before_after_unwanted_control)))
+                # raw_intensity.annotations.delete((np.array(list(set(to_delete)), dtype=int),))            
+                # raw_intensity = self.crop_data(raw_intensity)
                 
                 # fig = raw_intensity.plot_sensors()
                 # plt.savefig(f"sensors_{folder_name}.jpg")
+                self.annotation_names["0.0"] = "Control"
                 if self.snr_rejection != "None":
                     snr = snr_rejection(raw_intensity, self.snr_rejection)
                     
@@ -3834,7 +3839,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 if self.negative_correlation_enhancement:
                     raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
 
-                event_dict_trans = {val: int(key) for key, val in self.annotation_names.items()}
+                event_dict_trans = {val: int(float(key)) for key, val in self.annotation_names.items()}
                 events, event_dict = mne.events_from_annotations(raw_haemo, event_dict_trans)
                 
                 # Set baseline parameter based on correction method
@@ -3939,6 +3944,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                         Participant_i.events.update({name: epochs[name].get_data(copy=True)})
                     
                     getattr(self, 'Individual_participants').append(Participant_i)
+                    del self.annotation_names["0.0"]
             except FileNotFoundError as e:
                 print(f"Error loading {folder_name}: {e}")
             except Exception as e:
