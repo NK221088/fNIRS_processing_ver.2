@@ -586,6 +586,6 @@ for data_loader in dataLoaders:
     variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
     datasets[data_loader] = {key: value for key, value in zip(variables, data)}
 
-all_participants = datasets['EEG fNIRS HC baseline data']["all_individuals"] # + datasets['EEG fNIRS patient baseline data']["all_individuals"]
-number_of_subjects = [len(datasets['EEG fNIRS HC baseline data']["all_individuals"])] #, len((datasets['EEG fNIRS patient baseline data']["all_individuals"]))]
+all_participants = datasets['EEG fNIRS HC baseline data']["all_individuals"] + datasets['EEG fNIRS patient baseline data']["all_individuals"]
+number_of_subjects = [len(datasets['EEG fNIRS HC baseline data']["all_individuals"]), len((datasets['EEG fNIRS patient baseline data']["all_individuals"]))]
 run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)
