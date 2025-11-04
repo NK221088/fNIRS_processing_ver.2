@@ -3560,3 +3560,408 @@ fNIRS_EEG_patient_baseline_data_load = fNIRS_EEG_HC_baseline_data_load
 ###############################################################################################################################################################################################
 
 fNIRS_EEG_patient_follow_up_data_load = fNIRS_EEG_HC_baseline_data_load
+
+###############################################################################################################################################################################################
+
+class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
+    def __init__(self, data_name: str = "Marwan fNIRS data", file_path: str = 'Marwan_fNIRS_data', short_channel_correction: bool = True, negative_correlation_enhancement: bool = False, interpolate_bad_channels:bool=False, tmin:int = 0,
+                 baseline_correction: str = "Previous rest period", filter_lower_value: float = 0.05, filter_upper_value: float = 0.7, h_trans_bandwidth: float = 0.2,
+                 l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: bool = False,
+                 snr_threshold: float = 8.0, apply_tddr: bool = False):
+        self.number_of_participants = 0
+        self.all_tapping = []
+        self.all_Control = []
+        self.annotation_names = {"1": "TonguePhysical",
+                                }
+        self.file_path = Path(os.getenv(data_name.replace(" ", "_").replace("-", "_").replace(":", "")))
+        self.short_channel_correction = short_channel_correction
+        self.negative_correlation_enhancement = negative_correlation_enhancement
+        self.stimulus_duration = {"1": 15,
+                                }
+        self.scalp_coupling_threshold = scalp_coupling_threshold
+        self.reject_criteria = reject_criteria
+        self.tmin = tmin
+        self.tmax = 20
+        self.baseline = (None, 0)
+        self.data_types = ['n_back/0_back', 'n_back/1_back', 'n_back/2_back', 'n_back/3_back']
+        self.data_name = data_name
+        self.interpolate_bad_channels = interpolate_bad_channels
+        self.unwanted = ["TonguePhysical", "TongueIM", ]
+        self.baseline_correction = baseline_correction
+        self.filter_lower_value = filter_lower_value
+        self.filter_upper_value = filter_upper_value
+        self.h_trans_bandwidth = h_trans_bandwidth
+        self.l_trans_bandwidth = l_trans_bandwidth
+        self.snr_rejection = snr_rejection
+        self.snr_threshold = snr_threshold
+        self.apply_tddr = apply_tddr
+        self.subjects_to_exclude = {"EEG fNIRS HC baseline data": ["C5", "C7", "C8", "C9"],
+                                    "EEG fNIRS HC follow up data": [],
+                                    "EEG fNIRS patient baseline data": ["P6", "P9", "P10", "P11"], #"P15", "P23", "P29"
+                                    "EEG fNIRS patient follow up data": []
+                                    }
+        self.age_file = Path(os.getenv("demographic_data_path".replace(" ", "_").replace("-", "_")))
+        super().__init__(
+            file_path=self.file_path,
+            annotation_names=self.annotation_names,
+            stimulus_duration=self.stimulus_duration,
+            short_channel_correction=self.short_channel_correction,
+            negative_correlation_enhancement=self.negative_correlation_enhancement,
+            scalp_coupling_threshold=self.scalp_coupling_threshold,
+            reject_criteria=self.reject_criteria,
+            baseline=self.baseline,
+            tmin=self.tmin,
+            tmax=self.tmax,
+            data_types=self.data_types,
+            data_name=self.data_name,
+            interpolate_bad_channels = self.interpolate_bad_channels,
+            unwanted = self.unwanted,
+            baseline_correction = self.baseline_correction,
+            filter_lower_value = self.filter_lower_value,
+            filter_upper_value = self.filter_upper_value,
+            h_trans_bandwidth = self.h_trans_bandwidth,
+            l_trans_bandwidth = self.l_trans_bandwidth,
+            snr_rejection = self.snr_rejection,
+            snr_threshold = self.snr_threshold,
+            apply_tddr = self.apply_tddr
+            )
+
+    def find_snirf_file(self, folder_path):
+        """
+        Find the .snirf file in the nested folder structure.
+        Returns the full path to the .snirf file or None if not found.
+        """
+        # Look for .snirf files recursively in the folder
+        snirf_files = glob.glob(os.path.join(folder_path, "**", "*.snirf"), recursive=True)
+        
+        if snirf_files:                
+            creation_times = [snirf_file.split("\\")[-1].replace(".snirf", "")[-3:] for snirf_file in snirf_files]
+            snirf_file = snirf_files[np.argmax(creation_times)]  #  Find the last created .snirf file found
+            snirf_file_folder = snirf_file[:-(len(snirf_file.split("\\")[-1])+1)]
+            return snirf_file_folder
+        return None
+    
+    def find_excel_file(self, folder_path):
+        """
+        Find the .xlsx file in the nested folder structure.
+        Returns the full path to the .xlsx file or None if not found.
+        """
+        # Look for .xlsx files recursively in the folder
+        excel_files = glob.glob(os.path.join(folder_path, "**", "*.xlsx"), recursive=True)
+        if excel_files:
+            creation_times = [excel_file.split("\\")[-1].replace(".xlsx", "")[-4:] for excel_file in excel_files]
+            return excel_files[np.argmax(creation_times)]  # Return the last created  .xlsx file found
+        return None
+
+    def define_raw_intensity(self, folder_name):
+        """
+        Load raw intensity data from a folder (handles different dataset structures).
+        folder_name: The name of the folder containing the data
+        """
+        folder_path = os.path.join(self.file_path, folder_name)
+        
+        # Find the .snirf file in the nested structure
+        snirf_file_path = self.find_snirf_file(folder_path)
+        
+        if not snirf_file_path:
+            raise FileNotFoundError(f"No .snirf file found in {folder_path}")
+        
+        raw_intensity = mne.io.read_raw_nirx(snirf_file_path, verbose=True, preload=True)
+        
+        # raw_intensity.load_data()
+        return raw_intensity
+    
+    def get_actual_event(self, df, sheets, events, sfreq):
+        actual_events = np.empty((0, 3), dtype=int)
+        is_sorted = []
+        for sheet in sheets:
+            generator = (item for item in df[sheet].columns if "started_mean" in item)
+            time_column = next(generator, None)
+            df[sheet] = df[sheet].sort_values(by=time_column).reset_index(drop=True)
+            assert df[sheet]["order"].dropna().is_monotonic_increasing
+            times = list(df[sheet][time_column])
+            times = [time for time in times if str(time) != 'nan']
+            time_corrected_events = events[:,0] / sfreq
+            if sheet == 'Tongue_Loop':
+                offset = times[0] - time_corrected_events[0]
+            times -= offset
+            try:
+                markers = df[sheet]["marker"]
+                markers = [marker for marker in markers if type(marker) != str and str(marker) != 'nan']
+                for time, marker in zip(times, markers):
+                    if "0_back" in self.annotation_names[str(int(markers[0]))]:
+                        actual_events = np.vstack([actual_events, np.array([int(actual_events[-1][0]+15*sfreq), int(0), int(2)])]) # Add control/baseline/rest before active task
+                    actual_events = np.vstack([actual_events, np.array([int(time*sfreq), int(0), int(marker)])])
+            except:
+                print("No markers available for the events")
+                # Ensure that there is maximally 3 seconds between the onset trigger and the first letter shown
+                
+                differences = [times[0]-actual_events[:,0][-1] / sfreq, 3] # Compute the actual time between the onset trigger and the first letter shown
+                actual_events[-1][0] = int((times[0] - differences[np.argmin(differences)]) * sfreq) # Ensure maxmially 3 sec. between onset trigger and first letter shown
+                # Add stimulus duration
+                if self.stimulus_duration[str(actual_events[:,2][-1])] == 0:
+                    self.stimulus_duration[str(actual_events[:,2][-1])] = times[-1] - (actual_events[:,0] / sfreq)[-1] + 3 # We add 3 as the compute the time from the last trigger, but the duration of this event has to be accounted for
+                if "3_back" not in self.annotation_names[str(actual_events[-1][2])]:
+                    actual_events = np.vstack([actual_events, np.array([int((times[-1]+3)*sfreq), int(0), int(2)])]) # Add control/baseline/rest before active task
+            print("Sucessfully added all events")
+        return actual_events
+    
+    def make_annotations(self, excel_path, raw_intensity):
+        df = pd.read_excel(excel_path, sheet_name=None)
+        sheets = list(df.keys())
+        sfreq = raw_intensity.info["sfreq"]
+        events, event_dict = mne.events_from_annotations(raw_intensity)
+        actual_events = self.get_actual_event(df, sheets, events, sfreq)
+        onset = actual_events[:, 0] / sfreq
+        duration = np.array([self.stimulus_duration[str(event)] for event in actual_events[:,2]])
+        description = actual_events[:, 2].astype(str)
+        new_annotations = mne.Annotations(onset=onset, 
+                                 duration=duration, 
+                                 description=description,
+                                 orig_time=raw_intensity.annotations.orig_time
+                                 )
+
+        raw_intensity.set_annotations(new_annotations)
+        return raw_intensity
+    
+    def crop_data(self, raw_intensity):
+        event_dict_trans = {val: int(key) for key, val in self.annotation_names.items()}
+        events, event_dict = mne.events_from_annotations(raw_intensity, event_dict_trans)
+        sfreq = raw_intensity.info["sfreq"]
+        new_tmin = max(events[0][0] / sfreq - 10, 0) #Always ensure the tmin is non-negative.
+        new_tmax = None #events[-1][0] / sfreq + self.stimulus_duration[str(events[-1][2])] + 3
+        raw_intensity = raw_intensity.crop(tmin=new_tmin, tmax=new_tmax)
+        assert len(events) == len(raw_intensity.annotations)
+        return raw_intensity
+    
+    def load_ages(self, age_file):
+        all_ages = {}
+        df = pd.read_excel(age_file, sheet_name=None)
+        sheets = list(df.keys())
+        for sheet in sheets:
+            try:
+                ID_generator = (item for item in df[sheet].columns if "id" in item.lower())
+                ID_column = next(ID_generator, None)
+                age_generator = (item for item in df[sheet].columns if "age" in item.lower())
+                age_column = next(age_generator, None)
+                for id, age in zip(df[sheet][ID_column], df[sheet][age_column]):
+                    all_ages[id] = age
+            except:
+                ValueError("Data is not available")
+        return all_ages
+
+    import matplotlib.pyplot as plt
+    def load_data(self):
+        # Get all folders and sort them (works for both P folders and random named folders)
+        ages = self.load_ages(self.age_file)
+        all_folders = [f for f in sorted(os.listdir(self.file_path)) 
+                    if os.path.isdir(os.path.join(self.file_path, f))]
+        
+        for i, folder_name in enumerate(all_folders, start=1):
+            if folder_name[:3].replace("-", "").replace(" ", "") in ["P23"]:
+                print("HEJ")
+            if folder_name[:3].replace("-", "").replace(" ", "") in self.subjects_to_exclude[self.data_name]:
+                continue
+            try:
+                excel_path = self.find_excel_file(os.path.join(self.file_path, folder_name))
+                raw_intensity = self.define_raw_intensity(folder_name)
+                from dateutil.relativedelta import relativedelta
+                try:
+                    approx_birth = raw_intensity.info["meas_date"].replace(tzinfo=None) - relativedelta(years=ages[folder_name[:2]])
+                    raw_intensity.info["subject_info"]["birthday"] = approx_birth
+                except:
+                    print("No age data available for participant")
+                self.number_of_participants += 1
+                raw_intensity = self.make_annotations(excel_path, raw_intensity)
+                self.tmax = max(self.stimulus_duration.values())
+                raw_intensity.annotations.rename(self.annotation_names)
+                to_delete = np.array([])
+                for _unwanted in self.unwanted:
+                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)[0]
+                    before_after_unwanted = np.append(unwanted - 1, unwanted + 1)
+                    before_after_unwanted_control = before_after_unwanted[np.isin(before_after_unwanted, np.nonzero(raw_intensity.annotations.description == "Control")[0])]
+                    to_delete = np.append(to_delete, (np.append(unwanted, before_after_unwanted_control)))
+                raw_intensity.annotations.delete((np.array(list(set(to_delete)), dtype=int),))            
+                raw_intensity = self.crop_data(raw_intensity)
+                
+                # fig = raw_intensity.plot_sensors()
+                # plt.savefig(f"sensors_{folder_name}.jpg")
+                if self.snr_rejection != "None":
+                    snr = snr_rejection(raw_intensity, self.snr_rejection)
+                    
+                    # Validation
+                    if self.snr_rejection == "SNR" and self.snr_threshold < 1:
+                        raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
+                    if self.snr_rejection == "CV" and self.snr_threshold > 1:
+                        raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
+                    
+                    # Get bad channels based on pair logic
+                    snr_bad_channels = get_bad_channels_by_pairs(raw_intensity.ch_names, snr, self.snr_threshold, self.snr_rejection)
+                    raw_intensity.info["bads"] = snr_bad_channels
+                else:
+                    snr_bad_channels = []
+
+                raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+                raw_od_original = raw_od.copy()
+
+                # Check channel name consistency
+                assert raw_intensity.ch_names == raw_od.ch_names, \
+                    f"Channel names mismatch!\nraw_intensity: {len(raw_intensity.ch_names)} channels\nraw_od: {len(raw_od.ch_names)} channels"
+                
+                if self.short_channel_correction:
+                    raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
+                raw_od = mne_nirs.channels.get_long_channels(raw_od)
+                
+                if self.apply_tddr:
+                    raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
+
+                sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od, l_freq=0.5, h_freq=2.5)
+
+                sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
+                
+                # Filter SNR bad channels to only include those that still exist in the long channels dataset
+                snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
+                
+                # Combine bad channels from all preprocessing
+                all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
+                raw_od.info["bads"] = all_bad_channels
+            
+                if self.interpolate_bad_channels:
+                    raw_od.interpolate_bads()
+                
+                dpf = compute_differential_pathlength(raw_od)
+                raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
+
+                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=6).copy()
+                raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
+
+                if self.negative_correlation_enhancement:
+                    raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
+
+                event_dict_trans = {val: int(key) for key, val in self.annotation_names.items()}
+                events, event_dict = mne.events_from_annotations(raw_haemo, event_dict_trans)
+                
+                # Set baseline parameter based on correction method
+                baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
+                
+                raw_epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
+                
+                self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
+                
+                
+                def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_duration, annotations):
+                    previous_event = np.array([None, None, None])
+                    for idx, event in enumerate(events):
+                        try:
+                            if str(previous_event[2]) in annotations.keys():
+                                if annotations[str(previous_event[2])] == "Control":
+                                    control_event_start = previous_event[0]
+                                    control_event_end = control_event_start + int(stimulus_duration[str(previous_event[2])]*sfreq)
+                                    event_start = event[0]
+                                    event_end = event_start + int(stimulus_duration[str(event[2])]*sfreq)
+                                    control_average = np.mean(channel_values[control_event_start:control_event_end])
+                                    segment = channel_values[event_start:event_end]
+                                    if segment.size == 0:
+                                        print("FUCK")
+                                    segment -= control_average
+                                    previous_event = event
+                                else:
+                                    previous_event = event
+                            else:
+                                previous_event = event
+                                continue
+                        
+                            continue
+                        except Exception as e:
+                            print(f"Error processing event {event} at index {idx}: {e}")
+                    return channel_values
+                
+
+                # def apply_p2p_rejection(channel_values, events, stimulus_durations, sfreq, reject_criteria):
+                #     new_event_matrix = events.copy()
+                #     for idx, event in enumerate(events):
+                #         try:
+                #             duration = stimulus_durations[str(event[2])]
+                #             event_start = event[0]
+                #             event_end = event_start + int(duration*sfreq)
+                #             event_p2p = np.max(channel_values[event_start:event_end]) - np.min(channel_values[event_start:event_end])
+                #             if event_p2p > reject_criteria:
+                #                 new_event_matrix = np.delete(new_event_matrix, idx)
+                #         except Exception as e:
+                #             print(f"Error processing event {event} at index {idx}: {e}")
+                #             continue
+                #     return new_event_matrix
+                
+                # test = apply_p2p_rejection(channel_values=raw_haemo.pick("S1_D1 hbo").get_data()[0], events=events, stimulus_durations=self.stimulus_duration, sfreq=raw_haemo.info["sfreq"], reject_criteria=self.reject_criteria["hbo"])
+                
+                epochs = mne.Epochs(
+                    raw_haemo,
+                    events,
+                    event_id=event_dict,
+                    tmin=self.tmin,
+                    tmax=self.tmax,
+                    reject=self.reject_criteria,
+                    reject_by_annotation=True,
+                    proj=False,
+                    baseline=baseline,
+                    preload=True,
+                    detrend=None,
+                    verbose=True,
+                )
+
+                first_samp_correct_events = events.copy()
+                first_samp_correct_events[:,0] = events[:,0] - raw_haemo._first_samps
+                raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
+                raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
+                        
+                self.drop_log.append(epochs.drop_log)
+                if len(epochs) != 0:
+                    # Apply custom baseline correction if needed
+                    if self.baseline_correction != "xSecondsBefore":
+                        corrector = baselineCorrection(self.baseline_correction)
+                        epochs = corrector.apply_correction(
+                            self.baseline_correction,
+                            epochs,
+                            data_types=self.data_types,
+                        )
+
+                    self.all_raw_epochs.append(raw_epochs)
+                    self.all_epochs.append(epochs)
+                    self.all_control.append(epochs["Control"].get_data(copy=True))
+                    
+                    Participant_i = individual_participant_class(f"subject_{folder_name[:3]}".replace("-", ""))
+                    Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
+                    Participant_i.raw_intensity = raw_intensity
+                    Participant_i.raw_od = raw_od
+                    Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
+                    Participant_i.raw_haemo = raw_haemo
+                    Participant_i.raw_epochs = raw_epochs
+                    Participant_i.epochs = epochs
+                    
+                    for name in self.data_types:
+                        getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
+                        Participant_i.events.update({name: epochs[name].get_data(copy=True)})
+                    
+                    getattr(self, 'Individual_participants').append(Participant_i)
+            except FileNotFoundError as e:
+                print(f"Error loading {folder_name}: {e}")
+            except Exception as e:
+                print(f"Unexpected error with {folder_name}: {e}")
+                
+
+        # Concatenate the control data
+        self.all_control = np.concatenate(self.all_control, axis=0)
+
+        # Concatenate the data for each data type
+        for name in self.data_types:
+            setattr(self, f'all_{name}', np.concatenate(getattr(self, f'all_{name}'), axis=0))
+
+        # Create the dictionary all_data with Control and data for each data type
+        all_data = {"Control": self.all_control}
+        for name in self.data_types:
+            all_data.update({name: getattr(self, f'all_{name}')})
+
+        # Update all_data with control_dict
+        all_freq = self.all_epochs[0].info['sfreq']
+        self.data_types.append("Control")
+        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
