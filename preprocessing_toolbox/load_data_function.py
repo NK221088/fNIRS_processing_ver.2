@@ -3,7 +3,7 @@ from preprocessing_toolbox.Data_processesing_class import fNIRS_Alexandros_Healt
 from preprocessing_toolbox.Data_processesing_class import fNIRS_Melika_hand_data_5Hz_load, fNIRS_Melika_old_data_load, fNIRS_Melika_hand_data_10Hz_load
 from preprocessing_toolbox.Data_processesing_class import fNIRS_Melika_tongue_10Hz_data_load, fNIRS_Melika_hand_data_long_load, fNIRS_Melika_tongue_long_data_load
 from preprocessing_toolbox.Data_processesing_class import fNIRS_Pardis_DOC_data_load, fNIRS_Pardis_HC_data_load
-from preprocessing_toolbox.Data_processesing_class import fNIRS_EEG_HC_baseline_data_load, fNIRS_EEG_HC_follow_up_data_load, fNIRS_EEG_patient_baseline_data_load, fNIRS_EEG_patient_follow_up_data_load
+from preprocessing_toolbox.Data_processesing_class import fNIRS_EEG_HC_baseline_data_load, fNIRS_EEG_HC_follow_up_data_load, fNIRS_EEG_patient_baseline_data_load, fNIRS_EEG_patient_follow_up_data_load, fNIRS_EEG_Marwan_data_load
 
 data_loaders = {
     "Dr. Luke: motor": fNIRS_motor_data_load,
@@ -24,5 +24,6 @@ data_loaders = {
     "EEG fNIRS HC baseline data": fNIRS_EEG_HC_baseline_data_load,
     "EEG fNIRS HC follow up data": fNIRS_EEG_HC_follow_up_data_load,
     "EEG fNIRS patient baseline data": fNIRS_EEG_patient_baseline_data_load,
-    "EEG fNIRS patient follow up data": fNIRS_EEG_patient_follow_up_data_load
+    "EEG fNIRS patient follow up data": fNIRS_EEG_patient_follow_up_data_load,
+    "fNIRS EEG Marwan data load": fNIRS_EEG_Marwan_data_load
 }
