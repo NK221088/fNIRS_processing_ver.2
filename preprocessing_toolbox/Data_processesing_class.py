@@ -3757,8 +3757,17 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
     def load_data(self):
         # Get all folders and sort them (works for both P folders and random named folders)
         ages = self.load_ages(self.age_file)
-        all_folders = [f for f in sorted(os.listdir(self.file_path)) 
-                    if os.path.isdir(os.path.join(self.file_path, f))]
+        import numpy as np
+        all_folders = list(np.concatenate([
+                sorted([patient_path.name + "/" + session_path.name  + "/" +  subsubfolder.name
+                for subsubfolder in (self.file_path / Path(patient_path) / Path(session_path)).iterdir()
+                if subsubfolder.is_dir()
+                ])
+                for patient_path in self.file_path.iterdir()
+                if patient_path.is_dir()
+                for session_path in (self.file_path / Path(patient_path)).iterdir()
+                if session_path.is_dir()
+                ]).flatten())
         
         for i, folder_name in enumerate(all_folders, start=1):
             try:
@@ -3865,7 +3874,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
 
                 plt.show()
                 if self.interpolate_bad_channels:
-                    raw_od.interpolate_bads(method={"eeg":"spline"})
+                    raw_od.interpolate_bads()
                 
                 dpf = compute_differential_pathlength(raw_od)
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
@@ -3966,8 +3975,10 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                     self.all_raw_epochs.append(raw_epochs)
                     self.all_epochs.append(epochs)
                     self.all_control.append(epochs["Control"].get_data(copy=True))
-                    
-                    Participant_i = individual_participant_class(f"subject_{folder_name[:3]}".replace("-", ""))
+                    patient_name = folder_name[0] + folder_name[folder_name.find("ID")+3] + "_" + folder_name.split("/")[1][0] + folder_name[-1:] + "_" + folder_name.split("/")[2].split("_")[0]
+                    if folder_name.split("/")[2].split("_")[-1] in ["1", "2"]:
+                        patient_name += "_" + folder_name.split("/")[2].split("_")[-1]
+                    Participant_i = individual_participant_class(f"subject_{patient_name}".replace("-", ""))
                     Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
                     Participant_i.raw_intensity = raw_intensity
                     Participant_i.raw_od = raw_od
