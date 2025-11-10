@@ -118,7 +118,7 @@ class fNIRS_data_load:
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
-                raw_od.interpolate_bads()
+                raw_od.interpolate_bads(method={"fnirs":"nearest"})
             
             dpf = compute_differential_pathlength(raw_od)
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
@@ -507,7 +507,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
-                raw_od.interpolate_bads()
+                raw_od.interpolate_bads(method={"fnirs":"nearest"})
 
             dpf = compute_differential_pathlength(raw_od)
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
@@ -791,7 +791,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
             raw_od.info["bads"] = all_bad_channels
 
             if self.interpolate_bad_channels:
-                raw_od.interpolate_bads()
+                raw_od.interpolate_bads(method={"fnirs":"nearest"})
             
             dpf = compute_differential_pathlength(raw_od)
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
@@ -1009,7 +1009,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
-                raw_od.interpolate_bads()
+                raw_od.interpolate_bads(method={"fnirs":"nearest"})
                 
             dpf = compute_differential_pathlength(raw_od)
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
@@ -1255,7 +1255,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
-                raw_od.interpolate_bads()
+                raw_od.interpolate_bads(method={"fnirs":"nearest"})
                 
             dpf = compute_differential_pathlength(raw_od)
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
@@ -1500,7 +1500,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
-                raw_od.interpolate_bads()
+                raw_od.interpolate_bads(method={"fnirs":"nearest"})
                 
             dpf = compute_differential_pathlength(raw_od)
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
@@ -1745,7 +1745,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
-                raw_od.interpolate_bads()
+                raw_od.interpolate_bads(method={"fnirs":"nearest"})
                 
             dpf = compute_differential_pathlength(raw_od)
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
@@ -1974,7 +1974,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
-                raw_od.interpolate_bads()
+                raw_od.interpolate_bads(method={"fnirs":"nearest"})
                 
             dpf = compute_differential_pathlength(raw_od)
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
@@ -2183,7 +2183,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
-                raw_od.interpolate_bads()
+                raw_od.interpolate_bads(method={"fnirs":"nearest"})
                 
             dpf = compute_differential_pathlength(raw_od)
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
@@ -2457,7 +2457,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
-                raw_od.interpolate_bads()
+                raw_od.interpolate_bads(method={"fnirs":"nearest"})
                 
             dpf = compute_differential_pathlength(raw_od)
             raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
@@ -2732,7 +2732,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
                 raw_od.info["bads"] = all_bad_channels
             
                 if self.interpolate_bad_channels:
-                    raw_od.interpolate_bads()
+                    raw_od.interpolate_bads(method={"fnirs":"nearest"})
                 
                 dpf = compute_differential_pathlength(raw_od)
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
@@ -2985,7 +2985,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                 raw_od.info["bads"] = all_bad_channels
             
                 if self.interpolate_bad_channels:
-                    raw_od.interpolate_bads()
+                    raw_od.interpolate_bads(method={"fnirs":"nearest"})
                 
                 dpf = compute_differential_pathlength(raw_od)
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
@@ -3349,7 +3349,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 raw_od.info["bads"] = all_bad_channels
             
                 if self.interpolate_bad_channels:
-                    raw_od.interpolate_bads()
+                    raw_od.interpolate_bads(method={"fnirs":"nearest"})
                 
                 dpf = compute_differential_pathlength(raw_od)
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
@@ -3826,9 +3826,46 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 # Combine bad channels from all preprocessing
                 all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
                 raw_od.info["bads"] = all_bad_channels
-            
+
+                import numpy as np
+                import matplotlib.pyplot as plt
+                from mpl_toolkits.mplot3d import Axes3D
+
+                # Extract fNIRS channel coordinates
+                chs = raw_intensity.info['chs']
+
+                # Midpoints, sources, detectors
+                midpoints = np.array([ch['loc'][:3] for ch in chs])
+                sources   = np.array([ch['loc'][3:6] for ch in chs])
+                detectors = np.array([ch['loc'][6:9] for ch in chs])
+
+                # Optional: unique sources/detectors (many repeated across channels)
+                src_unique = np.unique(sources, axis=0)
+                det_unique = np.unique(detectors, axis=0)
+
+                # 3D plot
+                fig = plt.figure(figsize=(8, 6))
+                ax = fig.add_subplot(111, projection='3d')
+
+                ax.scatter(midpoints[:,0], midpoints[:,1], midpoints[:,2], c='r', label='Channel midpoint')
+                ax.scatter(src_unique[:,0], src_unique[:,1], src_unique[:,2], c='b', label='Source')
+                ax.scatter(det_unique[:,0], det_unique[:,1], det_unique[:,2], c='g', label='Detector')
+
+                # Connect each source-detector pair for visualization
+                for ch in chs:
+                    s = ch['loc'][3:6]
+                    d = ch['loc'][6:9]
+                    ax.plot([s[0], d[0]], [s[1], d[1]], [s[2], d[2]], 'k-', alpha=0.3)
+
+                ax.set_xlabel('X (m)')
+                ax.set_ylabel('Y (m)')
+                ax.set_zlabel('Z (m)')
+                ax.legend()
+                ax.set_title('fNIRS optodes and channel midpoints')
+
+                plt.show()
                 if self.interpolate_bad_channels:
-                    raw_od.interpolate_bads()
+                    raw_od.interpolate_bads(method={"eeg":"spline"})
                 
                 dpf = compute_differential_pathlength(raw_od)
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
