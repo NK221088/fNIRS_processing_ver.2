@@ -3608,6 +3608,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.apply_tddr = apply_tddr
         self.subjects_to_exclude = {
                                     }
+        self.folder_errors = []
         self.age_file = Path(os.getenv("demographic_data_path".replace(" ", "_").replace("-", "_")))
         super().__init__(
             file_path=self.file_path,
@@ -3836,43 +3837,6 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
                 raw_od.info["bads"] = all_bad_channels
 
-                import numpy as np
-                import matplotlib.pyplot as plt
-                from mpl_toolkits.mplot3d import Axes3D
-
-                # Extract fNIRS channel coordinates
-                chs = raw_intensity.info['chs']
-
-                # Midpoints, sources, detectors
-                midpoints = np.array([ch['loc'][:3] for ch in chs])
-                sources   = np.array([ch['loc'][3:6] for ch in chs])
-                detectors = np.array([ch['loc'][6:9] for ch in chs])
-
-                # Optional: unique sources/detectors (many repeated across channels)
-                src_unique = np.unique(sources, axis=0)
-                det_unique = np.unique(detectors, axis=0)
-
-                # 3D plot
-                fig = plt.figure(figsize=(8, 6))
-                ax = fig.add_subplot(111, projection='3d')
-
-                ax.scatter(midpoints[:,0], midpoints[:,1], midpoints[:,2], c='r', label='Channel midpoint')
-                ax.scatter(src_unique[:,0], src_unique[:,1], src_unique[:,2], c='b', label='Source')
-                ax.scatter(det_unique[:,0], det_unique[:,1], det_unique[:,2], c='g', label='Detector')
-
-                # Connect each source-detector pair for visualization
-                for ch in chs:
-                    s = ch['loc'][3:6]
-                    d = ch['loc'][6:9]
-                    ax.plot([s[0], d[0]], [s[1], d[1]], [s[2], d[2]], 'k-', alpha=0.3)
-
-                ax.set_xlabel('X (m)')
-                ax.set_ylabel('Y (m)')
-                ax.set_zlabel('Z (m)')
-                ax.legend()
-                ax.set_title('fNIRS optodes and channel midpoints')
-
-                plt.show()
                 if self.interpolate_bad_channels:
                     raw_od.interpolate_bads()
                 
@@ -3923,24 +3887,6 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                             print(f"Error processing event {event} at index {idx}: {e}")
                     return channel_values
                 
-
-                # def apply_p2p_rejection(channel_values, events, stimulus_durations, sfreq, reject_criteria):
-                #     new_event_matrix = events.copy()
-                #     for idx, event in enumerate(events):
-                #         try:
-                #             duration = stimulus_durations[str(event[2])]
-                #             event_start = event[0]
-                #             event_end = event_start + int(duration*sfreq)
-                #             event_p2p = np.max(channel_values[event_start:event_end]) - np.min(channel_values[event_start:event_end])
-                #             if event_p2p > reject_criteria:
-                #                 new_event_matrix = np.delete(new_event_matrix, idx)
-                #         except Exception as e:
-                #             print(f"Error processing event {event} at index {idx}: {e}")
-                #             continue
-                #     return new_event_matrix
-                
-                # test = apply_p2p_rejection(channel_values=raw_haemo.pick("S1_D1 hbo").get_data()[0], events=events, stimulus_durations=self.stimulus_duration, sfreq=raw_haemo.info["sfreq"], reject_criteria=self.reject_criteria["hbo"])
-                
                 epochs = mne.Epochs(
                     raw_haemo,
                     events,
@@ -3975,10 +3921,10 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                     self.all_raw_epochs.append(raw_epochs)
                     self.all_epochs.append(epochs)
                     self.all_control.append(epochs["Control"].get_data(copy=True))
-                    patient_name = folder_name[0] + folder_name[folder_name.find("ID")+3] + "_" + folder_name.split("/")[1][0] + folder_name[-1:] + "_" + folder_name.split("/")[2].split("_")[0]
+                    patient_name = folder_name[0] + folder_name[folder_name.find("ID")+2] + "_" + folder_name.split("/")[1][0] + folder_name.split("/")[1][-1] + "_" + folder_name.split("/")[2][0]
                     if folder_name.split("/")[2].split("_")[-1] in ["1", "2"]:
-                        patient_name += "_" + folder_name.split("/")[2].split("_")[-1]
-                    Participant_i = individual_participant_class(f"subject_{patient_name}".replace("-", ""))
+                                            patient_name += folder_name.split("/")[2].split("_")[-1]
+                    Participant_i = individual_participant_class(f"{patient_name}".replace("-", ""))
                     Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
                     Participant_i.raw_intensity = raw_intensity
                     Participant_i.raw_od = raw_od
@@ -3995,8 +3941,10 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                     del self.annotation_names["0.0"]
             except FileNotFoundError as e:
                 print(f"Error loading {folder_name}: {e}")
+                self.folder_errors.append(f"Unexpected error with {folder_name}: {e}")
             except Exception as e:
                 print(f"Unexpected error with {folder_name}: {e}")
+                self.folder_errors.append(f"Unexpected error with {folder_name}: {e}")
                 
 
         # Concatenate the control data
