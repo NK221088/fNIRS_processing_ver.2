@@ -3587,7 +3587,6 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.stimulus_duration = {'Random_Noise': 10,
                                   'Math': 25,
                                   'Hard_math': 25,
-                                  "Control": 20
                                   
                                 }
         self.scalp_coupling_threshold = scalp_coupling_threshold
@@ -3681,52 +3680,20 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         # raw_intensity.load_data()
         return raw_intensity
     
-    def get_actual_event(self, df, sheets, events, sfreq):
-        actual_events = np.empty((0, 3), dtype=int)
-        is_sorted = []
-        for sheet in sheets:
-            generator = (item for item in df[sheet].columns if "started_mean" in item)
-            time_column = next(generator, None)
-            df[sheet] = df[sheet].sort_values(by=time_column).reset_index(drop=True)
-            assert df[sheet]["order"].dropna().is_monotonic_increasing
-            times = list(df[sheet][time_column])
-            times = [time for time in times if str(time) != 'nan']
-            time_corrected_events = events[:,0] / sfreq
-            if sheet == 'Tongue_Loop':
-                offset = times[0] - time_corrected_events[0]
-            times -= offset
-            try:
-                markers = df[sheet]["marker"]
-                markers = [marker for marker in markers if type(marker) != str and str(marker) != 'nan']
-                for time, marker in zip(times, markers):
-                    if "0_back" in self.annotation_names[str(int(markers[0]))]:
-                        actual_events = np.vstack([actual_events, np.array([int(actual_events[-1][0]+15*sfreq), int(0), int(2)])]) # Add control/baseline/rest before active task
-                    actual_events = np.vstack([actual_events, np.array([int(time*sfreq), int(0), int(marker)])])
-            except:
-                print("No markers available for the events")
-                # Ensure that there is maximally 3 seconds between the onset trigger and the first letter shown
-                
-                differences = [times[0]-actual_events[:,0][-1] / sfreq, 3] # Compute the actual time between the onset trigger and the first letter shown
-                actual_events[-1][0] = int((times[0] - differences[np.argmin(differences)]) * sfreq) # Ensure maxmially 3 sec. between onset trigger and first letter shown
-                # Add stimulus duration
-                if self.stimulus_duration[str(actual_events[:,2][-1])] == 0:
-                    self.stimulus_duration[str(actual_events[:,2][-1])] = times[-1] - (actual_events[:,0] / sfreq)[-1] + 3 # We add 3 as the compute the time from the last trigger, but the duration of this event has to be accounted for
-                if "3_back" not in self.annotation_names[str(actual_events[-1][2])]:
-                    actual_events = np.vstack([actual_events, np.array([int((times[-1]+3)*sfreq), int(0), int(2)])]) # Add control/baseline/rest before active task
-            print("Sucessfully added all events")
-        return actual_events
-    
     def make_annotations(self, raw_intensity):
-        event_dict_trans = {val: int(float(key)) for key, val in self.annotation_names.items()}
-        events, event_dict = mne.events_from_annotations(raw_intensity, event_dict_trans)
         cropped_raw_data = raw_intensity.copy()
-        
-        
-        for id,event in enumerate(events):
-            if id == 0:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + 10, 20, "Control")
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + 45, 20, "Control") 
         cropped_raw_data.annotations.set_durations(self.stimulus_duration)
+        self.annotation_names["0.0"] = "Control"
+        self.stimulus_duration["Control"] =  20
+        new_onsets = list(cropped_raw_data.annotations.onset.copy())
+        new_durations = list(cropped_raw_data.annotations.duration.copy())
+        new_descriptions = list(cropped_raw_data.annotations.description.copy())
+        for annotation in cropped_raw_data.annotations:
+            new_onsets.append(annotation["onset"] + self.stimulus_duration[annotation["description"]])
+            new_durations.append(self.stimulus_duration["Control"])
+            new_descriptions.append("Control")
+        new_annotations = mne.Annotations(onset = new_onsets, duration = new_durations, description = new_descriptions)
+        cropped_raw_data.set_annotations(new_annotations)
         return cropped_raw_data
     
     def crop_data(self, raw_intensity):
@@ -3784,7 +3751,6 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 except:
                     print("No age data available for participant")
                 self.number_of_participants += 1
-                # raw_intensity = self.make_annotations(excel_path, raw_intensity)
                 # self.tmax = max(self.stimulus_duration.values())
                 # raw_intensity.annotations.rename(self.annotation_names)
                 # to_delete = np.array([])
@@ -3798,7 +3764,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 
                 # fig = raw_intensity.plot_sensors()
                 # plt.savefig(f"sensors_{folder_name}.jpg")
-                self.annotation_names["0.0"] = "Control"
+                
                 if self.snr_rejection != "None":
                     snr = snr_rejection(raw_intensity, self.snr_rejection)
                     
@@ -3941,6 +3907,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                     
                     getattr(self, 'Individual_participants').append(Participant_i)
                     del self.annotation_names["0.0"]
+                    del self.stimulus_duration["Control"]
             except FileNotFoundError as e:
                 print(f"Error loading {folder_name}: {e}")
                 self.folder_errors.append(f"Unexpected error with {folder_name}: {e}")
