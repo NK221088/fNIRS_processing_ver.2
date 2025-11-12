@@ -14,6 +14,8 @@ from preprocessing_toolbox.SNR_rejection import snr_rejection, get_bad_channels_
 from preprocessing_toolbox.differential_pathlength import compute_differential_pathlength
 from preprocessing_toolbox.p2p import compute_p2p
 import pandas as pd
+from dateutil.relativedelta import relativedelta
+from datetime import datetime
 
 load_dotenv()
 
@@ -3287,7 +3289,6 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
             try:
                 excel_path = self.find_excel_file(os.path.join(self.file_path, folder_name))
                 raw_intensity = self.define_raw_intensity(folder_name)
-                from dateutil.relativedelta import relativedelta
                 try:
                     approx_birth = raw_intensity.info["meas_date"].replace(tzinfo=None) - relativedelta(years=ages[folder_name[:2]])
                     raw_intensity.info["subject_info"]["birthday"] = approx_birth
@@ -3609,7 +3610,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.subjects_to_exclude = {
                                     }
         self.folder_errors = []
-        self.age_file = Path(os.getenv("demographic_data_path".replace(" ", "_").replace("-", "_")))
+        self.age_file = Path(os.getenv("demographic_data_path_Marwan".replace(" ", "_").replace("-", "_")))
         super().__init__(
             file_path=self.file_path,
             annotation_names=self.annotation_names,
@@ -3746,7 +3747,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
             try:
                 ID_generator = (item for item in df[sheet].columns if "id" in item.lower())
                 ID_column = next(ID_generator, None)
-                age_generator = (item for item in df[sheet].columns if "age" in item.lower())
+                age_generator = (item for item in df[sheet].columns if "cpr" in item.lower())
                 age_column = next(age_generator, None)
                 for id, age in zip(df[sheet][ID_column], df[sheet][age_column]):
                     all_ages[id] = age
@@ -3775,13 +3776,14 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 raw_intensity = self.define_raw_intensity(folder_name)
                 raw_intensity.annotations.rename(self.annotation_names)
                 raw_intensity = self.make_annotations(raw_intensity)
-                # from dateutil.relativedelta import relativedelta
-                # try:
-                #     approx_birth = raw_intensity.info["meas_date"].replace(tzinfo=None) - relativedelta(years=ages[folder_name[:2]])
-                #     raw_intensity.info["subject_info"]["birthday"] = approx_birth
-                # except:
-                #     print("No age data available for participant")
-                # self.number_of_participants += 1
+                try:
+                    birthday = datetime.strptime(str(ages[folder_name[0] + folder_name[folder_name.find("ID")+3]]), "%d%m%y")
+                    if birthday.year > datetime.now().year:
+                        birthday = birthday.replace(birthday.year - 100)
+                    raw_intensity.info["subject_info"]["birthday"] = birthday
+                except:
+                    print("No age data available for participant")
+                self.number_of_participants += 1
                 # raw_intensity = self.make_annotations(excel_path, raw_intensity)
                 # self.tmax = max(self.stimulus_duration.values())
                 # raw_intensity.annotations.rename(self.annotation_names)
