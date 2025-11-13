@@ -3697,7 +3697,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         return cropped_raw_data
     
     def crop_data(self, raw_intensity):
-        event_dict_trans = {val: int(key) for key, val in self.annotation_names.items()}
+        event_dict_trans = {val: int(float(key)) for key, val in self.annotation_names.items()}
         events, event_dict = mne.events_from_annotations(raw_intensity, event_dict_trans)
         sfreq = raw_intensity.info["sfreq"]
         new_tmin = max(events[0][0] / sfreq - 10, 0) #Always ensure the tmin is non-negative.
@@ -3751,19 +3751,15 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 except:
                     print("No age data available for participant")
                 self.number_of_participants += 1
-                # self.tmax = max(self.stimulus_duration.values())
-                # raw_intensity.annotations.rename(self.annotation_names)
-                # to_delete = np.array([])
-                # for _unwanted in self.unwanted:
-                #     unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)[0]
-                #     before_after_unwanted = np.append(unwanted - 1, unwanted + 1)
-                #     before_after_unwanted_control = before_after_unwanted[np.isin(before_after_unwanted, np.nonzero(raw_intensity.annotations.description == "Control")[0])]
-                #     to_delete = np.append(to_delete, (np.append(unwanted, before_after_unwanted_control)))
-                # raw_intensity.annotations.delete((np.array(list(set(to_delete)), dtype=int),))            
-                # raw_intensity = self.crop_data(raw_intensity)
-                
-                # fig = raw_intensity.plot_sensors()
-                # plt.savefig(f"sensors_{folder_name}.jpg")
+                self.tmax = max(self.stimulus_duration.values())
+                to_delete = np.array([])
+                for _unwanted in self.unwanted:
+                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)[0]
+                    before_after_unwanted = np.append(unwanted - 1, unwanted + 1)
+                    before_after_unwanted_control = before_after_unwanted[np.isin(before_after_unwanted, np.nonzero(raw_intensity.annotations.description == "Control")[0])]
+                    to_delete = np.append(to_delete, (np.append(unwanted, before_after_unwanted_control)))
+                raw_intensity.annotations.delete((np.array(list(set(to_delete)), dtype=int),))            
+                raw_intensity = self.crop_data(raw_intensity)
                 
                 if self.snr_rejection != "None":
                     snr = snr_rejection(raw_intensity, self.snr_rejection)
@@ -3889,7 +3885,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                     self.all_raw_epochs.append(raw_epochs)
                     self.all_epochs.append(epochs)
                     self.all_control.append(epochs["Control"].get_data(copy=True))
-                    patient_name = folder_name[0] + folder_name[folder_name.find("ID")+2] + "_" + folder_name.split("/")[1][0] + folder_name.split("/")[1][-1] + "_" + folder_name.split("/")[2][0]
+                    patient_name = folder_name[0] + folder_name[folder_name.find("ID")+3] + "_" + folder_name.split("/")[1][0] + folder_name.split("/")[1][-1] + "_" + folder_name.split("/")[2][0]
                     if folder_name.split("/")[2].split("_")[-1] in ["1", "2"]:
                                             patient_name += folder_name.split("/")[2].split("_")[-1]
                     Participant_i = individual_participant_class(f"{patient_name}".replace("-", ""))
