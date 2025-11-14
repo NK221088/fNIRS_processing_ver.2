@@ -3359,22 +3359,17 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
                 from sklearn.decomposition import PCA
                 
-                def PCA_computation(raw_haemo, chromophore):
-                    data = raw_haemo.pick(chromophore).get_data()
-                    cov_matrix = np.cov(data)
-                    pca = PCA()
-                    pca.fit(cov_matrix)
-                    first_pc = pca.components_[0]
-                    return first_pc
-                    
-                def PCA_subtraction(channel_values, first_pca):
-                    return channel_values - first_pca
-                
-                HbO_first_PC = PCA_computation(raw_haemo, "hbo")
-                HbR_first_PC = PCA_computation(raw_haemo, "hbr")
-                    
-                raw_haemo.apply_function(PCA_subtraction, picks="hbo")
-                raw_haemo.apply_function(PCA_subtraction, picks="hbr")
+                def PCA_correction(channel_values):
+                    data_T = channel_values.T
+                    pca = PCA(n_components=1)
+                    pca.fit(data_T)
+                    projected = pca.transform(data_T)
+                    reconstructed = pca.inverse_transform(projected)
+                    filtered_data = data_T - reconstructed
+                    return filtered_data.T
+
+                raw_haemo.apply_function(PCA_correction, picks="hbo", channel_wise=False)
+                raw_haemo.apply_function(PCA_correction, picks="hbr", channel_wise=False)
 
                 
                 if self.negative_correlation_enhancement:
