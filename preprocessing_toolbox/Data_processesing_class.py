@@ -3357,7 +3357,26 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
 
                 raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=6).copy()
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
+                from sklearn.decomposition import PCA
+                
+                def PCA_computation(raw_haemo, chromophore):
+                    data = raw_haemo.pick(chromophore).get_data()
+                    cov_matrix = np.cov(data)
+                    pca = PCA()
+                    pca.fit(cov_matrix)
+                    first_pc = pca.components_[0]
+                    return first_pc
+                    
+                def PCA_subtraction(channel_values, first_pca):
+                    return channel_values - first_pca
+                
+                HbO_first_PC = PCA_computation(raw_haemo, "hbo")
+                HbR_first_PC = PCA_computation(raw_haemo, "hbr")
+                    
+                raw_haemo.apply_function(PCA_subtraction, picks="hbo")
+                raw_haemo.apply_function(PCA_subtraction, picks="hbr")
 
+                
                 if self.negative_correlation_enhancement:
                     raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
 
@@ -3383,16 +3402,13 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                                     event_start = event[0]
                                     event_end = event_start + int(stimulus_duration[str(event[2])]*sfreq)
                                     control_average = np.mean(channel_values[control_event_start:control_event_end])
-                                    segment = channel_values[event_start:event_end]
-                                    segment -= control_average
+                                    channel_values[event_start:event_end] -= control_average
                                     previous_event = event
                                 else:
                                     previous_event = event
                             else:
                                 previous_event = event
                                 continue
-                        
-                            continue
                         except Exception as e:
                             print(f"Error processing event {event} at index {idx}: {e}")
                     return channel_values
