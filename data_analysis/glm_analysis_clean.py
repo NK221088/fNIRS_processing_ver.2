@@ -227,12 +227,15 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         if len(redundant_annotations) != 0:
             for annotation in redundant_annotations:
                 haemo.annotations.delete(haemo.annotations.description == annotation)
-        renames = {cond: cond.split("/")[0] if "/" in cond else cond for cond in haemo.annotations.description}
-        haemo.annotations.rename(renames)
+        renames_isis = {cond: cond.split("/")[0] if "/" in cond else cond for cond in haemo.annotations.description}
+        renames = {cond: cond.split("/")[1] if "/" in cond else cond for cond in haemo.annotations.description}
+        haemo_isis = haemo.copy()
+        haemo_isis.annotations.rename(renames_isis)
+        haemo.annotations.rename(renames_isis)
         short_channel_haemo = get_short_channels(subject.raw_haemo_unfiltered)
         # haemo.resample(2.5, npad="auto")
         # short_channel_haemo.resample(2.5, npad="auto")
-        isis, names = longest_inter_annotation_interval(haemo)
+        isis, names = longest_inter_annotation_interval(haemo_isis)
         
         conditions = haemo.annotations.description
         
@@ -261,7 +264,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         _gamma_difference_hrf,
         time_length=32.0,
         onset=min_onset,
-        delay=8,
+        delay=7,
         undershoot=12.0,
         dispersion=0.9,
         u_dispersion=0.9,
@@ -492,93 +495,93 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
 
         ################################################################################################################
 
-        # Create the model
-        modelGroup_plot <- lmer(theta ~ Condition:Group:ch_name + Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=TRUE)
+        # # Create the model
+        # modelGroup_plot <- lmer(theta ~ Condition:Group:ch_name + Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=TRUE)
 
-        # Get all diagnostic plots as a list of ggplot objects
-        diagnostic_plots <- plot(check_model(modelCondition_plot, panel = FALSE))
+        # # Get all diagnostic plots as a list of ggplot objects
+        # diagnostic_plots <- plot(check_model(modelCondition_plot, panel = FALSE))
 
-        # Define plot names for each position
-        plot_names <- c(
-            "posterior_predictive_check",  # [[1]]
-            "linearity",                   # [[2]]
-            "homogeneity_of_variance",     # [[3]]
-            "influential_outliers",        # [[4]]
-            "multicollinearity",           # [[5]]
-            "normal_residuals"             # [[6]]
-        )
+        # # Define plot names for each position
+        # plot_names <- c(
+        #     "posterior_predictive_check",  # [[1]]
+        #     "linearity",                   # [[2]]
+        #     "homogeneity_of_variance",     # [[3]]
+        #     "influential_outliers",        # [[4]]
+        #     "multicollinearity",           # [[5]]
+        #     "normal_residuals"             # [[6]]
+        # )
 
-        # Save each plot individually
-        for(i in seq_along(diagnostic_plots)) {
-            filename <- file.path(Phase_2_assumptions_plot_save_path, paste0("modelGroup_", plot_names[i], ".pdf"))
+        # # Save each plot individually
+        # for(i in seq_along(diagnostic_plots)) {
+        #     filename <- file.path(Phase_2_assumptions_plot_save_path, paste0("modelGroup_", plot_names[i], ".pdf"))
             
-            tryCatch({
-                ggsave(filename, plot = diagnostic_plots[[i]], width = 8, height = 6, device = "pdf")
-                message(paste("✓ Created:", filename))
-            }, error = function(e) {
-                message(paste("✗ Could not create:", plot_names[i], "-", e$message))
-            })
-        }
+        #     tryCatch({
+        #         ggsave(filename, plot = diagnostic_plots[[i]], width = 8, height = 6, device = "pdf")
+        #         message(paste("✓ Created:", filename))
+        #     }, error = function(e) {
+        #         message(paste("✗ Could not create:", plot_names[i], "-", e$message))
+        #     })
+        # }
 
-        # Also save the complete panel
-        pdf(file.path(Phase_2_assumptions_plot_save_path, "modelGroup_all_diagnostics.pdf"), width = 12, height = 10)
-        diagnostic_plots <- plot(check_model(modelGroup_plot))
-        dev.off()
+        # # Also save the complete panel
+        # pdf(file.path(Phase_2_assumptions_plot_save_path, "modelGroup_all_diagnostics.pdf"), width = 12, height = 10)
+        # diagnostic_plots <- plot(check_model(modelGroup_plot))
+        # dev.off()
 
-        message("All diagnostic plots completed!")
+        # message("All diagnostic plots completed!")
         
-        modelGroup <- lmer(theta ~ Condition:Group:ch_name + Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        print(anova(modelGroup))
-        nullModelGroup <- lmer(theta ~ Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        anova_result_group <- anova(modelGroup, nullModelGroup)
-        anova_group_df <- as.data.frame(anova_result_group)
-        print(anova_result_group)
+        # modelGroup <- lmer(theta ~ Condition:Group:ch_name + Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
+        # print(anova(modelGroup))
+        # nullModelGroup <- lmer(theta ~ Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
+        # anova_result_group <- anova(modelGroup, nullModelGroup)
+        # anova_group_df <- as.data.frame(anova_result_group)
+        # print(anova_result_group)
 
-        modelGroup <- lmer(theta ~ Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        nullModelGroup <- lmer(theta ~ + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        anova_result_group <- anova(modelGroup, nullModelGroup)
-        anova_group_df <- as.data.frame(anova_result_group)
-        print(anova_result_group)
+        # modelGroup <- lmer(theta ~ Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
+        # nullModelGroup <- lmer(theta ~ + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
+        # anova_result_group <- anova(modelGroup, nullModelGroup)
+        # anova_group_df <- as.data.frame(anova_result_group)
+        # print(anova_result_group)
 
-        modelGroup <- lmer(theta ~ Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        nullModelGroup <- lmer(theta ~ Condition:ch_name + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        anova_result_group <- anova(modelGroup, nullModelGroup)
-        anova_group_df <- as.data.frame(anova_result_group)
-        print(anova_result_group)
+        # modelGroup <- lmer(theta ~ Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
+        # nullModelGroup <- lmer(theta ~ Condition:ch_name + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
+        # anova_result_group <- anova(modelGroup, nullModelGroup)
+        # anova_group_df <- as.data.frame(anova_result_group)
+        # print(anova_result_group)
 
-        modelGroup <- lmer(theta ~ Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        nullModelGroup <- lmer(theta ~ Condition:ch_name + Condition:Group + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        anova_result_group <- anova(modelGroup, nullModelGroup)
-        anova_group_df <- as.data.frame(anova_result_group)
-        print(anova_result_group)
+        # modelGroup <- lmer(theta ~ Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
+        # nullModelGroup <- lmer(theta ~ Condition:ch_name + Condition:Group + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
+        # anova_result_group <- anova(modelGroup, nullModelGroup)
+        # anova_group_df <- as.data.frame(anova_result_group)
+        # print(anova_result_group)
 
-        modelGroup <- lmer(theta ~ Condition:Group + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        nullModelGroup <- lmer(theta ~ Condition:Group + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        anova_result_group <- anova(modelGroup, nullModelGroup)
-        anova_group_df <- as.data.frame(anova_result_group)
-        print(anova_result_group)
+        # modelGroup <- lmer(theta ~ Condition:Group + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
+        # nullModelGroup <- lmer(theta ~ Condition:Group + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
+        # anova_result_group <- anova(modelGroup, nullModelGroup)
+        # anova_group_df <- as.data.frame(anova_result_group)
+        # print(anova_result_group)
 
-        modelGroup <- lmer(theta ~ Condition:Group + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        nullModelGroup <- lmer(theta ~ Condition:Group + Condition + Group + (1 | ID), data=rdf, REML=FALSE)
-        anova_result_group <- anova(modelGroup, nullModelGroup)
-        anova_group_df <- as.data.frame(anova_result_group)
-        print(anova_result_group)
+        # modelGroup <- lmer(theta ~ Condition:Group + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
+        # nullModelGroup <- lmer(theta ~ Condition:Group + Condition + Group + (1 | ID), data=rdf, REML=FALSE)
+        # anova_result_group <- anova(modelGroup, nullModelGroup)
+        # anova_group_df <- as.data.frame(anova_result_group)
+        # print(anova_result_group)
 
-        modelGroup <- lmer(theta ~ Condition:Group + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        nullModelGroup <- lmer(theta ~ Condition:Group + Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
-        anova_result_group <- anova(modelGroup, nullModelGroup)
-        anova_group_df <- as.data.frame(anova_result_group)
-        print(anova_result_group)
+        # modelGroup <- lmer(theta ~ Condition:Group + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
+        # nullModelGroup <- lmer(theta ~ Condition:Group + Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
+        # anova_result_group <- anova(modelGroup, nullModelGroup)
+        # anova_group_df <- as.data.frame(anova_result_group)
+        # print(anova_result_group)
 
-        #Extract coefficents as dataframe:
-        coef_summary_modelGroup <- as.data.frame(summary(modelGroup)$coefficients)
-        coef_summary_modelGroup$Parameter <- rownames(coef_summary_modelGroup)
-        colnames(coef_summary_modelGroup) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+        # #Extract coefficents as dataframe:
+        # coef_summary_modelGroup <- as.data.frame(summary(modelGroup)$coefficients)
+        # coef_summary_modelGroup$Parameter <- rownames(coef_summary_modelGroup)
+        # colnames(coef_summary_modelGroup) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
         
-        #Extract coefficents for plotting:
-        coef_summary_nullModelGroup<- as.data.frame(summary(nullModelGroup)$coefficients)
-        coef_summary_nullModelGroup$Parameter <- rownames(coef_summary_nullModelGroup)
-        colnames(coef_summary_nullModelGroup) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+        # #Extract coefficents for plotting:
+        # coef_summary_nullModelGroup<- as.data.frame(summary(nullModelGroup)$coefficients)
+        # coef_summary_nullModelGroup$Parameter <- rownames(coef_summary_nullModelGroup)
+        # colnames(coef_summary_nullModelGroup) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
         ''')
         
         with localconverter(pandas2ri.converter):
@@ -595,15 +598,15 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
             coef_summary_modelCondition = globalenv["coef_summary_modelCondition"]
             coef_summary_nullModelCondition = globalenv["coef_summary_nullModelCondition"]
 
-            anova_Group_df = globalenv["anova_group_df"]
-            coef_summary_modelGroup = globalenv["coef_summary_modelGroup"]
-            coef_summary_nullModelGroup = globalenv["coef_summary_nullModelGroup"]
+            # anova_Group_df = globalenv["anova_group_df"]
+            # coef_summary_modelGroup = globalenv["coef_summary_modelGroup"]
+            # coef_summary_nullModelGroup = globalenv["coef_summary_nullModelGroup"]
             
             # results = globalenv["results_for_plotting"]
         anova_Condch_df.to_csv(os.path.join(save_path, f"anova_Condch_df.csv"))
         anova_channel_df.to_csv(os.path.join(save_path, f"anova_channel_df.csv"))
         anova_condition_df.to_csv(os.path.join(save_path, f"anova_condition_df.csv"))
-        anova_Group_df.to_csv(os.path.join(save_path, f"anova_group_df.csv"))
+        # anova_Group_df.to_csv(os.path.join(save_path, f"anova_group_df.csv"))
         
         control_estimate = coef_summary_modelCondition[coef_summary_modelCondition['Parameter'] == '(Intercept)']['Estimate'].values[0]
         active_estimate = control_estimate + coef_summary_modelCondition[coef_summary_modelCondition['Parameter'] == coef_summary_modelCondition["Parameter"][1]]['Estimate'].values[0]
@@ -773,61 +776,61 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         print("stopklods")
 '''
 
-# import sys
-# parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-# sys.path.append(parent_dir)
-# from collections import defaultdict
-# from preprocessing_toolbox.load_data_function import data_loaders
+import sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(parent_dir)
+from collections import defaultdict
+from preprocessing_toolbox.load_data_function import data_loaders
 
-# dataSetList = list(data_loaders.keys())
-# dataLoaders = [dataSetList[15], dataSetList[17]]
-# datasets = defaultdict(defaultdict)
+dataSetList = list(data_loaders.keys())
+dataLoaders = [dataSetList[15], dataSetList[17]]
+datasets = defaultdict(defaultdict)
 
-# for data_loader in dataLoaders:
-#     settings = {
-#         "data_set": data_loader,  # Default to first dataset
-#         "epoch_type": "HandMI",
-#         "individual": "All Individuals",
-#         "short_channel_correction": True,
-#         "negative_correlation_enhancement": False,
-#         "haemo_type": "hbo",
-#         "baseline_correction": "Previous rest period",
-#         "tmin": 0,
-#         "stimulus_duration": 5,
-#         "scalp_coupling_threshold": 0.8,
-#         "reject_criteria": dict(hbo=80e-6),
-#         "unwanted": ["15.0"],
-#         "filter_lower_value": 0.01,
-#         "filter_upper_value": 0.5,
-#         "h_trans_bandwidth": 0.2,           
-#         "l_trans_bandwidth": 0.01,
-#         "snr_rejection": "None",  # Default to None, can be set to "SNR" or "CV"
-#         "snr_threshold": 8,  # Default threshold for SNR
-#         "Apply_TDDR": True,
-#         "interpolate_bad_channels": True,
-#     }
-#     current_loader = data_loaders[data_loader](
-#                     data_name = data_loader,
-#                     file_path = data_loader,
-#                     short_channel_correction=settings["short_channel_correction"],
-#                     negative_correlation_enhancement=settings["negative_correlation_enhancement"],
-#                     interpolate_bad_channels=settings["interpolate_bad_channels"],
-#                     baseline_correction=settings["baseline_correction"],
-#                     tmin=settings["tmin"],
-#                     filter_lower_value=settings["filter_lower_value"],
-#                     filter_upper_value=settings["filter_upper_value"],
-#                     l_trans_bandwidth=settings["l_trans_bandwidth"],
-#                     h_trans_bandwidth=settings["h_trans_bandwidth"],
-#                     scalp_coupling_threshold=settings["scalp_coupling_threshold"],
-#                     reject_criteria=settings["reject_criteria"],
-#                     snr_rejection=settings["snr_rejection"],
-#                     snr_threshold=settings["snr_threshold"],
-#                     apply_tddr=settings["Apply_TDDR"]
-#                 )
-#     data = current_loader.load_data()
-#     variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
-#     datasets[data_loader] = {key: value for key, value in zip(variables, data)}
+for data_loader in dataLoaders:
+    settings = {
+        "data_set": data_loader,  # Default to first dataset
+        "epoch_type": "HandMI",
+        "individual": "All Individuals",
+        "short_channel_correction": True,
+        "negative_correlation_enhancement": False,
+        "haemo_type": "hbo",
+        "baseline_correction": "Previous rest period",
+        "tmin": 0,
+        "stimulus_duration": 5,
+        "scalp_coupling_threshold": 0.8,
+        "reject_criteria": dict(hbo=80e-6),
+        "unwanted": ["15.0"],
+        "filter_lower_value": 0.01,
+        "filter_upper_value": 0.5,
+        "h_trans_bandwidth": 0.2,           
+        "l_trans_bandwidth": 0.01,
+        "snr_rejection": "None",  # Default to None, can be set to "SNR" or "CV"
+        "snr_threshold": 8,  # Default threshold for SNR
+        "Apply_TDDR": True,
+        "interpolate_bad_channels": True,
+    }
+    current_loader = data_loaders[data_loader](
+                    data_name = data_loader,
+                    file_path = data_loader,
+                    short_channel_correction=settings["short_channel_correction"],
+                    negative_correlation_enhancement=settings["negative_correlation_enhancement"],
+                    interpolate_bad_channels=settings["interpolate_bad_channels"],
+                    baseline_correction=settings["baseline_correction"],
+                    tmin=settings["tmin"],
+                    filter_lower_value=settings["filter_lower_value"],
+                    filter_upper_value=settings["filter_upper_value"],
+                    l_trans_bandwidth=settings["l_trans_bandwidth"],
+                    h_trans_bandwidth=settings["h_trans_bandwidth"],
+                    scalp_coupling_threshold=settings["scalp_coupling_threshold"],
+                    reject_criteria=settings["reject_criteria"],
+                    snr_rejection=settings["snr_rejection"],
+                    snr_threshold=settings["snr_threshold"],
+                    apply_tddr=settings["Apply_TDDR"]
+                )
+    data = current_loader.load_data()
+    variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
+    datasets[data_loader] = {key: value for key, value in zip(variables, data)}
 
-# all_participants = datasets['EEG fNIRS HC baseline data']["all_individuals"] + datasets['EEG fNIRS patient baseline data']["all_individuals"]
-# number_of_subjects = [len(datasets['EEG fNIRS HC baseline data']["all_individuals"]), len((datasets['EEG fNIRS patient baseline data']["all_individuals"]))]
-# run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)
+all_participants = datasets['EEG fNIRS HC baseline data']["all_individuals"] # + datasets['EEG fNIRS patient baseline data']["all_individuals"]
+number_of_subjects = [len(datasets['EEG fNIRS HC baseline data']["all_individuals"])] #, len((datasets['EEG fNIRS patient baseline data']["all_individuals"]))]
+run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)

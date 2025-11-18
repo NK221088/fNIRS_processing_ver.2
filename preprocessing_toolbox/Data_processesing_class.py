@@ -3359,24 +3359,24 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
                 from sklearn.decomposition import PCA
                 
-                def PCA_correction(channel_values):
-                    # data_T = channel_values.T # Shape (n_times, n_channels) -> 
-                    pca = PCA(n_components=1)
-                    pca.fit(channel_values)
-                    projected = pca.transform(channel_values)
-                    reconstructed = pca.inverse_transform(projected)
-                    filtered_data = channel_values - reconstructed                
-                    Sigma = np.cov(channel_values)
-                    eigenvalues, eigenvectors = np.linalg.eigh(Sigma)
-                    v1 = eigenvectors[:, -1]
-                    X_projected = v1 @ channel_values
-                    reconstructed = np.outer(v1, X_projected)
-                    filtered_data = channel_values - reconstructed
-                    return filtered_data
+                # def PCA_correction(channel_values):
+                #     # data_T = channel_values.T # Shape (n_times, n_channels) -> 
+                #     pca = PCA(n_components=1)
+                #     pca.fit(channel_values)
+                #     projected = pca.transform(channel_values)
+                #     reconstructed = pca.inverse_transform(projected)
+                #     filtered_data = channel_values - reconstructed                
+                #     Sigma = np.cov(channel_values)
+                #     eigenvalues, eigenvectors = np.linalg.eigh(Sigma)
+                #     v1 = eigenvectors[:, -1]
+                #     X_projected = v1 @ channel_values
+                #     reconstructed = np.outer(v1, X_projected)
+                #     filtered_data = channel_values - reconstructed
+                #     return filtered_data
 
 
-                raw_haemo.apply_function(PCA_correction, picks="hbo", channel_wise=False)
-                raw_haemo.apply_function(PCA_correction, picks="hbr", channel_wise=False)
+                # raw_haemo.apply_function(PCA_correction, picks="hbo", channel_wise=False)
+                # raw_haemo.apply_function(PCA_correction, picks="hbr", channel_wise=False)
 
                 
                 if self.negative_correlation_enhancement:
