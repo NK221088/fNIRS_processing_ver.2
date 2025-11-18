@@ -2351,7 +2351,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         np.str_('Resting state'): 6,
         np.str_('TongueMI'): 7
         }
-        self.file_path = Path(os.getenv('Melika_tongue_long_data')) #.encode('latin-1').decode('utf-8'))
+        self.file_path =Path(os.getenv(data_name.replace(":","").replace(" ", "_"))) #.encode('latin-1').decode('utf-8'))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 21
@@ -3360,13 +3360,20 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 from sklearn.decomposition import PCA
                 
                 def PCA_correction(channel_values):
-                    data_T = channel_values.T
+                    # data_T = channel_values.T # Shape (n_times, n_channels) -> 
                     pca = PCA(n_components=1)
-                    pca.fit(data_T)
-                    projected = pca.transform(data_T)
+                    pca.fit(channel_values)
+                    projected = pca.transform(channel_values)
                     reconstructed = pca.inverse_transform(projected)
-                    filtered_data = data_T - reconstructed
-                    return filtered_data.T
+                    filtered_data = channel_values - reconstructed                
+                    Sigma = np.cov(channel_values)
+                    eigenvalues, eigenvectors = np.linalg.eigh(Sigma)
+                    v1 = eigenvectors[:, -1]
+                    X_projected = v1 @ channel_values
+                    reconstructed = np.outer(v1, X_projected)
+                    filtered_data = channel_values - reconstructed
+                    return filtered_data
+
 
                 raw_haemo.apply_function(PCA_correction, picks="hbo", channel_wise=False)
                 raw_haemo.apply_function(PCA_correction, picks="hbr", channel_wise=False)
@@ -3617,7 +3624,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
-        self.subjects_to_exclude = {
+        self.subjects_to_exclude = {"fNIRS EEG Marwan data load": ["P7_S1_P2", "P17_S1_P2"],
                                     }
         self.folder_errors = []
         self.age_file = Path(os.getenv("demographic_data_path_Marwan".replace(" ", "_").replace("-", "_")))
@@ -3732,6 +3739,82 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
             except:
                 ValueError("Data is not available")
         return all_ages
+    
+    def replace(self, raw_intensity):
+
+        # Create a mapping from incorrect to correct channel names
+        channel_mapping = {
+            'S4_D4': 'S4_D6',   # Raw -> Standard
+            'S5_D5': 'S5_D4',
+            'S6_D5': 'S6_D4',
+            'S6_D6': 'S6_D5',
+            'S7_D6': 'S7_D5',
+            'S8_D4': 'S8_D5',
+        }
+
+        # Rename channels in your raw data
+        raw_intensity_corrected = raw_intensity.copy()
+
+        # Build new channel names
+        new_ch_names = []
+        for ch_name in raw_intensity_corrected.ch_names:
+            base_name = ch_name.split()[0]  # Get 'S1_D1' part
+            wavelength = ch_name.split()[1]  # Get '760' or '850' part
+            
+            # Apply mapping if needed
+            if base_name in channel_mapping:
+                base_name = channel_mapping[base_name]
+            
+            new_ch_names.append(f"{base_name} {wavelength}")
+
+        # Rename the channels
+        raw_intensity_corrected.rename_channels(dict(zip(raw_intensity.ch_names, new_ch_names)))
+
+        print("New channel names:")
+        print([ch.split()[0] for ch in raw_intensity_corrected.ch_names[::2]])
+
+        # Now create and apply the montage
+        sources = {}
+        detectors = {}
+
+        with open(rf"L:\AuditData\CONNECT-ME\Nikolai\Data\Marwan\CONMED3_Montage\Standard_Optodes.txt", 'r') as f:
+            for line in f:
+                parts = line.strip().split(',')
+                label = parts[0]
+                coords = np.array([float(parts[1]), float(parts[2]), float(parts[3])]) / 1000
+                
+                if label.startswith('S'):
+                    new_label = 'S' + str(int(label[1:]))
+                    sources[new_label] = coords
+                elif label.startswith('D'):
+                    new_label = 'D' + str(int(label[1:]))
+                    detectors[new_label] = coords
+
+        fiducials = {}
+        with open(rf"L:\AuditData\CONNECT-ME\Nikolai\Data\Marwan\CONMED3_Montage\digpts.txt", 'r') as f:
+            for line in f:
+                if ':' in line:
+                    parts = line.strip().split(':')
+                    label = parts[0].strip().lower()
+                    coords = np.array([float(x) for x in parts[1].strip().split()]) / 1000
+                    
+                    if label in ['nz', 'al', 'ar', 'cz', 'iz']:
+                        fiducials[label] = coords
+
+        montage = mne.channels.make_dig_montage(
+            ch_pos={**sources, **detectors},
+            nasion=fiducials.get('nz'),
+            lpa=fiducials.get('al'),
+            rpa=fiducials.get('ar'),
+            coord_frame='unknown'
+        )
+
+        # Apply montage to corrected data
+        raw_intensity_corrected.set_montage(montage)
+        print("\nMontage successfully applied!")
+        return raw_intensity_corrected
+
+        
 
     import matplotlib.pyplot as plt
     def load_data(self):
@@ -3750,8 +3833,16 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 ]).flatten())
         
         for i, folder_name in enumerate(all_folders, start=1):
+            patient_name = folder_name[0] + folder_name[folder_name.find("ID")+2:folder_name.find("ID")+4].replace("_", "") + "_" + folder_name.split("/")[1][0] + folder_name.split("/")[1][-1] + "_" + folder_name.split("/")[2][0]
+            if folder_name.split("/")[2].split("_")[-1] in ["1", "2", "3"]:
+                patient_name += folder_name.split("/")[2].split("_")[-1]
+            if patient_name.endswith("P") or patient_name[1] == ("P"):
+                print("ERROR")
+            if patient_name in self.subjects_to_exclude[self.data_name]:
+                continue
             try:
                 raw_intensity = self.define_raw_intensity(folder_name)
+                raw_intensity = self.replace(raw_intensity)
                 raw_intensity.annotations.rename(self.annotation_names)
                 raw_intensity = self.make_annotations(raw_intensity)
                 try:
@@ -3812,6 +3903,8 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
                 raw_od.info["bads"] = all_bad_channels
 
+                if patient_name in self.subjects_to_exclude[self.data_name]:
+                    print("test")
                 if self.interpolate_bad_channels:
                     raw_od.interpolate_bads()
                 
@@ -3896,9 +3989,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                     self.all_raw_epochs.append(raw_epochs)
                     self.all_epochs.append(epochs)
                     self.all_control.append(epochs["Control"].get_data(copy=True))
-                    patient_name = folder_name[0] + folder_name[folder_name.find("ID")+3] + "_" + folder_name.split("/")[1][0] + folder_name.split("/")[1][-1] + "_" + folder_name.split("/")[2][0]
-                    if folder_name.split("/")[2].split("_")[-1] in ["1", "2"]:
-                                            patient_name += folder_name.split("/")[2].split("_")[-1]
+                    
                     Participant_i = individual_participant_class(f"{patient_name}".replace("-", ""))
                     Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
                     Participant_i.raw_intensity = raw_intensity
