@@ -63,7 +63,7 @@ plotTypesList = ["Epoch Plot",
 
 # Default settings (add hemoglobin type to settings)
 settings = {
-    "data_set": dataSetList[-1],  # Default to first dataset
+    "data_set": dataSetList[12],  # Default to first dataset
     "epoch_type": "HandMI",
     "individual": "All Individuals",
     "short_channel_correction": True,
@@ -461,7 +461,7 @@ def run_analysis():
                 if hasattr(individual, 'epochs'):
                     number_of_data_types = len(data_types)
                     number_of_data_types_contained = len(set(individual.epochs.annotations.description))
-                    has_all_data_types = number_of_data_types_contained == number_of_data_types
+                    has_all_data_types = number_of_data_types_contained >= number_of_data_types
                     if has_all_data_types:
                         valid_individuals.append(individual)
             
@@ -1115,7 +1115,7 @@ def populate_individuals():
                     # Check if individual has all selected epoch types
                     individual_epochs = individual.epochs[selected_epoch_types]
                     number_of_data_types_contained = len(individual_epochs.event_id)
-                    has_all_data_types = number_of_data_types_contained == len(selected_epoch_types)
+                    has_all_data_types = number_of_data_types_contained >= len(selected_epoch_types)
                     
                     if has_all_data_types:
                         valid_individuals.append(individual)
