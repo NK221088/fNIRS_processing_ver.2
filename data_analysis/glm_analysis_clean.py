@@ -194,8 +194,6 @@ def run_glm(method, raw, design_matrix, noise_model="ar1", bins=0, n_jobs=1, ver
         eigenvectors_hbr = eigenvectors_hbr[:, idx_hbr]
         pca_hbo = eigenvectors_hbo[:, 0] @ raw_hbo
         pca_hbr = eigenvectors_hbr[:, 0] @ raw_hbr
-        # pca_channel_names = [f"PC1_hbo", f"PC1_hbr"]
-        # groups = {ch_name: [i for i, ch in enumerate(raw_copy.ch_names) if ch.split(" ")[1] in ch_name.split("_")[1]] for ch_name in pca_channel_names}
         for ch in raw_copy.info["chs"]:
                 if ch["kind"] == mne.io.constants.FIFF.FIFFV_FNIRS_CH:
                     ch["coil_type"] = mne.io.constants.FIFF.FIFFV_COIL_FNIRS_HBO
@@ -206,6 +204,40 @@ def run_glm(method, raw, design_matrix, noise_model="ar1", bins=0, n_jobs=1, ver
             groups=groups, 
             method=pca_method)
         glm_raw = raw_pca.copy()
+        picks = _picks_to_idx(glm_raw.info, "fnirs", exclude=[], allow_empty=True)
+        ch_names = list(groups.keys())
+    
+    elif method == "PCA":
+        raw_copy = raw.copy()
+        raw_copy_hbo = raw_copy.copy().pick("hbo")
+        raw_copy_hbr = raw_copy.copy().pick("hbr")
+        raw_hbo = raw_copy_hbo.get_data()
+        raw_hbr = raw_copy_hbr.get_data()
+        Sigma_hbo = np.cov(raw_hbo)
+        Sigma_hbr = np.cov(raw_hbr)
+        eigenvalues_hbo, eigenvectors_hbo = np.linalg.eigh(Sigma_hbo)
+        eigenvalues_hbr, eigenvectors_hbr = np.linalg.eigh(Sigma_hbr)
+        idx_hbo = np.argsort(eigenvalues_hbo)[::-1]
+        eigenvalues_hbo = eigenvalues_hbo[idx_hbo]
+        eigenvectors_hbo = eigenvectors_hbo[:, idx_hbo]
+        idx_hbr = np.argsort(eigenvalues_hbr)[::-1]
+        eigenvalues_hbr = eigenvalues_hbr[idx_hbr]
+        eigenvectors_hbr = eigenvectors_hbr[:, idx_hbr]
+        pca_hbo = eigenvectors_hbo[:, 0] @ raw_hbo
+        pca_hbr = eigenvectors_hbr[:, 0] @ raw_hbr
+        pca_channel_names = [f"PC1_hbo", f"PC1_hbr"]
+        groups = {ch_name: [i for i, ch in enumerate(raw_copy.ch_names) if ch.split(" ")[1] in ch_name.split("_")[1]] for ch_name in pca_channel_names}
+        for ch in raw_copy.info["chs"]:
+                if ch["kind"] == mne.io.constants.FIFF.FIFFV_FNIRS_CH:
+                    ch["coil_type"] = mne.io.constants.FIFF.FIFFV_COIL_FNIRS_HBO
+        pca_method = lambda data: pca_hbo if "hbo" in data[0] else pca_hbr
+        raw_pca = mne.channels.combine_channels(
+            raw_copy, 
+            groups=groups, 
+            method=pca_method)
+        glm_raw = raw_pca.copy()
+        glm_raw["PC1_hbo"] = pca_hbo
+        glm_raw["PC1_hbr"] = pca_hbr
         picks = _picks_to_idx(glm_raw.info, "fnirs", exclude=[], allow_empty=True)
         ch_names = list(groups.keys())
         
@@ -297,7 +329,6 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         _gamma_difference_hrf,
         time_length=32.0,
         onset=min_onset,
-        delay=7,
         delay=7,
         undershoot=12.0,
         dispersion=0.9,
@@ -530,8 +561,8 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         ################################################################################################################
 
         # Create the model
-        modelGroup_plot <- lmer(theta ~ Condition:Group + Condition + Group + (1 | ID), data=rdf, REML=TRUE)
-        modelGroup <- lmer(theta ~ Condition:Group + Condition + Group + (1 | ID), data=rdf, REML=FALSE)
+        modelGroup_plot <- lmer(theta ~ Condition:Group:ch_name + Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=TRUE)
+        modelGroup <-  lmer(theta ~ Condition:Group:ch_name + Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
         print(anova(modelGroup))
 
         # Get all diagnostic plots as a list of ggplot objects
@@ -779,60 +810,60 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         print("stopklods")
 '''
 
-# import sys
-# parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-# sys.path.append(parent_dir)
-# from collections import defaultdict
-# from preprocessing_toolbox.load_data_function import data_loaders
+import sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(parent_dir)
+from collections import defaultdict
+from preprocessing_toolbox.load_data_function import data_loaders
 
-# dataSetList = list(data_loaders.keys())
-# dataLoaders = [dataSetList[15], dataSetList[17]]
-# datasets = defaultdict(defaultdict)
+dataSetList = list(data_loaders.keys())
+dataLoaders = [dataSetList[15], dataSetList[17]]
+datasets = defaultdict(defaultdict)
 
-# for data_loader in dataLoaders:
-#     settings = {
-#         "data_set": data_loader,  # Default to first dataset
-#         "epoch_type": "HandMI",
-#         "individual": "All Individuals",
-#         "short_channel_correction": True,
-#         "negative_correlation_enhancement": False,
-#         "haemo_type": "hbo",
-#         "baseline_correction": "Previous rest period",
-#         "tmin": 0,
-#         "stimulus_duration": 5,
-#         "scalp_coupling_threshold": 0.8,
-#         "reject_criteria": dict(hbo=80e-6),
-#         "unwanted": ["15.0"],
-#         "filter_lower_value": 0.01,
-#         "filter_upper_value": 0.5,
-#         "h_trans_bandwidth": 0.2,           
-#         "l_trans_bandwidth": 0.01,
-#         "snr_rejection": "None",  # Default to None, can be set to "SNR" or "CV"
-#         "snr_threshold": 8,  # Default threshold for SNR
-#         "Apply_TDDR": True,
-#         "interpolate_bad_channels": True,
-#     }
-#     current_loader = data_loaders[data_loader](
-#                     data_name = data_loader,
-#                     file_path = data_loader,
-#                     short_channel_correction=settings["short_channel_correction"],
-#                     negative_correlation_enhancement=settings["negative_correlation_enhancement"],
-#                     interpolate_bad_channels=settings["interpolate_bad_channels"],
-#                     baseline_correction=settings["baseline_correction"],
-#                     tmin=settings["tmin"],
-#                     filter_lower_value=settings["filter_lower_value"],
-#                     filter_upper_value=settings["filter_upper_value"],
-#                     l_trans_bandwidth=settings["l_trans_bandwidth"],
-#                     h_trans_bandwidth=settings["h_trans_bandwidth"],
-#                     scalp_coupling_threshold=settings["scalp_coupling_threshold"],
-#                     reject_criteria=settings["reject_criteria"],
-#                     snr_rejection=settings["snr_rejection"],
-#                     snr_threshold=settings["snr_threshold"],
-#                     apply_tddr=settings["Apply_TDDR"]
-#                 )
-#     data = current_loader.load_data()
-#     variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
-#     datasets[data_loader] = {key: value for key, value in zip(variables, data)}
+for data_loader in dataLoaders:
+    settings = {
+        "data_set": data_loader,  # Default to first dataset
+        "epoch_type": "HandMI",
+        "individual": "All Individuals",
+        "short_channel_correction": True,
+        "negative_correlation_enhancement": False,
+        "haemo_type": "hbo",
+        "baseline_correction": "Previous rest period",
+        "tmin": 0,
+        "stimulus_duration": 5,
+        "scalp_coupling_threshold": 0.8,
+        "reject_criteria": dict(hbo=80e-6),
+        "unwanted": ["15.0"],
+        "filter_lower_value": 0.01,
+        "filter_upper_value": 0.5,
+        "h_trans_bandwidth": 0.2,           
+        "l_trans_bandwidth": 0.01,
+        "snr_rejection": "None",  # Default to None, can be set to "SNR" or "CV"
+        "snr_threshold": 8,  # Default threshold for SNR
+        "Apply_TDDR": True,
+        "interpolate_bad_channels": True,
+    }
+    current_loader = data_loaders[data_loader](
+                    data_name = data_loader,
+                    file_path = data_loader,
+                    short_channel_correction=settings["short_channel_correction"],
+                    negative_correlation_enhancement=settings["negative_correlation_enhancement"],
+                    interpolate_bad_channels=settings["interpolate_bad_channels"],
+                    baseline_correction=settings["baseline_correction"],
+                    tmin=settings["tmin"],
+                    filter_lower_value=settings["filter_lower_value"],
+                    filter_upper_value=settings["filter_upper_value"],
+                    l_trans_bandwidth=settings["l_trans_bandwidth"],
+                    h_trans_bandwidth=settings["h_trans_bandwidth"],
+                    scalp_coupling_threshold=settings["scalp_coupling_threshold"],
+                    reject_criteria=settings["reject_criteria"],
+                    snr_rejection=settings["snr_rejection"],
+                    snr_threshold=settings["snr_threshold"],
+                    apply_tddr=settings["Apply_TDDR"]
+                )
+    data = current_loader.load_data()
+    variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
+    datasets[data_loader] = {key: value for key, value in zip(variables, data)}
 
 all_participants = datasets['EEG fNIRS HC baseline data']["all_individuals"] #+ datasets['EEG fNIRS patient baseline data']["all_individuals"]
 number_of_subjects = [len(datasets['EEG fNIRS HC baseline data']["all_individuals"])] #, len((datasets['EEG fNIRS patient baseline data']["all_individuals"]))]
