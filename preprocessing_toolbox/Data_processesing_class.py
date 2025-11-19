@@ -3577,10 +3577,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.number_of_participants = 0
         self.all_tapping = []
         self.all_Control = []
-        self.annotation_names = {'1.0': 'Random_Noise',
-                                 '2.0': 'Random_Noise',
-                                 '3.0': 'Random_Noise',
-                                 '4.0': 'Math',
+        self.annotation_names = {'4.0': 'Math',
                                  '5.0': 'Math',
                                  '6.0': 'Math',
                                  '7.0': 'Math',
@@ -3593,8 +3590,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.file_path = Path(os.getenv(data_name.replace(" ", "_").replace("-", "_").replace(":", "")))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
-        self.stimulus_duration = {'Random_Noise': 10,
-                                  'Math': 25,
+        self.stimulus_duration = {'Math': 25,
                                   'Hard_math': 25,
                                   
                                 }
@@ -3603,10 +3599,10 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.tmin = tmin
         self.tmax = 20
         self.baseline = (None, 0)
-        self.data_types = ['Random_Noise', 'Math', 'Hard_math']
+        self.data_types = ['Math', 'Hard_math']
         self.data_name = data_name
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = []
+        self.unwanted = ["1.0", "2.0", "3.0"]
         self.baseline_correction = baseline_correction
         self.filter_lower_value = filter_lower_value
         self.filter_upper_value = filter_upper_value
@@ -3698,9 +3694,10 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         new_durations = list(cropped_raw_data.annotations.duration.copy())
         new_descriptions = list(cropped_raw_data.annotations.description.copy())
         for annotation in cropped_raw_data.annotations:
-            new_onsets.append(annotation["onset"] + self.stimulus_duration[annotation["description"]])
-            new_durations.append(self.stimulus_duration["Control"])
-            new_descriptions.append("Control")
+            if annotation["description"] in list(self.annotation_names.values()):
+                new_onsets.append(annotation["onset"] + self.stimulus_duration[annotation["description"]])
+                new_durations.append(self.stimulus_duration["Control"])
+                new_descriptions.append("Control")
         new_annotations = mne.Annotations(onset = new_onsets, duration = new_durations, description = new_descriptions)
         cropped_raw_data.set_annotations(new_annotations)
         return cropped_raw_data
@@ -3837,7 +3834,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 raw_intensity.annotations.rename(self.annotation_names)
                 raw_intensity = self.make_annotations(raw_intensity)
                 try:
-                    birthday = datetime.strptime(str(ages[folder_name[0] + folder_name[folder_name.find("ID")+3]]), "%d%m%y")
+                    birthday = datetime.strptime(str(ages[folder_name[0] + folder_name[folder_name.find("ID")+2:folder_name.find("ID")+4].replace("_", "")]), "%d%m%y")
                     if birthday.year > datetime.now().year:
                         birthday = birthday.replace(birthday.year - 100)
                     raw_intensity.info["subject_info"]["birthday"] = birthday
@@ -3995,14 +3992,18 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                         Participant_i.events.update({name: epochs[name].get_data(copy=True)})
                     
                     getattr(self, 'Individual_participants').append(Participant_i)
-                    del self.annotation_names["0.0"]
-                    del self.stimulus_duration["Control"]
+                    if "0.0" in self.annotation_names: del self.annotation_names["0.0"]
+                    if "Control" in self.stimulus_duration: del self.stimulus_duration["Control"]
             except FileNotFoundError as e:
                 print(f"Error loading {folder_name}: {e}")
                 self.folder_errors.append(f"Unexpected error with {folder_name}: {e}")
+                if "0.0" in self.annotation_names: del self.annotation_names["0.0"]
+                if "Control" in self.stimulus_duration: del self.stimulus_duration["Control"]
             except Exception as e:
                 print(f"Unexpected error with {folder_name}: {e}")
                 self.folder_errors.append(f"Unexpected error with {folder_name}: {e}")
+                if "0.0" in self.annotation_names: del self.annotation_names["0.0"]
+                if "Control" in self.stimulus_duration: del self.stimulus_duration["Control"]
                 
 
         # Concatenate the control data
