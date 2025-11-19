@@ -3483,24 +3483,6 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                             print(f"Error processing event {event} at index {idx}: {e}")
                     return channel_values
                 
-
-                # def apply_p2p_rejection(channel_values, events, stimulus_durations, sfreq, reject_criteria):
-                #     new_event_matrix = events.copy()
-                #     for idx, event in enumerate(events):
-                #         try:
-                #             duration = stimulus_durations[str(event[2])]
-                #             event_start = event[0]
-                #             event_end = event_start + int(duration*sfreq)
-                #             event_p2p = np.max(channel_values[event_start:event_end]) - np.min(channel_values[event_start:event_end])
-                #             if event_p2p > reject_criteria:
-                #                 new_event_matrix = np.delete(new_event_matrix, idx)
-                #         except Exception as e:
-                #             print(f"Error processing event {event} at index {idx}: {e}")
-                #             continue
-                #     return new_event_matrix
-                
-                # test = apply_p2p_rejection(channel_values=raw_haemo.pick("S1_D1 hbo").get_data()[0], events=events, stimulus_durations=self.stimulus_duration, sfreq=raw_haemo.info["sfreq"], reject_criteria=self.reject_criteria["hbo"])
-                
                 epochs = mne.Epochs(
                     raw_haemo,
                     events,
@@ -3572,66 +3554,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
         return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
-    
-    
-    
-    """
-                self.drop_log.append(epochs.drop_log)
-                if len(epochs) != 0:
-                    # Apply custom baseline correction if needed
-                    if self.baseline_correction != "xSecondsBefore":
-                        corrector = baselineCorrection(self.baseline_correction)
-                        epochs = corrector.apply_correction(
-                            self.baseline_correction,
-                            epochs,
-                            data_types=self.data_types,
-                        )
-                    
-                    Participant_i = individual_participant_class(f"subject_{folder_name[:3]}".replace("-", ""))
-                    Participant_i.raw_intensity = raw_intensity
-                    Participant_i.raw_od = raw_od
-                    Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
-                    Participant_i.raw_haemo = raw_haemo
-                    for name in self.data_types + ["Control"]:
-                        # Crop to stimulus duration per condition
-                        if len(epochs[name]) != 0:
-                            dur = np.floor(self.stimulus_duration[str(event_dict[name])])
-                            epochs_cond = epochs[name].copy().crop(tmin=self.tmin, tmax=dur)
-                            
-                            # Store in Participant_i as a separate attribute
-                            setattr(Participant_i, f'epochs_{name}', epochs_cond)
-                            
-                            # Store raw data for later extraction
-                            Participant_i.events[name] = epochs_cond.get_data(copy=True)
-                            Participant_i.epochs.append(epochs_cond)
-                            
-                            # Append to global lists
-                            if not hasattr(self, f'all_{name}_epochs'):
-                                setattr(self, f'all_{name}_epochs', [])
-                            else:
-                                getattr(self, f'all_{name}_epochs').append(epochs_cond)
-                            getattr(self, f'all_{name}').append(epochs_cond.get_data(copy=True))
 
-                    
-                    getattr(self, 'Individual_participants').append(Participant_i)
-
-
-        # Concatenate the control data
-        self.all_control = np.concatenate(self.all_Control, axis=0)
-        all_data = {"Control": self.all_control}
-
-        # Concatenate the data for each data type
-        for name in self.data_types:
-            setattr(self, f'all_{name}', np.concatenate(getattr(self, f'all_{name}'), axis=0))
-            self.all_epochs.append(getattr(self, f'all_{name}_epochs'))
-            all_data.update({name: getattr(self, f'all_{name}')})
-
-        # Update all_data with control_dict
-        all_freq = raw_intensity.info["sfreq"]
-        self.data_types.append("Control")
-        return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
-    
-    """
 ###############################################################################################################################################################################################
 
 fNIRS_EEG_HC_follow_up_data_load = fNIRS_EEG_HC_baseline_data_load

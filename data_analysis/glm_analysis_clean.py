@@ -136,7 +136,7 @@ from mne.io.pick import _picks_to_idx
 from nilearn.glm.first_level import run_glm as nilearn_glm
 from mne_nirs.statistics import RegressionResults
 
-def run_glm(method, raw, design_matrix, noise_model="auto", bins=0, n_jobs=1, verbose=0):
+def run_glm(method, raw, design_matrix, noise_model="ar1", bins=0, n_jobs=1, verbose=0):
     """
     GLM fit for an MNE structure containing fNIRS data.
 
@@ -195,7 +195,7 @@ def run_glm(method, raw, design_matrix, noise_model="auto", bins=0, n_jobs=1, ve
         ch_names = raw.ch_names
 
     if noise_model == "auto":
-        noise_model = f"ar{int(np.round(glm_raw.info['sfreq'] * 4))}"
+        noise_model = f"ar{int(np.round(glm_raw.info['sfreq']))}"
 
     if bins == 0:
         bins = len(glm_raw.ch_names)
