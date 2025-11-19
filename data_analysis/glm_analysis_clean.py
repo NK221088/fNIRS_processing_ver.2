@@ -136,7 +136,7 @@ from mne.io.pick import _picks_to_idx
 from nilearn.glm.first_level import run_glm as nilearn_glm
 from mne_nirs.statistics import RegressionResults
 
-def run_glm(method, raw, design_matrix, noise_model="auto", bins=0, n_jobs=1, verbose=0):
+def run_glm(method, raw, design_matrix, noise_model="ar1", bins=0, n_jobs=1, verbose=0):
     """
     GLM fit for an MNE structure containing fNIRS data.
 
@@ -195,7 +195,7 @@ def run_glm(method, raw, design_matrix, noise_model="auto", bins=0, n_jobs=1, ve
         ch_names = raw.ch_names
 
     if noise_model == "auto":
-        noise_model = f"ar{int(np.round(glm_raw.info['sfreq'] * 4))}"
+        noise_model = f"ar{int(np.round(glm_raw.info['sfreq']))}"
 
     if bins == 0:
         bins = len(glm_raw.ch_names)
@@ -533,52 +533,6 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         anova_result_group <- anova(modelGroup, nullModelGroup)
         anova_group_df <- as.data.frame(anova_result_group)
         print(anova_result_group)
-
-        modelGroup <- lmer(theta ~ Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        nullModelGroup <- lmer(theta ~ + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        anova_result_group <- anova(modelGroup, nullModelGroup)
-        anova_group_df <- as.data.frame(anova_result_group)
-        print(anova_result_group)
-
-        modelGroup <- lmer(theta ~ Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        nullModelGroup <- lmer(theta ~ Condition:ch_name + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        anova_result_group <- anova(modelGroup, nullModelGroup)
-        anova_group_df <- as.data.frame(anova_result_group)
-        print(anova_result_group)
-
-        modelGroup <- lmer(theta ~ Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        nullModelGroup <- lmer(theta ~ Condition:ch_name + Condition:Group + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        anova_result_group <- anova(modelGroup, nullModelGroup)
-        anova_group_df <- as.data.frame(anova_result_group)
-        print(anova_result_group)
-
-        modelGroup <- lmer(theta ~ Condition:Group + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        nullModelGroup <- lmer(theta ~ Condition:Group + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        anova_result_group <- anova(modelGroup, nullModelGroup)
-        anova_group_df <- as.data.frame(anova_result_group)
-        print(anova_result_group)
-
-        modelGroup <- lmer(theta ~ Condition:Group + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        nullModelGroup <- lmer(theta ~ Condition:Group + Condition + Group + (1 | ID), data=rdf, REML=FALSE)
-        anova_result_group <- anova(modelGroup, nullModelGroup)
-        anova_group_df <- as.data.frame(anova_result_group)
-        print(anova_result_group)
-
-        modelGroup <- lmer(theta ~ Condition:Group + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        nullModelGroup <- lmer(theta ~ Condition:Group + Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
-        anova_result_group <- anova(modelGroup, nullModelGroup)
-        anova_group_df <- as.data.frame(anova_result_group)
-        print(anova_result_group)
-
-        #Extract coefficents as dataframe:
-        coef_summary_modelGroup <- as.data.frame(summary(modelGroup)$coefficients)
-        coef_summary_modelGroup$Parameter <- rownames(coef_summary_modelGroup)
-        colnames(coef_summary_modelGroup) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
-        
-        #Extract coefficents for plotting:
-        coef_summary_nullModelGroup<- as.data.frame(summary(nullModelGroup)$coefficients)
-        coef_summary_nullModelGroup$Parameter <- rownames(coef_summary_nullModelGroup)
-        colnames(coef_summary_nullModelGroup) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
         ''')
         
         with localconverter(pandas2ri.converter):
