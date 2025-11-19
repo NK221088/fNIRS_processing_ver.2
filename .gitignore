@@ -304,3 +304,4 @@ yarn-error.log*
 *.asv
 *.m~
 env
+*.bat
