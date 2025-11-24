@@ -26,9 +26,9 @@ def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_dur
             if str(previous_event[2]) in annotations.keys():
                 if annotations[str(previous_event[2])] == "Control":
                     control_event_start = previous_event[0]
-                    control_event_end = control_event_start + int(stimulus_duration[str(previous_event[2])]*sfreq)
+                    control_event_end = control_event_start + int(stimulus_duration[annotations[str(previous_event[2])]]*sfreq)
                     event_start = event[0]
-                    event_end = event_start + int(stimulus_duration[str(event[2])]*sfreq)
+                    event_end = event_start + int(stimulus_duration[annotations[str(event[2])]]*sfreq)
                     control_average = np.mean(channel_values[control_event_start:control_event_end])
                     channel_values[event_start:event_end] -= control_average
                     previous_event = event
@@ -40,6 +40,38 @@ def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_dur
         except Exception as e:
             print(f"Error processing event {event} at index {idx}: {e}")
     return channel_values
+
+def find_snirf_file(folder_path):
+    """
+    Find the .snirf file in the nested folder structure.
+    Returns the full path to the .snirf file or None if not found.
+    """
+    # Look for .snirf files recursively in the folder
+    snirf_files = glob.glob(os.path.join(folder_path, "**", "*.snirf"), recursive=True)
+    
+    if snirf_files:                
+        creation_times = [snirf_file.split("\\")[-1].replace(".snirf", "")[-3:] for snirf_file in snirf_files]
+        snirf_file = snirf_files[np.argmax(creation_times)]  #  Find the last created .snirf file found
+        snirf_file_folder = snirf_file[:-(len(snirf_file.split("\\")[-1])+1)]
+        return snirf_file_folder
+    return None
+    
+def define_raw_intensity(file_path, folder_name):
+    """
+    Load raw intensity data from a folder (handles different dataset structures).
+    folder_name: The name of the folder containing the data
+    """
+    folder_path = os.path.join(file_path, folder_name)
+    
+    # Find the .snirf file in the nested structure
+    snirf_file_path = find_snirf_file(folder_path)
+    
+    if not snirf_file_path:
+        raise FileNotFoundError(f"No .snirf file found in {folder_path}")
+    
+    raw_intensity = mne.io.read_raw_nirx(snirf_file_path, verbose=True, preload=True)
+    
+    return raw_intensity
                 
 class fNIRS_data_load:
     def __init__(self, file_path, annotation_names=None, stimulus_duration=5,
@@ -2399,23 +2431,24 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                  snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 0
         self.all_Control = []
-        self.annotation_names = {"1.0": "TongueMI",
-                                 "Rest": "Control",
+        self.annotation_names = {
+                                "0": "Control",
+                                "1": "TongueMI",
+                                "2": "Outro",
+                                "3": "Introduction",
+                                "4": "Resting state",
                                 }
         self.standard_event_ids = {
-        np.str_('Control'): 1,
-        np.str_('End'): 2,
-        np.str_('Introduction'): 3,
-        np.str_('Outro'): 4,
-        np.str_('Pause'): 5,
-        np.str_('Resting state'): 6,
-        np.str_('TongueMI'): 7
         }
         self.file_path = Path(os.getenv(file_path.replace(":","").replace(" ", "_").replace("-", "_")).encode('latin-1').decode('utf-8'))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
-        self.stimulus_duration = {'Control': 21,
+        self.stimulus_duration = {
+                            "Introduction": 80,
+                            "Resting state": 30,
+                            'Control': 21,
                             'TongueMI': 21,
+                            "Outro": 10,
                         }
         self.scalp_coupling_threshold = scalp_coupling_threshold
         self.reject_criteria = reject_criteria
@@ -2425,7 +2458,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.data_types = ["TongueMI"]
         self.data_name = "Melika tongue long data"
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = ["2.0", "0.0"]
+        self.unwanted = ["2", "0"]
         self.baseline_correction = baseline_correction
         self.filter_lower_value = filter_lower_value
         self.filter_upper_value = filter_upper_value
@@ -2461,42 +2494,35 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             snr_threshold = self.snr_threshold,
             apply_tddr = self.apply_tddr
         )
-    
-    def find_snirf_file(self, folder_path):
-        """
-        Find the .snirf file in the nested folder structure.
-        Returns the full path to the .snirf file or None if not found.
-        """
-        # Look for .snirf files recursively in the folder
-        snirf_files = glob.glob(os.path.join(folder_path, "**", "*.snirf"), recursive=True)
+    def make_annotations(self, raw_intensity):
+        cropped_raw_data = raw_intensity.copy()
+        for key, value in self.annotation_names.items():
+            if key in np.unique(cropped_raw_data.annotations.description):
+                cropped_raw_data.annotations.rename({key: value})
+                cropped_raw_data.annotations.set_durations({value: self.stimulus_duration[value]})
+        new_onsets = list(cropped_raw_data.annotations.onset.copy())
+        new_durations = list(cropped_raw_data.annotations.duration.copy())
+        new_descriptions = list(cropped_raw_data.annotations.description.copy())
         
-        if snirf_files:                
-            creation_times = [snirf_file.split("\\")[-1].replace(".snirf", "")[-3:] for snirf_file in snirf_files]
-            snirf_file = snirf_files[np.argmax(creation_times)]  #  Find the last created .snirf file found
-            snirf_file_folder = snirf_file[:-(len(snirf_file.split("\\")[-1])+1)]
-            return snirf_file_folder
-        return None
-    
-    def define_raw_intensity(self, folder_name):
-        """
-        Load raw intensity data from a folder (handles different dataset structures).
-        folder_name: The name of the folder containing the data
-        """
-        folder_path = os.path.join(self.file_path, folder_name)
+        # Add resting state period:
+        new_onsets.append(new_onsets[0] + new_durations[0])
+        new_durations.append(self.stimulus_duration["Resting state"])
+        new_descriptions.append("Resting state")
         
-        # Find the .snirf file in the nested structure
-        snirf_file_path = self.find_snirf_file(folder_path)
+        for annotation in cropped_raw_data.annotations:
+            if annotation["description"] in self.data_types:
+                new_onsets.append(annotation["onset"] + self.stimulus_duration[annotation["description"]])
+                new_durations.append(self.stimulus_duration["Control"])
+                new_descriptions.append("Control")
+                if np.sum(np.array(new_descriptions) == "Control") == 6 or np.sum(np.array(new_descriptions) == "Control") == 12:
+                    new_onsets.append(new_onsets[-1] + new_durations[-1])
+                    new_durations.append(self.stimulus_duration["Resting state"])
+                    new_descriptions.append("Resting state")                    
+        new_annotations = mne.Annotations(onset = new_onsets, duration = new_durations, description = new_descriptions)
+        cropped_raw_data.set_annotations(new_annotations)
+        return cropped_raw_data
         
-        if not snirf_file_path:
-            raise FileNotFoundError(f"No .snirf file found in {folder_path}")
-        
-        raw_intensity = mne.io.read_raw_nirx(snirf_file_path, verbose=True, preload=True)
-        
-        # raw_intensity.load_data()
-        return raw_intensity
-        
-    def load_data(self):
-
+    def load_data(self):               
         all_folders = [f for f in sorted(os.listdir(self.file_path)) 
             if os.path.isdir(os.path.join(self.file_path, f))]
         for i, folder_name in enumerate(all_folders, start=1):
@@ -2505,19 +2531,18 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
             if patient_name in self.subjects_to_exclude[self.data_name]:
                 continue
             try:
-                self.number_of_participants += 1
-                raw_intensity = self.define_raw_intensity(folder_name)
+                raw_intensity = define_raw_intensity(self.file_path, folder_name)
+                raw_intensity.annotations.description = np.array([anno.split(".")[0] for anno in raw_intensity.annotations.description])
+                for _unwanted in self.unwanted:
+                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
+                    raw_intensity.annotations.delete(unwanted)
                 raw_intensity = self.make_annotations(raw_intensity)
+                self.standard_event_ids = {value: int(float(key)) for key, value in self.annotation_names.items()}
                 
                 # #Fix the coordinate frame
                 # for dig_point in raw_intensity.info['dig']:
                 #     if dig_point['coord_frame'] == 0:  # FIFFV_COORD_UNKNOWN
                 #         dig_point['coord_frame'] = 4   # FIFFV_COORD_HEAD
-
-                raw_intensity.annotations.rename(self.annotation_names)
-                for _unwanted in self.unwanted:
-                        unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
-                        raw_intensity.annotations.delete(unwanted)
 
                 if self.snr_rejection != "None":
                     snr = snr_rejection(raw_intensity, self.snr_rejection)
@@ -2571,15 +2596,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 if self.negative_correlation_enhancement:
                     raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
 
-                # event_dict_trans = {val: int(float(key)) for key, val in self.annotation_names.items()}
                 events, event_dict = mne.events_from_annotations(raw_haemo, self.standard_event_ids)
-                
-                # Standardize event IDs
-                # reversed_event_dict = {value: key for key, value in event_dict.items()}
-                # for event in events:
-                #     event[2] = self.standard_event_ids[reversed_event_dict[event[2]]]
-                # for key in list(event_dict.keys()):
-                #     event_dict[key] = self.standard_event_ids[key]
                         
                 # Set baseline parameter based on correction method
                 baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
@@ -2607,9 +2624,8 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 
                 first_samp_correct_events = events.copy()
                 first_samp_correct_events[:,0] = events[:,0] - raw_haemo._first_samps
-                test_annotations = {str(self.standard_event_ids["Control"]): "Control", str(self.standard_event_ids["TongueMI"]): "TongueMI"}
-                raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = test_annotations)
-                raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = test_annotations)
+                raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
+                raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
                 
                 self.drop_log.append(epochs.drop_log)
                 if len(epochs) != 0:
@@ -2640,7 +2656,8 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                         Participant_i.events.update({name: epochs[name].get_data(copy=True)})
                     
                     getattr(self, 'Individual_participants').append(Participant_i)
-                    
+                    self.number_of_participants += 1
+                
             except FileNotFoundError as e:
                 print(f"Error loading {folder_name}: {e}")
                 self.folder_errors.append(f"Unexpected error with {folder_name}: {e}")
@@ -2664,33 +2681,6 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
         return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
-
-    def make_annotations(self, raw_intensity):
-        events, event_dict = mne.events_from_annotations(raw_intensity)
-        cropped_raw_data = raw_intensity.copy()
-        cropped_raw_data.annotations.set_durations(self.stimulus_duration)
-        cropped_raw_data.annotations.description[0] = "I"
-        cropped_raw_data.annotations.set_durations({"I" : 80})
-        cropped_raw_data.annotations.rename({"I": "Introduction"})
-
-        
-        for id,event in enumerate(events):
-            if id == 0:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + 80, 30, "Resting state") # Adding resting state in the beginning
-            elif id == 6:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
-            elif id == 12:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
-            elif id == 18:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 10, "Outro")
-            else:
-                if id != 19 and id !=20:
-                    cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
-        return cropped_raw_data
-
 
 ###############################################################################################################################################################################################
 
@@ -3398,7 +3388,6 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                     raw_intensity.info["subject_info"]["birthday"] = approx_birth
                 except:
                     print("No age data available for participant")
-                self.number_of_participants += 1
                 raw_intensity = self.make_annotations(excel_path, raw_intensity)
                 self.tmax = max(self.stimulus_duration.values())
                 raw_intensity.annotations.rename(self.annotation_names)
@@ -3568,6 +3557,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                         Participant_i.events.update({name: epochs[name].get_data(copy=True)})
                     
                     getattr(self, 'Individual_participants').append(Participant_i)
+                    self.number_of_participants += 1
             except FileNotFoundError as e:
                 print(f"Error loading {folder_name}: {e}")
             except Exception as e:
@@ -3717,7 +3707,6 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         
         raw_intensity = mne.io.read_raw_nirx(snirf_file_path, verbose=True, preload=True)
         
-        # raw_intensity.load_data()
         return raw_intensity
     
     def make_annotations(self, raw_intensity):
