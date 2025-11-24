@@ -19,6 +19,28 @@ from datetime import datetime
 
 load_dotenv()
 
+def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_duration, annotations):
+    previous_event = np.array([None, None, None])
+    for idx, event in enumerate(events):
+        try:
+            if str(previous_event[2]) in annotations.keys():
+                if annotations[str(previous_event[2])] == "Control":
+                    control_event_start = previous_event[0]
+                    control_event_end = control_event_start + int(stimulus_duration[str(previous_event[2])]*sfreq)
+                    event_start = event[0]
+                    event_end = event_start + int(stimulus_duration[str(event[2])]*sfreq)
+                    control_average = np.mean(channel_values[control_event_start:control_event_end])
+                    channel_values[event_start:event_end] -= control_average
+                    previous_event = event
+                else:
+                    previous_event = event
+            else:
+                previous_event = event
+                continue
+        except Exception as e:
+            print(f"Error processing event {event} at index {idx}: {e}")
+    return channel_values
+                
 class fNIRS_data_load:
     def __init__(self, file_path, annotation_names=None, stimulus_duration=5,
                  short_channel_correction=True, negative_correlation_enhancement=True, scalp_coupling_threshold=0.8,
@@ -2259,7 +2281,12 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                 )
 
                 epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
-
+                
+                first_samp_correct_events = events.copy()
+                first_samp_correct_events[:,0] = events[:,0] - raw_haemo._first_samps
+                raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
+                raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
+                
                 self.drop_log.append(epochs.drop_log)
                 if len(epochs) != 0:
                     # Apply custom baseline correction if needed
@@ -2387,7 +2414,9 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         self.file_path = Path(os.getenv(file_path.replace(":","").replace(" ", "_").replace("-", "_")).encode('latin-1').decode('utf-8'))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
-        self.stimulus_duration = 21
+        self.stimulus_duration = {'Control': 21,
+                            'TongueMI': 21,
+                        }
         self.scalp_coupling_threshold = scalp_coupling_threshold
         self.reject_criteria = reject_criteria
         self.tmin = tmin
@@ -2542,14 +2571,15 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 if self.negative_correlation_enhancement:
                     raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
 
-                events, event_dict = mne.events_from_annotations(raw_haemo)
+                # event_dict_trans = {val: int(float(key)) for key, val in self.annotation_names.items()}
+                events, event_dict = mne.events_from_annotations(raw_haemo, self.standard_event_ids)
                 
                 # Standardize event IDs
-                reversed_event_dict = {value: key for key, value in event_dict.items()}
-                for event in events:
-                    event[2] = self.standard_event_ids[reversed_event_dict[event[2]]]
-                for key in list(event_dict.keys()):
-                    event_dict[key] = self.standard_event_ids[key]
+                # reversed_event_dict = {value: key for key, value in event_dict.items()}
+                # for event in events:
+                #     event[2] = self.standard_event_ids[reversed_event_dict[event[2]]]
+                # for key in list(event_dict.keys()):
+                #     event_dict[key] = self.standard_event_ids[key]
                         
                 # Set baseline parameter based on correction method
                 baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
@@ -2574,6 +2604,12 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 )
 
                 epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
+                
+                first_samp_correct_events = events.copy()
+                first_samp_correct_events[:,0] = events[:,0] - raw_haemo._first_samps
+                test_annotations = {str(self.standard_event_ids["Control"]): "Control", str(self.standard_event_ids["TongueMI"]): "TongueMI"}
+                raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = test_annotations)
+                raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = test_annotations)
                 
                 self.drop_log.append(epochs.drop_log)
                 if len(epochs) != 0:
@@ -3592,7 +3628,6 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = {'Math': 25,
                                   'Hard_math': 25,
-                                  
                                 }
         self.scalp_coupling_threshold = scalp_coupling_threshold
         self.reject_criteria = reject_criteria

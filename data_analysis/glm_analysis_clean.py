@@ -348,7 +348,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
                                             add_regs=add_regs,
                                             oversampling=oversampling,
                                             add_reg_names=add_reg_names,) 
-            glm_estimates = run_glm("PCA_HbT", haemo, design_matrix, n_jobs=1)
+            glm_estimates = run_glm("HbT", haemo, design_matrix, n_jobs=1)
 
         except Exception as e:
             print(f"Error type: {type(e).__name__}")
@@ -456,6 +456,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         library(see)
         library(ggplot2)
         library(patchwork)
+        library(effectsize)
         
         # Create all three models
         # modelConch_plot <- lmer(theta ~ Condition + ch_name + Condition:ch_name + (1 | ID), 
@@ -548,6 +549,40 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         anova_condition_df <- as.data.frame(anova_result_condition)
         print(anova_result_condition)
         
+        # Fit the model
+        modelCondition_ML <- lmer(theta ~ Condition + (1 | ID), data=rdf, REML=FALSE)
+
+        # ---- Diagnostics ----
+        print("Column names in rdf:")
+        print(names(rdf))
+
+        print("Head of rdf:")
+        print(head(rdf))
+
+        print("Model formula:")
+        print(formula(modelCondition_ML))
+
+        print("Fixed effects:")
+        print(fixef(modelCondition_ML))
+
+        print("Model class:")
+        print(class(modelCondition_ML))
+
+        # ---- Now try simr ----
+        library(simr)
+
+        model_sim <- makeLmer(modelCondition_ML)
+
+        pc <- powerCurve(
+            model_sim,
+            along="ID",
+            breaks=seq(20, 60, by=5),
+            nsim=100,
+            test=fixed("Conditionn_back", method="KR")
+        )
+
+        print(pc)
+
         #Extract coefficents as dataframe:
         coef_summary_modelCondition <- as.data.frame(summary(modelCondition)$coefficients)
         coef_summary_modelCondition$Parameter <- rownames(coef_summary_modelCondition)
@@ -561,12 +596,12 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         ################################################################################################################
 
         # Create the model
-        modelGroup_plot <- lmer(theta ~ Condition:Group:ch_name + Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=TRUE)
-        modelGroup <-  lmer(theta ~ Condition:Group:ch_name + Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        print(anova(modelGroup))
+        # modelGroup_plot <- lmer(theta ~ Condition:Group:ch_name + Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=TRUE)
+        # modelGroup <-  lmer(theta ~ Condition:Group:ch_name + Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
+        # print(anova(modelGroup))
 
-        # Get all diagnostic plots as a list of ggplot objects
-        diagnostic_plots <- plot(check_model(modelGroup_plot, panel = FALSE))
+        # # Get all diagnostic plots as a list of ggplot objects
+        # diagnostic_plots <- plot(check_model(modelGroup_plot, panel = FALSE))
 
         # # Define plot names for each position
         # plot_names <- c(
@@ -642,8 +677,8 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         # anova_Group_df.to_csv(os.path.join(save_path, f"anova_group_df.csv"))
         # anova_Group_df.to_csv(os.path.join(save_path, f"anova_group_df.csv"))
         
-        control_estimate = coef_summary_modelCondition[coef_summary_modelCondition['Parameter'] == '(Intercept)']['Estimate'].values[0]
-        active_estimate = control_estimate + coef_summary_modelCondition[coef_summary_modelCondition['Parameter'] == coef_summary_modelCondition["Parameter"][1]]['Estimate'].values[0]
+        # control_estimate = coef_summary_modelCondition[coef_summary_modelCondition['Parameter'] == '(Intercept)']['Estimate'].values[0]
+        # active_estimate = control_estimate + coef_summary_modelCondition[coef_summary_modelCondition['Parameter'] == coef_summary_modelCondition["Parameter"][1]]['Estimate'].values[0]
         # plot_df = pd.DataFrame({
         # 'Condition': ['Control', coef_summary_modelCondition["Parameter"][1]],
         # 'Estimate': [control_estimate, active_estimate]
@@ -810,61 +845,61 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         print("stopklods")
 '''
 
-import sys
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(parent_dir)
-from collections import defaultdict
-from preprocessing_toolbox.load_data_function import data_loaders
+# import sys
+# parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+# sys.path.append(parent_dir)
+# from collections import defaultdict
+# from preprocessing_toolbox.load_data_function import data_loaders
 
-dataSetList = list(data_loaders.keys())
-dataLoaders = [dataSetList[15], dataSetList[17]]
-datasets = defaultdict(defaultdict)
+# dataSetList = list(data_loaders.keys())
+# dataLoaders = [dataSetList[15]] #, dataSetList[17]]
+# datasets = defaultdict(defaultdict)
 
-for data_loader in dataLoaders:
-    settings = {
-        "data_set": data_loader,  # Default to first dataset
-        "epoch_type": "HandMI",
-        "individual": "All Individuals",
-        "short_channel_correction": True,
-        "negative_correlation_enhancement": False,
-        "haemo_type": "hbo",
-        "baseline_correction": "Previous rest period",
-        "tmin": 0,
-        "stimulus_duration": 5,
-        "scalp_coupling_threshold": 0.8,
-        "reject_criteria": dict(hbo=80e-6),
-        "unwanted": ["15.0"],
-        "filter_lower_value": 0.01,
-        "filter_upper_value": 0.5,
-        "h_trans_bandwidth": 0.2,           
-        "l_trans_bandwidth": 0.01,
-        "snr_rejection": "None",  # Default to None, can be set to "SNR" or "CV"
-        "snr_threshold": 8,  # Default threshold for SNR
-        "Apply_TDDR": True,
-        "interpolate_bad_channels": True,
-    }
-    current_loader = data_loaders[data_loader](
-                    data_name = data_loader,
-                    file_path = data_loader,
-                    short_channel_correction=settings["short_channel_correction"],
-                    negative_correlation_enhancement=settings["negative_correlation_enhancement"],
-                    interpolate_bad_channels=settings["interpolate_bad_channels"],
-                    baseline_correction=settings["baseline_correction"],
-                    tmin=settings["tmin"],
-                    filter_lower_value=settings["filter_lower_value"],
-                    filter_upper_value=settings["filter_upper_value"],
-                    l_trans_bandwidth=settings["l_trans_bandwidth"],
-                    h_trans_bandwidth=settings["h_trans_bandwidth"],
-                    scalp_coupling_threshold=settings["scalp_coupling_threshold"],
-                    reject_criteria=settings["reject_criteria"],
-                    snr_rejection=settings["snr_rejection"],
-                    snr_threshold=settings["snr_threshold"],
-                    apply_tddr=settings["Apply_TDDR"]
-                )
-    data = current_loader.load_data()
-    variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
-    datasets[data_loader] = {key: value for key, value in zip(variables, data)}
+# for data_loader in dataLoaders:
+#     settings = {
+#         "data_set": data_loader,  # Default to first dataset
+#         "epoch_type": "HandMI",
+#         "individual": "All Individuals",
+#         "short_channel_correction": True,
+#         "negative_correlation_enhancement": False,
+#         "haemo_type": "hbo",
+#         "baseline_correction": "Previous rest period",
+#         "tmin": 0,
+#         "stimulus_duration": 5,
+#         "scalp_coupling_threshold": 0.8,
+#         "reject_criteria": dict(hbo=80e-6),
+#         "unwanted": ["15.0"],
+#         "filter_lower_value": 0.01,
+#         "filter_upper_value": 0.5,
+#         "h_trans_bandwidth": 0.2,           
+#         "l_trans_bandwidth": 0.01,
+#         "snr_rejection": "SNR",  # Default to None, can be set to "SNR" or "CV"
+#         "snr_threshold": 8,  # Default threshold for SNR
+#         "Apply_TDDR": True,
+#         "interpolate_bad_channels": True,
+#     }
+#     current_loader = data_loaders[data_loader](
+#                     data_name = data_loader,
+#                     file_path = data_loader,
+#                     short_channel_correction=settings["short_channel_correction"],
+#                     negative_correlation_enhancement=settings["negative_correlation_enhancement"],
+#                     interpolate_bad_channels=settings["interpolate_bad_channels"],
+#                     baseline_correction=settings["baseline_correction"],
+#                     tmin=settings["tmin"],
+#                     filter_lower_value=settings["filter_lower_value"],
+#                     filter_upper_value=settings["filter_upper_value"],
+#                     l_trans_bandwidth=settings["l_trans_bandwidth"],
+#                     h_trans_bandwidth=settings["h_trans_bandwidth"],
+#                     scalp_coupling_threshold=settings["scalp_coupling_threshold"],
+#                     reject_criteria=settings["reject_criteria"],
+#                     snr_rejection=settings["snr_rejection"],
+#                     snr_threshold=settings["snr_threshold"],
+#                     apply_tddr=settings["Apply_TDDR"]
+#                 )
+#     data = current_loader.load_data()
+#     variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
+#     datasets[data_loader] = {key: value for key, value in zip(variables, data)}
 
-all_participants = datasets['EEG fNIRS HC baseline data']["all_individuals"] #+ datasets['EEG fNIRS patient baseline data']["all_individuals"]
-number_of_subjects = [len(datasets['EEG fNIRS HC baseline data']["all_individuals"])] #, len((datasets['EEG fNIRS patient baseline data']["all_individuals"]))]
-run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)
+# all_participants = datasets['EEG fNIRS HC baseline data']["all_individuals"] #+ datasets['EEG fNIRS patient baseline data']["all_individuals"]
+# number_of_subjects = [len(datasets['EEG fNIRS HC baseline data']["all_individuals"])] #, len((datasets['EEG fNIRS patient baseline data']["all_individuals"]))]
+# run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)

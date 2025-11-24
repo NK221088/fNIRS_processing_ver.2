@@ -63,7 +63,7 @@ plotTypesList = ["Epoch Plot",
 
 # Default settings (add hemoglobin type to settings)
 settings = {
-    "data_set": dataSetList[-1],  # Default to first dataset
+    "data_set": dataSetList[12],  # Default to first dataset
     "epoch_type": "HandMI",
     "individual": "All Individuals",
     "short_channel_correction": True,
@@ -79,7 +79,7 @@ settings = {
     "filter_upper_value": 0.5,
     "h_trans_bandwidth": 0.2,           
     "l_trans_bandwidth": 0.01,
-    "snr_rejection": "None",  # Default to None, can be set to "SNR" or "CV"
+    "snr_rejection": "SNR",  # Default to None, can be set to "SNR" or "CV"
     "snr_threshold": 8,  # Default threshold for SNR
     "Apply_TDDR": True,
 
