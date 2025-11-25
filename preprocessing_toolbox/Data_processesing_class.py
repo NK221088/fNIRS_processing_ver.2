@@ -2612,7 +2612,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                     detrend=None,
                     verbose=True,
                 )
-
+                
                 epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
                 
                 first_samp_correct_events = events.copy()
