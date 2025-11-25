@@ -7,7 +7,6 @@ import os
 from Participant_class import individual_participant_class
 import glob
 from pathlib import Path
-from dotenv import load_dotenv
 from preprocessing_toolbox.baselineCorrection import baselineCorrection
 from preprocessing_toolbox.post_rejection import reject_if_single_event_type
 from preprocessing_toolbox.SNR_rejection import snr_rejection, get_bad_channels_by_pairs
@@ -17,7 +16,13 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 from datetime import datetime
 
-load_dotenv()
+from dotenv import dotenv_values
+
+# Enable Python UTF-8 mode (handles Windows cp1252 locale issues)
+os.environ['PYTHONUTF8'] = '1'
+
+# Load environment variables as dictionary with explicit UTF-8 encoding
+config = dotenv_values(".env", encoding='utf-8')
 
 def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_duration, annotations):
     previous_event = np.array([None, None, None])
@@ -192,7 +197,7 @@ class fNIRS_data_load:
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
-            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 99)
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
             
             epochs = mne.Epochs(
                 raw_haemo,
@@ -581,7 +586,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
-            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
 
             epochs = mne.Epochs(
                 raw_haemo,
@@ -865,7 +870,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
-            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
 
             epochs = mne.Epochs(
                 raw_haemo,
@@ -958,7 +963,11 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
         self.annotation_names = {"1.0": "HandMI",
                                  "Rest": "Control"
                                 }
-        self.file_path = Path(os.getenv('Melika_hand_data_5Hz'))
+                # Get your value
+        key = file_path.replace(":", "").replace(" ", "_").replace("-", "_")
+        env_value = config.get(key)
+        if env_value:
+            self.file_path = Path(env_value)
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = 28
@@ -1083,7 +1092,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
-            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
             
             epochs = mne.Epochs(
                 raw_haemo,
@@ -1329,7 +1338,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
-            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
             
             epochs = mne.Epochs(
                 raw_haemo,
@@ -1574,7 +1583,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
-            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
 
             epochs = mne.Epochs(
                 raw_haemo,
@@ -1819,7 +1828,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
-            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
             
             epochs = mne.Epochs(
                 raw_haemo,
@@ -2048,7 +2057,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
             
             raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
-            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
+            self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
             
             epochs = mne.Epochs(
                 raw_haemo,
@@ -2131,15 +2140,29 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                  l_trans_bandwidth: float = 0.02, reject_criteria: dict = dict(hbo=80e-6), scalp_coupling_threshold: float = 0.8, snr_rejection: str = "None",
                  snr_threshold: int = 8, apply_tddr: bool = False):
         self.number_of_participants = 0
-        self.all_tapping = []
         self.all_Control = []
-        self.annotation_names = {"1.0": "HandMI",
-                                 "Rest": "Control"
+        self.annotation_names = {
+                                "0": "Control",
+                                "1": "HandMI",
+                                "2": "Outro",
+                                "3": "Introduction",
+                                "4": "Resting state",
                                 }
-        self.file_path = Path(os.getenv(file_path.replace(":","").replace(" ", "_").replace("-", "_")).encode('latin-1').decode('utf-8'))
+        self.standard_event_ids = {
+        }
+        key = file_path.replace(":", "").replace(" ", "_").replace("-", "_")
+        env_value = config.get(key)
+        if env_value:
+            self.file_path = Path(env_value)
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
-        self.stimulus_duration = 21
+        self.stimulus_duration = {
+                            "Introduction": 80,
+                            "Resting state": 30,
+                            'Control': 21,
+                            'HandMI': 21,
+                            "Outro": 10,
+                        }
         self.scalp_coupling_threshold = scalp_coupling_threshold
         self.reject_criteria = reject_criteria
         self.tmin = tmin
@@ -2148,7 +2171,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         self.data_types = ["HandMI"]
         self.data_name = "Melika hand data long"
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = ["0.0"]
+        self.unwanted = ["0"]
         self.baseline_correction = baseline_correction
         self.filter_lower_value = filter_lower_value
         self.filter_upper_value = filter_upper_value
@@ -2183,58 +2206,22 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
             snr_threshold = self.snr_threshold,
             apply_tddr = self.apply_tddr
         )
-
-    def find_snirf_file(self, folder_path):
-        """
-        Find the .snirf file in the nested folder structure.
-        Returns the full path to the .snirf file or None if not found.
-        """
-        # Look for .snirf files recursively in the folder
-        snirf_files = glob.glob(os.path.join(folder_path, "**", "*.snirf"), recursive=True)
-        
-        if snirf_files:                
-            creation_times = [snirf_file.split("\\")[-1].replace(".snirf", "")[-3:] for snirf_file in snirf_files]
-            snirf_file = snirf_files[np.argmax(creation_times)]  #  Find the last created .snirf file found
-            snirf_file_folder = snirf_file[:-(len(snirf_file.split("\\")[-1])+1)]
-            return snirf_file_folder
-        return None
-    
-    def define_raw_intensity(self, folder_name):
-        """
-        Load raw intensity data from a folder (handles different dataset structures).
-        folder_name: The name of the folder containing the data
-        """
-        folder_path = os.path.join(self.file_path, folder_name)
-        
-        # Find the .snirf file in the nested structure
-        snirf_file_path = self.find_snirf_file(folder_path)
-        
-        if not snirf_file_path:
-            raise FileNotFoundError(f"No .snirf file found in {folder_path}")
-        
-        raw_intensity = mne.io.read_raw_nirx(snirf_file_path, verbose=True, preload=True)
-        
-        # raw_intensity.load_data()
-        return raw_intensity
         
     def load_data(self):
-
         all_folders = [f for f in sorted(os.listdir(self.file_path)) 
             if os.path.isdir(os.path.join(self.file_path, f))]
         for i, folder_name in enumerate(all_folders, start=1):
             patient_name = folder_name.split("_")[0]
-            # individual_participant_class(epochs.info["subject_info"]["his_id"])
             if patient_name in self.subjects_to_exclude[self.data_name]:
                 continue
             try:
-                self.number_of_participants += 1
-                raw_intensity = self.define_raw_intensity(folder_name)
-                raw_intensity = self.make_annotations(raw_intensity)
-
-                raw_intensity.annotations.rename(self.annotation_names)
+                raw_intensity = define_raw_intensity(self.file_path, folder_name)
+                raw_intensity.annotations.description = np.array([anno.split(".")[0] for anno in raw_intensity.annotations.description])
                 for _unwanted in self.unwanted:
-                        unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
-                        raw_intensity.annotations.delete(unwanted)
+                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
+                    raw_intensity.annotations.delete(unwanted)
+                raw_intensity = self.make_annotations(raw_intensity)
+                self.standard_event_ids = {value: int(float(key)) for key, value in self.annotation_names.items()}
 
                 if self.snr_rejection != "None":
                     snr = snr_rejection(raw_intensity, self.snr_rejection)
@@ -2265,7 +2252,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                 if self.apply_tddr:
                     raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
 
-                sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
+                sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od, l_freq=0.5, h_freq=2.5)
 
                 sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
                 
@@ -2288,14 +2275,14 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                 if self.negative_correlation_enhancement:
                     raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
 
-                events, event_dict = mne.events_from_annotations(raw_haemo)
-
+                events, event_dict = mne.events_from_annotations(raw_haemo, self.standard_event_ids)
+                        
                 # Set baseline parameter based on correction method
                 baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
                 
-                raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
+                raw_epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
-                self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 99)
+                self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
                 
                 epochs = mne.Epochs(
                     raw_haemo,
@@ -2348,7 +2335,8 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                         Participant_i.events.update({name: epochs[name].get_data(copy=True)})
                     
                     getattr(self, 'Individual_participants').append(Participant_i)
-                    
+                    self.number_of_participants += 1
+                
             except FileNotFoundError as e:
                 print(f"Error loading {folder_name}: {e}")
                 self.folder_errors.append(f"Unexpected error with {folder_name}: {e}")
@@ -2372,56 +2360,43 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
         return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
-
-    
-    def make_without_intro_annotations(self, raw_intensity):
-        sampling_frequency = raw_intensity.info["sfreq"]
-        events, event_dict = mne.events_from_annotations(raw_intensity)
-        cropped_raw_data = raw_intensity.copy()
-        cropped_raw_data.annotations.set_durations(self.stimulus_duration)
-
-        for id,event in enumerate(events):
-            if id == 0:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] - 30, 30, "Resting state") # Adding resting state in the beginning
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] - 110, 80, "Introduction")
-            if id == 5:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
-            if id == 11:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
-            if id == 17:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 10, "Outro")
-            cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
-        
-        return cropped_raw_data
     
     def make_annotations(self, raw_intensity):
-        sampling_frequency = raw_intensity.info["sfreq"]
-        events, event_dict = mne.events_from_annotations(raw_intensity)
         cropped_raw_data = raw_intensity.copy()
-        cropped_raw_data.annotations.set_durations(self.stimulus_duration)
-        cropped_raw_data.annotations.description[0] = "I"
-        cropped_raw_data.annotations.set_durations({"I" : 80})
-        cropped_raw_data.annotations.rename({"I": "Introduction"})
-        if "0" in cropped_raw_data.annotations.description:
-            cropped_raw_data.annotations.rename({"0": "End"})
-
+        for key, value in self.annotation_names.items():
+            if key in np.unique(cropped_raw_data.annotations.description):
+                cropped_raw_data.annotations.rename({key: value})
+                cropped_raw_data.annotations.set_durations({value: self.stimulus_duration[value]})
+        new_onsets = list(cropped_raw_data.annotations.onset.copy())
+        new_durations = list(cropped_raw_data.annotations.duration.copy())
+        new_descriptions = list(cropped_raw_data.annotations.description.copy())
         
-        for id,event in enumerate(events):
-            if id == 0:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + 80, 30, "Resting state") # Adding resting state in the beginning
-            elif id == 6:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
-            elif id == 12:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 30, "Pause")
-            elif id == 18:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + ( 2*self.stimulus_duration), 10, "Outro")
-            else:
-                cropped_raw_data.annotations.append((event[0]) / cropped_raw_data.info['sfreq'] + self.stimulus_duration, self.stimulus_duration, "Rest")
+        # Add resting state period:
+        if new_descriptions[0] != "Introduction":
+            first_onset = new_onsets[0]
+            new_onsets.append(first_onset - self.stimulus_duration["Resting state"] - self.stimulus_duration["Introduction"])
+            new_durations.append(self.stimulus_duration["Introduction"])
+            new_descriptions.append("Introduction")
+            new_onsets.append(first_onset - self.stimulus_duration["Resting state"])
+            new_durations.append(self.stimulus_duration["Resting state"])
+            new_descriptions.append("Resting state")       
+        else:
+            new_onsets.append(new_onsets[0] + new_durations[0])
+            new_durations.append(self.stimulus_duration["Resting state"])
+            new_descriptions.append("Resting state")
+        
+        for annotation in cropped_raw_data.annotations:
+            if annotation["description"] in self.data_types:
+                new_onsets.append(annotation["onset"] + self.stimulus_duration[annotation["description"]])
+                new_durations.append(self.stimulus_duration["Control"])
+                new_descriptions.append("Control")
+                if np.sum(np.array(new_descriptions) == "Control") == 6 or np.sum(np.array(new_descriptions) == "Control") == 12:
+                    new_onsets.append(new_onsets[-1] + new_durations[-1])
+                    new_durations.append(self.stimulus_duration["Resting state"])
+                    new_descriptions.append("Resting state")                    
+        new_annotations = mne.Annotations(onset = new_onsets, duration = new_durations, description = new_descriptions)
+        cropped_raw_data.set_annotations(new_annotations)
         return cropped_raw_data
-
 ###############################################################################################################################################################################################
 
 class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
@@ -2440,7 +2415,10 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                                 }
         self.standard_event_ids = {
         }
-        self.file_path = Path(os.getenv(file_path.replace(":","").replace(" ", "_").replace("-", "_")).encode('latin-1').decode('utf-8'))
+        key = file_path.replace(":", "").replace(" ", "_").replace("-", "_")
+        env_value = config.get(key)
+        if env_value:
+            self.file_path = Path(env_value)
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = {
@@ -2522,12 +2500,11 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         cropped_raw_data.set_annotations(new_annotations)
         return cropped_raw_data
         
-    def load_data(self):               
+    def load_data(self):
         all_folders = [f for f in sorted(os.listdir(self.file_path)) 
             if os.path.isdir(os.path.join(self.file_path, f))]
         for i, folder_name in enumerate(all_folders, start=1):
             patient_name = folder_name.split("_")[0]
-            # individual_participant_class(epochs.info["subject_info"]["his_id"])
             if patient_name in self.subjects_to_exclude[self.data_name]:
                 continue
             try:
@@ -2573,7 +2550,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 if self.apply_tddr:
                     raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
 
-                sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od)
+                sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od, l_freq=0.5, h_freq=2.5)
 
                 sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
                 
@@ -2590,9 +2567,9 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 dpf = compute_differential_pathlength(raw_od)
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
-                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=dpf).copy()
+                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=6).copy()
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
-
+                
                 if self.negative_correlation_enhancement:
                     raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
 
@@ -2603,7 +2580,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 
                 raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
-                self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
+                self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
                 
                 epochs = mne.Epochs(
                     raw_haemo,
@@ -2658,6 +2635,10 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                     getattr(self, 'Individual_participants').append(Participant_i)
                     self.number_of_participants += 1
                 
+                else:
+                    print(f"No valid epochs for participant {patient_name}, skipping.")
+                    self.folder_errors.append(f"No epochs remaining for {folder_name}.")
+                
             except FileNotFoundError as e:
                 print(f"Error loading {folder_name}: {e}")
                 self.folder_errors.append(f"Unexpected error with {folder_name}: {e}")
@@ -2680,6 +2661,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         # Update all_data with control_dict
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
+        print(self.folder_errors)
         return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
 
 ###############################################################################################################################################################################################
@@ -2845,7 +2827,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
                 
                 raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
-                self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
+                self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
                 
                 epochs = mne.Epochs(
                     raw_haemo,
@@ -3085,7 +3067,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                 dpf = compute_differential_pathlength(raw_od)
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
-                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=6).copy()
+                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
                 if self.negative_correlation_enhancement:
@@ -3098,7 +3080,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                 
                 raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
-                self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 90)
+                self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
                 
                 epochs = mne.Epochs(
                     raw_haemo,
@@ -3178,24 +3160,29 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         self.number_of_participants = 0
         self.all_tapping = []
         self.all_Control = []
-        self.annotation_names = {"1": "TonguePhysical",
-                                 "2": "Control",
-                                 "3": "TongueIM",
-                                 "4": "n_back/0_back",
-                                 "5": "n_back/1_back",
-                                 "6": "n_back/2_back",
-                                 "7": "n_back/3_back",
+        self.annotation_names = {
+                                "0": "Control",
+                                "1": "TonguePhysical",
+                                "3": "TongueIM",
+                                "4": "n_back/0_back",
+                                "5": "n_back/1_back",
+                                "6": "n_back/2_back",
+                                "7": "n_back/3_back",
                                 }
+        self.standard_event_ids = {
+        }
         self.file_path = Path(os.getenv(data_name.replace(" ", "_").replace("-", "_").replace(":", "")))
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
-        self.stimulus_duration = {"1": 15,
-                                 "2": 15,
-                                 "3": 15,
-                                 "4": 0,
-                                 "5": 0,
-                                 "6": 0,
-                                 "7": 0,
+        self.stimulus_duration = {
+                                "0": 15,
+                                "1": 15,
+                                "2": 15,
+                                "3": 15,
+                                "4": 0,
+                                "5": 0,
+                                "6": 0,
+                                "7": 0,
                                 }
         self.scalp_coupling_threshold = scalp_coupling_threshold
         self.reject_criteria = reject_criteria
@@ -3205,7 +3192,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         self.data_types = ['n_back/0_back', 'n_back/1_back', 'n_back/2_back', 'n_back/3_back']
         self.data_name = data_name
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = ["TonguePhysical", "TongueIM", ]
+        self.unwanted = ["1", "3"]
         self.baseline_correction = baseline_correction
         self.filter_lower_value = filter_lower_value
         self.filter_upper_value = filter_upper_value
@@ -3310,7 +3297,8 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 markers = [marker for marker in markers if type(marker) != str and str(marker) != 'nan']
                 for time, marker in zip(times, markers):
                     if "0_back" in self.annotation_names[str(int(markers[0]))]:
-                        actual_events = np.vstack([actual_events, np.array([int(actual_events[-1][0]+15*sfreq), int(0), int(2)])]) # Add control/baseline/rest before active task
+                        actual_events = np.vstack([actual_events, np.array([int(actual_events[-1][0]+15*sfreq), int(0), int(0)])]) # Add control/baseline/rest before active task
+                    if marker == 2: marker = 0
                     actual_events = np.vstack([actual_events, np.array([int(time*sfreq), int(0), int(marker)])])
             except:
                 print("No markers available for the events")
@@ -3322,15 +3310,14 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 if self.stimulus_duration[str(actual_events[:,2][-1])] == 0:
                     self.stimulus_duration[str(actual_events[:,2][-1])] = times[-1] - (actual_events[:,0] / sfreq)[-1] + 3 # We add 3 as the compute the time from the last trigger, but the duration of this event has to be accounted for
                 if "3_back" not in self.annotation_names[str(actual_events[-1][2])]:
-                    actual_events = np.vstack([actual_events, np.array([int((times[-1]+3)*sfreq), int(0), int(2)])]) # Add control/baseline/rest before active task
+                    actual_events = np.vstack([actual_events, np.array([int((times[-1]+3)*sfreq), int(0), int(0)])]) # Add control/baseline/rest before active task
             print("Sucessfully added all events")
         return actual_events
     
-    def make_annotations(self, excel_path, raw_intensity):
+    def make_annotations(self, excel_path, raw_intensity, events):
         df = pd.read_excel(excel_path, sheet_name=None)
         sheets = list(df.keys())
         sfreq = raw_intensity.info["sfreq"]
-        events, event_dict = mne.events_from_annotations(raw_intensity)
         actual_events = self.get_actual_event(df, sheets, events, sfreq)
         onset = actual_events[:, 0] / sfreq
         duration = np.array([self.stimulus_duration[str(event)] for event in actual_events[:,2]])
@@ -3340,13 +3327,14 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                                  description=description,
                                  orig_time=raw_intensity.annotations.orig_time
                                  )
-
+        for key, value in self.annotation_names.items():
+            if key in np.unique(new_annotations.description):
+                new_annotations.rename({key: value})
         raw_intensity.set_annotations(new_annotations)
         return raw_intensity
     
     def crop_data(self, raw_intensity):
-        event_dict_trans = {val: int(key) for key, val in self.annotation_names.items()}
-        events, event_dict = mne.events_from_annotations(raw_intensity, event_dict_trans)
+        events, event_dict = mne.events_from_annotations(raw_intensity, self.standard_event_ids)
         sfreq = raw_intensity.info["sfreq"]
         new_tmin = max(events[0][0] / sfreq - 10, 0) #Always ensure the tmin is non-negative.
         new_tmax = None #events[-1][0] / sfreq + self.stimulus_duration[str(events[-1][2])] + 3
@@ -3370,34 +3358,28 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 ValueError("Data is not available")
         return all_ages
 
-    import matplotlib.pyplot as plt
     def load_data(self):
-        # Get all folders and sort them (works for both P folders and random named folders)
         ages = self.load_ages(self.age_file)
         all_folders = [f for f in sorted(os.listdir(self.file_path)) 
                     if os.path.isdir(os.path.join(self.file_path, f))]
         
         for i, folder_name in enumerate(all_folders, start=1):
-            if folder_name[:3].replace("-", "").replace(" ", "") in self.subjects_to_exclude[self.data_name]:
+            patient_name = f"{folder_name[:3]}".replace("-", "")
+            if patient_name in self.subjects_to_exclude[self.data_name]:
                 continue
             try:
                 excel_path = self.find_excel_file(os.path.join(self.file_path, folder_name))
                 raw_intensity = self.define_raw_intensity(folder_name)
+                raw_intensity.annotations.description = np.array([anno.split(".")[0] for anno in raw_intensity.annotations.description])
+                events, event_dict = mne.events_from_annotations(raw_intensity) # We extract original events before removing unwanted, as we need the original for making new annotations
+                raw_intensity = self.make_annotations(excel_path, raw_intensity, events)
+                self.standard_event_ids = {value: int(float(key)) for key, value in self.annotation_names.items()}
                 try:
                     approx_birth = raw_intensity.info["meas_date"].replace(tzinfo=None) - relativedelta(years=ages[folder_name[:2]])
                     raw_intensity.info["subject_info"]["birthday"] = approx_birth
                 except:
                     print("No age data available for participant")
-                raw_intensity = self.make_annotations(excel_path, raw_intensity)
-                self.tmax = max(self.stimulus_duration.values())
-                raw_intensity.annotations.rename(self.annotation_names)
-                to_delete = np.array([])
-                for _unwanted in self.unwanted:
-                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)[0]
-                    before_after_unwanted = np.append(unwanted - 1, unwanted + 1)
-                    before_after_unwanted_control = before_after_unwanted[np.isin(before_after_unwanted, np.nonzero(raw_intensity.annotations.description == "Control")[0])]
-                    to_delete = np.append(to_delete, (np.append(unwanted, before_after_unwanted_control)))
-                raw_intensity.annotations.delete((np.array(list(set(to_delete)), dtype=int),))            
+                self.tmax = max(self.stimulus_duration.values())     
                 raw_intensity = self.crop_data(raw_intensity)
                 
                 # fig = raw_intensity.plot_sensors()
@@ -3448,29 +3430,8 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 dpf = compute_differential_pathlength(raw_od)
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
-                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=6).copy()
+                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
-                from sklearn.decomposition import PCA
-                
-                # def PCA_correction(channel_values):
-                #     # data_T = channel_values.T # Shape (n_times, n_channels) -> 
-                #     pca = PCA(n_components=1)
-                #     pca.fit(channel_values)
-                #     projected = pca.transform(channel_values)
-                #     reconstructed = pca.inverse_transform(projected)
-                #     filtered_data = channel_values - reconstructed                
-                #     Sigma = np.cov(channel_values)
-                #     eigenvalues, eigenvectors = np.linalg.eigh(Sigma)
-                #     v1 = eigenvectors[:, -1]
-                #     X_projected = v1 @ channel_values
-                #     reconstructed = np.outer(v1, X_projected)
-                #     filtered_data = channel_values - reconstructed
-                #     return filtered_data
-
-
-                # raw_haemo.apply_function(PCA_correction, picks="hbo", channel_wise=False)
-                # raw_haemo.apply_function(PCA_correction, picks="hbr", channel_wise=False)
-
                 
                 if self.negative_correlation_enhancement:
                     raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
@@ -3542,8 +3503,8 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                     self.all_raw_epochs.append(raw_epochs)
                     self.all_epochs.append(epochs)
                     self.all_control.append(epochs["Control"].get_data(copy=True))
-                    
-                    Participant_i = individual_participant_class(f"subject_{folder_name[:3]}".replace("-", ""))
+                    patient_name = f"subject_{folder_name[:3]}".replace("-", "")
+                    Participant_i = individual_participant_class(patient_name)
                     Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
                     Participant_i.raw_intensity = raw_intensity
                     Participant_i.raw_od = raw_od
@@ -3558,6 +3519,10 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                     
                     getattr(self, 'Individual_participants').append(Participant_i)
                     self.number_of_participants += 1
+                                
+                else:
+                    print(f"No valid epochs for participant {patient_name}, skipping.")
+                    self.folder_errors.append(f"No epochs remaining for {folder_name}.")
             except FileNotFoundError as e:
                 print(f"Error loading {folder_name}: {e}")
             except Exception as e:
@@ -3727,8 +3692,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         return cropped_raw_data
     
     def crop_data(self, raw_intensity):
-        event_dict_trans = {val: int(float(key)) for key, val in self.annotation_names.items()}
-        events, event_dict = mne.events_from_annotations(raw_intensity, event_dict_trans)
+        events, event_dict = mne.events_from_annotations(raw_intensity, self.standard_event_ids)
         sfreq = raw_intensity.info["sfreq"]
         new_tmin = max(events[0][0] / sfreq - 10, 0) #Always ensure the tmin is non-negative.
         new_tmax = None #events[-1][0] / sfreq + self.stimulus_duration[str(events[-1][2])] + 3
@@ -3826,11 +3790,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         print("\nMontage successfully applied!")
         return raw_intensity_corrected
 
-        
-
-    import matplotlib.pyplot as plt
     def load_data(self):
-        # Get all folders and sort them (works for both P folders and random named folders)
         ages = self.load_ages(self.age_file)
         import numpy as np
         all_folders = list(np.concatenate([
@@ -3857,6 +3817,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 raw_intensity = self.replace(raw_intensity)
                 raw_intensity.annotations.rename(self.annotation_names)
                 raw_intensity = self.make_annotations(raw_intensity)
+                self.standard_event_ids = {value: int(float(key)) for key, value in self.annotation_names.items()}
                 try:
                     birthday = datetime.strptime(str(ages[folder_name[0] + folder_name[folder_name.find("ID")+2:folder_name.find("ID")+4].replace("_", "")]), "%d%m%y")
                     if birthday.year > datetime.now().year:
@@ -3923,7 +3884,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 dpf = compute_differential_pathlength(raw_od)
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
-                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=6).copy()
+                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
 
                 if self.negative_correlation_enhancement:
@@ -4018,6 +3979,11 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                     getattr(self, 'Individual_participants').append(Participant_i)
                     if "0.0" in self.annotation_names: del self.annotation_names["0.0"]
                     if "Control" in self.stimulus_duration: del self.stimulus_duration["Control"]
+                            
+                else:
+                    print(f"No valid epochs for participant {patient_name}, skipping.")
+                    self.folder_errors.append(f"No epochs remaining for {folder_name}.")
+            
             except FileNotFoundError as e:
                 print(f"Error loading {folder_name}: {e}")
                 self.folder_errors.append(f"Unexpected error with {folder_name}: {e}")

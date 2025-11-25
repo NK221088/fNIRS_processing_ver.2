@@ -254,7 +254,7 @@ def run_glm(method, raw, design_matrix, noise_model="ar1", bins=0, n_jobs=1, ver
         method=sum_method)
         glm_raw = raw_HbT.copy()
         picks = _picks_to_idx(glm_raw.info, "fnirs", exclude=[], allow_empty=True)
-    else:
+    elif method == "Standard":
         glm_raw = raw.copy()
         picks = _picks_to_idx(glm_raw.info, "fnirs", exclude=[], allow_empty=True)
         ch_names = raw.ch_names
@@ -348,7 +348,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
                                             add_regs=add_regs,
                                             oversampling=oversampling,
                                             add_reg_names=add_reg_names,) 
-            glm_estimates = run_glm("HbT", haemo, design_matrix, n_jobs=1)
+            glm_estimates = run_glm("Standard", haemo, design_matrix, n_jobs=1)
 
         except Exception as e:
             print(f"Error type: {type(e).__name__}")
@@ -502,11 +502,11 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
 
         # message("All combined diagnostic plots completed!")
                 
-        # modelConch <- lmer(theta ~ Condition + ch_name + Condition:ch_name + (1 | ID), data=rdf, REML=FALSE)
-        # nullModelConch <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
-        # anova_result_Condch <- anova(modelConch, nullModelConch)
-        # anova_Condch_df <- as.data.frame(anova_result_Condch)
-        # print(anova_result_Condch)
+        modelConch <- lmer(theta ~ Condition + ch_name + Condition:ch_name + (1 | ID), data=rdf, REML=FALSE)
+        nullModelConch <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
+        anova_result_Condch <- anova(modelConch, nullModelConch)
+        anova_Condch_df <- as.data.frame(anova_result_Condch)
+        print(anova_result_Condch)
         # # print(isSingular(modelConch, tol = 1e-4))
         # # print(summary(modelConch)$varcor)
         # X <- model.matrix(~ Condition * ch_name, data = rdf)
@@ -525,11 +525,11 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         
         # ################################################################################################################
         
-        # modelchannel <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
-        # nullModelchannel <- lmer(theta ~ Condition + (1 | ID), data=rdf, REML=FALSE)
-        # anova_result_channel <- anova(modelchannel, nullModelchannel)
-        # anova_channel_df <- as.data.frame(anova_result_channel)
-        # print(anova_result_channel)
+        modelchannel <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
+        nullModelchannel <- lmer(theta ~ Condition + (1 | ID), data=rdf, REML=FALSE)
+        anova_result_channel <- anova(modelchannel, nullModelchannel)
+        anova_channel_df <- as.data.frame(anova_result_channel)
+        print(anova_result_channel)
         
         # #Extract coefficents as dataframe:
         # coef_summary_modelchannel <- as.data.frame(summary(modelchannel)$coefficients)
@@ -549,39 +549,39 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         anova_condition_df <- as.data.frame(anova_result_condition)
         print(anova_result_condition)
         
-        # Fit the model
-        modelCondition_ML <- lmer(theta ~ Condition + (1 | ID), data=rdf, REML=FALSE)
+        # # Fit the model
+        # modelCondition_ML <- lmer(theta ~ Condition + (1 | ID), data=rdf, REML=FALSE)
 
-        # ---- Diagnostics ----
-        print("Column names in rdf:")
-        print(names(rdf))
+        # # ---- Diagnostics ----
+        # print("Column names in rdf:")
+        # print(names(rdf))
 
-        print("Head of rdf:")
-        print(head(rdf))
+        # print("Head of rdf:")
+        # print(head(rdf))
 
-        print("Model formula:")
-        print(formula(modelCondition_ML))
+        # print("Model formula:")
+        # print(formula(modelCondition_ML))
 
-        print("Fixed effects:")
-        print(fixef(modelCondition_ML))
+        # print("Fixed effects:")
+        # print(fixef(modelCondition_ML))
 
-        print("Model class:")
-        print(class(modelCondition_ML))
+        # print("Model class:")
+        # print(class(modelCondition_ML))
 
-        # ---- Now try simr ----
-        library(simr)
+        # # ---- Now try simr ----
+        # library(simr)
 
-        model_sim <- makeLmer(modelCondition_ML)
+        # model_sim <- makeLmer(modelCondition_ML)
 
-        pc <- powerCurve(
-            model_sim,
-            along="ID",
-            breaks=seq(20, 60, by=5),
-            nsim=100,
-            test=fixed("Conditionn_back", method="KR")
-        )
+        # pc <- powerCurve(
+        #     model_sim,
+        #     along="ID",
+        #     breaks=seq(20, 60, by=5),
+        #     nsim=100,
+        #     test=fixed("Conditionn_back", method="KR")
+        # )
 
-        print(pc)
+        # print(pc)
 
         #Extract coefficents as dataframe:
         coef_summary_modelCondition <- as.data.frame(summary(modelCondition)$coefficients)
@@ -852,13 +852,13 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
 # from preprocessing_toolbox.load_data_function import data_loaders
 
 # dataSetList = list(data_loaders.keys())
-# dataLoaders = [dataSetList[15]] #, dataSetList[17]]
+# dataLoaders = [dataSetList[17]] #, dataSetList[17]]
 # datasets = defaultdict(defaultdict)
 
 # for data_loader in dataLoaders:
 #     settings = {
 #         "data_set": data_loader,  # Default to first dataset
-#         "epoch_type": "HandMI",
+#         "epoch_type": "TongueMI",
 #         "individual": "All Individuals",
 #         "short_channel_correction": True,
 #         "negative_correlation_enhancement": False,
@@ -900,6 +900,6 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
 #     variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
 #     datasets[data_loader] = {key: value for key, value in zip(variables, data)}
 
-# all_participants = datasets['EEG fNIRS HC baseline data']["all_individuals"] #+ datasets['EEG fNIRS patient baseline data']["all_individuals"]
-# number_of_subjects = [len(datasets['EEG fNIRS HC baseline data']["all_individuals"])] #, len((datasets['EEG fNIRS patient baseline data']["all_individuals"]))]
+# all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets['EEG fNIRS patient baseline data']["all_individuals"]
+# number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])] #, len((datasets['EEG fNIRS patient baseline data']["all_individuals"]))]
 # run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)
