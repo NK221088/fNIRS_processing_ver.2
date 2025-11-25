@@ -77,6 +77,22 @@ def define_raw_intensity(file_path, folder_name):
     raw_intensity = mne.io.read_raw_nirx(snirf_file_path, verbose=True, preload=True)
     
     return raw_intensity
+
+def load_ages(age_file):
+    all_ages = {}
+    df = pd.read_excel(age_file, sheet_name=None)
+    sheets = list(df.keys())
+    for sheet in sheets:
+        try:
+            ID_generator = (item for item in df[sheet].columns if "id" in item.lower())
+            ID_column = next(ID_generator, None)
+            age_generator = (item for item in df[sheet].columns if "cpr" in item.lower())
+            age_column = next(age_generator, None)
+            for id, age in zip(df[sheet][ID_column], df[sheet][age_column]):
+                all_ages[id] = age
+        except:
+            ValueError("Data is not available")
+    return all_ages
                 
 class fNIRS_data_load:
     def __init__(self, file_path, annotation_names=None, stimulus_duration=5,
@@ -2567,7 +2583,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 dpf = compute_differential_pathlength(raw_od)
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
-                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=6).copy()
+                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
                 
                 if self.negative_correlation_enhancement:
@@ -3341,25 +3357,9 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         raw_intensity = raw_intensity.crop(tmin=new_tmin, tmax=new_tmax)
         assert len(events) == len(raw_intensity.annotations)
         return raw_intensity
-    
-    def load_ages(self, age_file):
-        all_ages = {}
-        df = pd.read_excel(age_file, sheet_name=None)
-        sheets = list(df.keys())
-        for sheet in sheets:
-            try:
-                ID_generator = (item for item in df[sheet].columns if "id" in item.lower())
-                ID_column = next(ID_generator, None)
-                age_generator = (item for item in df[sheet].columns if "age" in item.lower())
-                age_column = next(age_generator, None)
-                for id, age in zip(df[sheet][ID_column], df[sheet][age_column]):
-                    all_ages[id] = age
-            except:
-                ValueError("Data is not available")
-        return all_ages
 
     def load_data(self):
-        ages = self.load_ages(self.age_file)
+        ages = load_ages(self.age_file)
         all_folders = [f for f in sorted(os.listdir(self.file_path)) 
                     if os.path.isdir(os.path.join(self.file_path, f))]
         
@@ -3568,21 +3568,30 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.number_of_participants = 0
         self.all_tapping = []
         self.all_Control = []
-        self.annotation_names = {'4.0': 'Math',
-                                 '5.0': 'Math',
-                                 '6.0': 'Math',
-                                 '7.0': 'Math',
-                                 '8.0': 'Math',
-                                 '9.0': 'Hard_math',
-                                 '10.0': 'Hard_math',
-                                 '11.0': 'Hard_math',
-                                 '12.0': 'Hard_math',
-                                 '13.0': 'Hard_math'}
-        self.file_path = Path(os.getenv(data_name.replace(" ", "_").replace("-", "_").replace(":", "")))
+        self.annotation_names = {
+                                "0": "Control",
+                                '4': 'Math',
+                                '5': 'Math',
+                                '6': 'Math',
+                                '7': 'Math',
+                                '8': 'Math',
+                                '9': 'Hard_math',
+                                '10': 'Hard_math',
+                                '11': 'Hard_math',
+                                '12': 'Hard_math',
+                                '13': 'Hard_math'}
+        self.standard_event_ids = {
+        }
+        key = file_path.replace(":", "").replace(" ", "_").replace("-", "_")
+        env_value = config.get(key)
+        if env_value:
+            self.file_path = Path(env_value)
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
-        self.stimulus_duration = {'Math': 25,
-                                  'Hard_math': 25,
+        self.stimulus_duration = {
+                                'Control': 21,
+                                'Math': 25,
+                                'Hard_math': 25,
                                 }
         self.scalp_coupling_threshold = scalp_coupling_threshold
         self.reject_criteria = reject_criteria
@@ -3592,7 +3601,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.data_types = ['Math', 'Hard_math']
         self.data_name = data_name
         self.interpolate_bad_channels = interpolate_bad_channels
-        self.unwanted = ["1.0", "2.0", "3.0"]
+        self.unwanted = ["1", "2", "3"]
         self.baseline_correction = baseline_correction
         self.filter_lower_value = filter_lower_value
         self.filter_upper_value = filter_upper_value
@@ -3676,9 +3685,10 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
     
     def make_annotations(self, raw_intensity):
         cropped_raw_data = raw_intensity.copy()
-        cropped_raw_data.annotations.set_durations(self.stimulus_duration)
-        self.annotation_names["0.0"] = "Control"
-        self.stimulus_duration["Control"] =  20
+        for key, value in self.annotation_names.items():
+            if key in np.unique(cropped_raw_data.annotations.description):
+                cropped_raw_data.annotations.rename({key: value})
+                cropped_raw_data.annotations.set_durations({value: self.stimulus_duration[value]})
         new_onsets = list(cropped_raw_data.annotations.onset.copy())
         new_durations = list(cropped_raw_data.annotations.duration.copy())
         new_descriptions = list(cropped_raw_data.annotations.description.copy())
@@ -3699,22 +3709,6 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         raw_intensity = raw_intensity.crop(tmin=new_tmin, tmax=new_tmax)
         assert len(events) == len(raw_intensity.annotations)
         return raw_intensity
-    
-    def load_ages(self, age_file):
-        all_ages = {}
-        df = pd.read_excel(age_file, sheet_name=None)
-        sheets = list(df.keys())
-        for sheet in sheets:
-            try:
-                ID_generator = (item for item in df[sheet].columns if "id" in item.lower())
-                ID_column = next(ID_generator, None)
-                age_generator = (item for item in df[sheet].columns if "cpr" in item.lower())
-                age_column = next(age_generator, None)
-                for id, age in zip(df[sheet][ID_column], df[sheet][age_column]):
-                    all_ages[id] = age
-            except:
-                ValueError("Data is not available")
-        return all_ages
     
     def replace(self, raw_intensity):
 
@@ -3791,8 +3785,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         return raw_intensity_corrected
 
     def load_data(self):
-        ages = self.load_ages(self.age_file)
-        import numpy as np
+        ages = load_ages(self.age_file)
         all_folders = list(np.concatenate([
                 sorted([patient_path.name + "/" + session_path.name  + "/" +  subsubfolder.name
                 for subsubfolder in (self.file_path / Path(patient_path) / Path(session_path)).iterdir()
@@ -3815,7 +3808,10 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
             try:
                 raw_intensity = self.define_raw_intensity(folder_name)
                 raw_intensity = self.replace(raw_intensity)
-                raw_intensity.annotations.rename(self.annotation_names)
+                raw_intensity.annotations.description = np.array([anno.split(".")[0] for anno in raw_intensity.annotations.description])
+                for _unwanted in self.unwanted:
+                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
+                    raw_intensity.annotations.delete(unwanted)
                 raw_intensity = self.make_annotations(raw_intensity)
                 self.standard_event_ids = {value: int(float(key)) for key, value in self.annotation_names.items()}
                 try:
@@ -3825,15 +3821,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                     raw_intensity.info["subject_info"]["birthday"] = birthday
                 except:
                     print("No age data available for participant")
-                self.number_of_participants += 1
-                self.tmax = max(self.stimulus_duration.values())
-                to_delete = np.array([])
-                for _unwanted in self.unwanted:
-                    unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)[0]
-                    before_after_unwanted = np.append(unwanted - 1, unwanted + 1)
-                    before_after_unwanted_control = before_after_unwanted[np.isin(before_after_unwanted, np.nonzero(raw_intensity.annotations.description == "Control")[0])]
-                    to_delete = np.append(to_delete, (np.append(unwanted, before_after_unwanted_control)))
-                raw_intensity.annotations.delete((np.array(list(set(to_delete)), dtype=int),))            
+                self.tmax = max(self.stimulus_duration.values())         
                 raw_intensity = self.crop_data(raw_intensity)
                 
                 if self.snr_rejection != "None":
@@ -3876,8 +3864,6 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
                 raw_od.info["bads"] = all_bad_channels
 
-                if patient_name in self.subjects_to_exclude[self.data_name]:
-                    print("test")
                 if self.interpolate_bad_channels:
                     raw_od.interpolate_bads()
                 
@@ -3890,8 +3876,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 if self.negative_correlation_enhancement:
                     raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
 
-                event_dict_trans = {val: int(float(key)) for key, val in self.annotation_names.items()}
-                events, event_dict = mne.events_from_annotations(raw_haemo, event_dict_trans)
+                events, event_dict = mne.events_from_annotations(raw_haemo, self.standard_event_ids)
                 
                 # Set baseline parameter based on correction method
                 baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
@@ -3899,34 +3884,6 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 raw_epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
                 
                 self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
-                
-                
-                def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_duration, annotations):
-                    previous_event = np.array([None, None, None])
-                    for idx, event in enumerate(events):
-                        try:
-                            if str(previous_event[2]) in annotations.keys():
-                                if annotations[str(previous_event[2])] == "Control":
-                                    control_event_start = previous_event[0]
-                                    control_event_end = control_event_start + int(stimulus_duration[str(previous_event[2])]*sfreq)
-                                    event_start = event[0]
-                                    event_end = event_start + int(stimulus_duration[str(event[2])]*sfreq)
-                                    control_average = np.mean(channel_values[control_event_start:control_event_end])
-                                    segment = channel_values[event_start:event_end]
-                                    if segment.size == 0:
-                                        print("FUCK")
-                                    segment -= control_average
-                                    previous_event = event
-                                else:
-                                    previous_event = event
-                            else:
-                                previous_event = event
-                                continue
-                        
-                            continue
-                        except Exception as e:
-                            print(f"Error processing event {event} at index {idx}: {e}")
-                    return channel_values
                 
                 epochs = mne.Epochs(
                     raw_haemo,
@@ -3975,11 +3932,10 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                     for name in self.data_types:
                         getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
                         Participant_i.events.update({name: epochs[name].get_data(copy=True)})
-                    
+                                      
                     getattr(self, 'Individual_participants').append(Participant_i)
-                    if "0.0" in self.annotation_names: del self.annotation_names["0.0"]
-                    if "Control" in self.stimulus_duration: del self.stimulus_duration["Control"]
-                            
+                    self.number_of_participants += 1
+                                                
                 else:
                     print(f"No valid epochs for participant {patient_name}, skipping.")
                     self.folder_errors.append(f"No epochs remaining for {folder_name}.")
@@ -3987,14 +3943,9 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
             except FileNotFoundError as e:
                 print(f"Error loading {folder_name}: {e}")
                 self.folder_errors.append(f"Unexpected error with {folder_name}: {e}")
-                if "0.0" in self.annotation_names: del self.annotation_names["0.0"]
-                if "Control" in self.stimulus_duration: del self.stimulus_duration["Control"]
             except Exception as e:
                 print(f"Unexpected error with {folder_name}: {e}")
-                self.folder_errors.append(f"Unexpected error with {folder_name}: {e}")
-                if "0.0" in self.annotation_names: del self.annotation_names["0.0"]
-                if "Control" in self.stimulus_duration: del self.stimulus_duration["Control"]
-                
+                self.folder_errors.append(f"Unexpected error with {folder_name}: {e}")                
 
         # Concatenate the control data
         self.all_control = np.concatenate(self.all_control, axis=0)
