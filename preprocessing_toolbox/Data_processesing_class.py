@@ -191,7 +191,7 @@ class fNIRS_data_load:
             snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
             
             # Combine bad channels from all preprocessing
-            all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))            
+            all_bad_channels = sorted(list(set(snr_bad_channels_long_only + sci_bad_channels)))
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
@@ -580,7 +580,7 @@ class fNIRS_Alexandros_DoC_data_load(fNIRS_data_load):
             snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
             
             # Combine bad channels from all preprocessing
-            all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
+            all_bad_channels = sorted(list(set(snr_bad_channels_long_only + sci_bad_channels)))
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
@@ -864,7 +864,7 @@ class fNIRS_CUH_patient_data_load(fNIRS_data_load):
             snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
             
             # Combine bad channels from all preprocessing
-            all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
+            all_bad_channels = sorted(list(set(snr_bad_channels_long_only + sci_bad_channels)))
             raw_od.info["bads"] = all_bad_channels
 
             if self.interpolate_bad_channels:
@@ -1086,7 +1086,7 @@ class fNIRS_Melika_hand_data_5Hz_load(fNIRS_data_load):
             snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
             
             # Combine bad channels from all preprocessing
-            all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
+            all_bad_channels = sorted(list(set(snr_bad_channels_long_only + sci_bad_channels)))
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
@@ -1332,7 +1332,7 @@ class fNIRS_Melika_tongue_5Hz_data_load(fNIRS_data_load):
             snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
             
             # Combine bad channels from all preprocessing
-            all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
+            all_bad_channels = sorted(list(set(snr_bad_channels_long_only + sci_bad_channels)))
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
@@ -1577,7 +1577,7 @@ class fNIRS_Melika_hand_data_10Hz_load(fNIRS_data_load):
             snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
             
             # Combine bad channels from all preprocessing
-            all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
+            all_bad_channels = sorted(list(set(snr_bad_channels_long_only + sci_bad_channels)))
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
@@ -1822,7 +1822,7 @@ class fNIRS_Melika_tongue_10Hz_data_load(fNIRS_data_load):
             snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
             
             # Combine bad channels from all preprocessing
-            all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
+            all_bad_channels = sorted(list(set(snr_bad_channels_long_only + sci_bad_channels)))
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
@@ -2051,7 +2051,7 @@ class fNIRS_Melika_old_data_load(fNIRS_data_load):
             snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
             
             # Combine bad channels from all preprocessing
-            all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
+            all_bad_channels = sorted(list(set(snr_bad_channels_long_only + sci_bad_channels)))
             raw_od.info["bads"] = all_bad_channels
             
             if self.interpolate_bad_channels:
@@ -2276,7 +2276,7 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                 snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
                 
                 # Combine bad channels from all preprocessing
-                all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
+                all_bad_channels = sorted(list(set(snr_bad_channels_long_only + sci_bad_channels)))
                 raw_od.info["bads"] = all_bad_channels
                 
                 if self.interpolate_bad_channels:
@@ -2574,7 +2574,8 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
                 
                 # Combine bad channels from all preprocessing
-                all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
+                all_bad_channels = sorted(list(set(snr_bad_channels_long_only + sci_bad_channels)))
+
                 raw_od.info["bads"] = all_bad_channels
                 
                 if self.interpolate_bad_channels:
@@ -2678,6 +2679,8 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
         print(self.folder_errors)
+        print(len(self.Individual_participants))
+        print(np.mean(all_data["Control"]))
         return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
 
 ###############################################################################################################################################################################################
@@ -2821,7 +2824,7 @@ class fNIRS_Pardis_DOC_data_load(fNIRS_data_load):
                 snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
                 
                 # Combine bad channels from all preprocessing
-                all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
+                all_bad_channels = sorted(list(set(snr_bad_channels_long_only + sci_bad_channels)))       
                 raw_od.info["bads"] = all_bad_channels
             
                 if self.interpolate_bad_channels:
@@ -3074,7 +3077,7 @@ class fNIRS_Pardis_HC_data_load(fNIRS_data_load):
                 snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
                 
                 # Combine bad channels from all preprocessing
-                all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
+                all_bad_channels = sorted(list(set(snr_bad_channels_long_only + sci_bad_channels))) 
                 raw_od.info["bads"] = all_bad_channels
             
                 if self.interpolate_bad_channels:
@@ -3291,7 +3294,6 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         
         raw_intensity = mne.io.read_raw_nirx(snirf_file_path, verbose=True, preload=True)
         
-        # raw_intensity.load_data()
         return raw_intensity
     
     def get_actual_event(self, df, sheets, events, sfreq):
@@ -3421,7 +3423,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
                 
                 # Combine bad channels from all preprocessing
-                all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
+                all_bad_channels = sorted(list(set(snr_bad_channels_long_only + sci_bad_channels)))       
                 raw_od.info["bads"] = all_bad_channels
             
                 if self.interpolate_bad_channels:
@@ -3544,6 +3546,8 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         # Update all_data with control_dict
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
+        print(len(self.Individual_participants))
+        print(np.mean(all_data["Control"]))
         return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
 
 ###############################################################################################################################################################################################
@@ -3863,7 +3867,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
                 
                 # Combine bad channels from all preprocessing
-                all_bad_channels = list(set(snr_bad_channels_long_only + sci_bad_channels))         
+                all_bad_channels = sorted(list(set(snr_bad_channels_long_only + sci_bad_channels)))
                 raw_od.info["bads"] = all_bad_channels
 
                 if self.interpolate_bad_channels:
