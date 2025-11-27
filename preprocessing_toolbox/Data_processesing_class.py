@@ -3527,8 +3527,11 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                     self.folder_errors.append(f"No epochs remaining for {folder_name}.")
             except FileNotFoundError as e:
                 print(f"Error loading {folder_name}: {e}")
+                self.folder_errors.append(f"Unexpected error with {folder_name}: {e}")
+                
             except Exception as e:
                 print(f"Unexpected error with {folder_name}: {e}")
+                self.folder_errors.append(f"Unexpected error with {folder_name}: {e}")
                 
 
         # Concatenate the control data
