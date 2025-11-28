@@ -3387,6 +3387,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                     snr_bad_channels = []
 
                 raw_od = mne.preprocessing.nirs.optical_density(raw_intensity_long)
+                dpf = compute_differential_pathlength(raw_od)
                 raw_od_short = mne.preprocessing.nirs.optical_density(raw_intensity_short)
                 raw_od_original = raw_od.copy()
 
@@ -3401,14 +3402,14 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
 
                 if self.apply_tddr:
                     raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
+
+                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf).copy()
                 
                 if self.short_channel_correction:
                     raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
-                    
-                dpf = compute_differential_pathlength(raw_od)
-                raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
-                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
+                raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
+                
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
                 
                 if self.negative_correlation_enhancement:
