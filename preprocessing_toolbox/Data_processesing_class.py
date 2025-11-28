@@ -3386,8 +3386,12 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 
                 # fig = raw_intensity.plot_sensors()
                 # plt.savefig(f"sensors_{folder_name}.jpg")
+                
+                raw_intensity_long = mne_nirs.channels.get_long_channels(raw_intensity)
+                raw_intensity_short = mne_nirs.channels.get_short_channels(raw_intensity)
+                
                 if self.snr_rejection != "None":
-                    snr = snr_rejection(raw_intensity, self.snr_rejection)
+                    snr = snr_rejection(raw_intensity_long, self.snr_rejection)
                     
                     # Validation
                     if self.snr_rejection == "SNR" and self.snr_threshold < 1:
@@ -3396,38 +3400,29 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                         raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
                     
                     # Get bad channels based on pair logic
-                    snr_bad_channels = get_bad_channels_by_pairs(raw_intensity.ch_names, snr, self.snr_threshold, self.snr_rejection)
+                    snr_bad_channels = get_bad_channels_by_pairs(raw_intensity_long.ch_names, snr, self.snr_threshold, self.snr_rejection)
                     raw_intensity.info["bads"] = snr_bad_channels
                 else:
                     snr_bad_channels = []
 
-                raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+                raw_od = mne.preprocessing.nirs.optical_density(raw_intensity_long)
+                raw_od_short = mne.preprocessing.nirs.optical_density(raw_intensity_short)
                 raw_od_original = raw_od.copy()
 
-                # Check channel name consistency
-                assert raw_intensity.ch_names == raw_od.ch_names, \
-                    f"Channel names mismatch!\nraw_intensity: {len(raw_intensity.ch_names)} channels\nraw_od: {len(raw_od.ch_names)} channels"
-                
-                if self.short_channel_correction:
-                    raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
-                raw_od = mne_nirs.channels.get_long_channels(raw_od)
-                
+                sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od_short, l_freq=0.5, h_freq=2.5)
+
+                if self.interpolate_bad_channels:
+                    raw_od.interpolate_bads(method={"fnirs":"nearest"})
+
+                sci_bad_channels = list(compress(raw_od_short.ch_names, sci < self.scalp_coupling_threshold))
+                    
                 if self.apply_tddr:
                     raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
 
-                sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od, l_freq=0.5, h_freq=2.5)
-
-                sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
-                
-                # Filter SNR bad channels to only include those that still exist in the long channels dataset
-                snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
-                
-                # Combine bad channels from all preprocessing
-                all_bad_channels = sorted(list(set(snr_bad_channels_long_only + sci_bad_channels)))       
-                raw_od.info["bads"] = all_bad_channels
-            
-                if self.interpolate_bad_channels:
-                    raw_od.interpolate_bads(method={"fnirs":"nearest"})
+                raw_od.info["bads"] = sci_bad_channels
+                    
+                if self.short_channel_correction:
+                    raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
                 
                 dpf = compute_differential_pathlength(raw_od)
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
