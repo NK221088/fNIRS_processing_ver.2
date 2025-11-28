@@ -79,7 +79,7 @@ settings = {
     "filter_upper_value": 0.5,
     "h_trans_bandwidth": 0.2,           
     "l_trans_bandwidth": 0.01,
-    "snr_rejection": "None",  # Default to None, can be set to "SNR" or "CV"
+    "snr_rejection": "SNR",  # Default to None, can be set to "SNR" or "CV"
     "snr_threshold": 8,  # Default threshold for SNR
     "Apply_TDDR": True,
     "interpolate_bad_channels": True,

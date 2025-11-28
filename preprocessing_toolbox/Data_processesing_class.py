@@ -2239,64 +2239,56 @@ class fNIRS_Melika_hand_data_long_load(fNIRS_data_load):
                 raw_intensity = self.make_annotations(raw_intensity)
                 self.standard_event_ids = {value: int(float(key)) for key, value in self.annotation_names.items()}
 
+                raw_intensity_long = mne_nirs.channels.get_long_channels(raw_intensity)
+                raw_intensity_short = mne_nirs.channels.get_short_channels(raw_intensity)
+                
                 if self.snr_rejection != "None":
-                    snr = snr_rejection(raw_intensity, self.snr_rejection)
-                    
+                    snr = snr_rejection(raw_intensity_long, self.snr_rejection)
                     # Validation
                     if self.snr_rejection == "SNR" and self.snr_threshold < 1:
                         raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
                     if self.snr_rejection == "CV" and self.snr_threshold > 1:
                         raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
-                    
                     # Get bad channels based on pair logic
-                    snr_bad_channels = get_bad_channels_by_pairs(raw_intensity.ch_names, snr, self.snr_threshold, self.snr_rejection)
-                    raw_intensity.info["bads"] = snr_bad_channels
+                    snr_bad_channels = get_bad_channels_by_pairs(raw_intensity_long.ch_names, snr, self.snr_threshold, self.snr_rejection)
+                    raw_intensity_long.info["bads"] = snr_bad_channels
                 else:
                     snr_bad_channels = []
 
-                raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+                raw_od = mne.preprocessing.nirs.optical_density(raw_intensity_long)
+                raw_od_short = mne.preprocessing.nirs.optical_density(raw_intensity_short)
                 raw_od_original = raw_od.copy()
 
-                # Check channel name consistency
-                assert raw_intensity.ch_names == raw_od.ch_names, \
-                    f"Channel names mismatch!\nraw_intensity: {len(raw_intensity.ch_names)} channels\nraw_od: {len(raw_od.ch_names)} channels"
-                
-                if self.short_channel_correction:
-                    raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
-                raw_od = mne_nirs.channels.get_long_channels(raw_od)
-                
-                if self.apply_tddr:
-                    raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
-
-                sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od, l_freq=0.5, h_freq=2.5)
-
-                sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
-                
-                # Filter SNR bad channels to only include those that still exist in the long channels dataset
-                snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
-                
-                # Combine bad channels from all preprocessing
-                all_bad_channels = sorted(list(set(snr_bad_channels_long_only + sci_bad_channels)))
-                raw_od.info["bads"] = all_bad_channels
+                sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od_short, l_freq=0.5, h_freq=2.5)
+                sci_bad_channels = list(compress(raw_od_short.ch_names, sci < self.scalp_coupling_threshold))
+                raw_od_short.info["bads"] = sci_bad_channels
                 
                 if self.interpolate_bad_channels:
                     raw_od.interpolate_bads(method={"fnirs":"nearest"})
+                
+                raw_od.add_channels([raw_od_short])
+
+                if self.apply_tddr:
+                    raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
+                
+                if self.short_channel_correction:
+                    raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
                     
                 dpf = compute_differential_pathlength(raw_od)
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
                 raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
-
+                
                 if self.negative_correlation_enhancement:
                     raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
-
+                
                 events, event_dict = mne.events_from_annotations(raw_haemo, self.standard_event_ids)
                         
                 # Set baseline parameter based on correction method
                 baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
                 
-                raw_epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
+                raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
                 self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
                 
@@ -2537,49 +2529,40 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 #     if dig_point['coord_frame'] == 0:  # FIFFV_COORD_UNKNOWN
                 #         dig_point['coord_frame'] = 4   # FIFFV_COORD_HEAD
 
+                raw_intensity_long = mne_nirs.channels.get_long_channels(raw_intensity)
+                raw_intensity_short = mne_nirs.channels.get_short_channels(raw_intensity)
+                
                 if self.snr_rejection != "None":
-                    snr = snr_rejection(raw_intensity, self.snr_rejection)
-                    
+                    snr = snr_rejection(raw_intensity_long, self.snr_rejection)
                     # Validation
                     if self.snr_rejection == "SNR" and self.snr_threshold < 1:
                         raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
                     if self.snr_rejection == "CV" and self.snr_threshold > 1:
                         raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
-                    
                     # Get bad channels based on pair logic
-                    snr_bad_channels = get_bad_channels_by_pairs(raw_intensity.ch_names, snr, self.snr_threshold, self.snr_rejection)
-                    raw_intensity.info["bads"] = snr_bad_channels
+                    snr_bad_channels = get_bad_channels_by_pairs(raw_intensity_long.ch_names, snr, self.snr_threshold, self.snr_rejection)
+                    raw_intensity_long.info["bads"] = snr_bad_channels
                 else:
                     snr_bad_channels = []
 
-                raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+                raw_od = mne.preprocessing.nirs.optical_density(raw_intensity_long)
+                raw_od_short = mne.preprocessing.nirs.optical_density(raw_intensity_short)
                 raw_od_original = raw_od.copy()
 
-                # Check channel name consistency
-                assert raw_intensity.ch_names == raw_od.ch_names, \
-                    f"Channel names mismatch!\nraw_intensity: {len(raw_intensity.ch_names)} channels\nraw_od: {len(raw_od.ch_names)} channels"
-                
-                if self.short_channel_correction:
-                    raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
-                raw_od = mne_nirs.channels.get_long_channels(raw_od)
-                
-                if self.apply_tddr:
-                    raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
-
-                sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od, l_freq=0.5, h_freq=2.5)
-
-                sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
-                
-                # Filter SNR bad channels to only include those that still exist in the long channels dataset
-                snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
-                
-                # Combine bad channels from all preprocessing
-                all_bad_channels = sorted(list(set(snr_bad_channels_long_only + sci_bad_channels)))
-
-                raw_od.info["bads"] = all_bad_channels
+                sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od_short, l_freq=0.5, h_freq=2.5)
+                sci_bad_channels = list(compress(raw_od_short.ch_names, sci < self.scalp_coupling_threshold))
+                raw_od_short.info["bads"] = sci_bad_channels
                 
                 if self.interpolate_bad_channels:
                     raw_od.interpolate_bads(method={"fnirs":"nearest"})
+                
+                raw_od.add_channels([raw_od_short])
+
+                if self.apply_tddr:
+                    raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
+                
+                if self.short_channel_correction:
+                    raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
                     
                 dpf = compute_differential_pathlength(raw_od)
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
@@ -2589,7 +2572,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 
                 if self.negative_correlation_enhancement:
                     raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
-
+                
                 events, event_dict = mne.events_from_annotations(raw_haemo, self.standard_event_ids)
                         
                 # Set baseline parameter based on correction method
@@ -3413,14 +3396,15 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 
                 if self.interpolate_bad_channels:
                     raw_od.interpolate_bads(method={"fnirs":"nearest"})
+                
+                raw_od.add_channels([raw_od_short])
 
                 if self.apply_tddr:
                     raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
-
-                raw_od.add_channels([raw_od_short])
+                
                 if self.short_channel_correction:
                     raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
-                
+                    
                 dpf = compute_differential_pathlength(raw_od)
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
@@ -3429,18 +3413,16 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 
                 if self.negative_correlation_enhancement:
                     raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
-
-                event_dict_trans = {val: int(key) for key, val in self.annotation_names.items()}
-                events, event_dict = mne.events_from_annotations(raw_haemo, event_dict_trans)
                 
+                events, event_dict = mne.events_from_annotations(raw_haemo, self.standard_event_ids)
+                        
                 # Set baseline parameter based on correction method
                 baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
                 
-                raw_epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
-                
+                raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
+
                 self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
-                
-                
+                                
                 def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_duration, annotations):
                     previous_event = np.array([None, None, None])
                     for idx, event in enumerate(events):
@@ -3825,65 +3807,57 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 self.tmax = max(self.stimulus_duration.values())         
                 raw_intensity = self.crop_data(raw_intensity)
                 
+                raw_intensity_long = mne_nirs.channels.get_long_channels(raw_intensity)
+                raw_intensity_short = mne_nirs.channels.get_short_channels(raw_intensity)
+                
                 if self.snr_rejection != "None":
-                    snr = snr_rejection(raw_intensity, self.snr_rejection)
-                    
+                    snr = snr_rejection(raw_intensity_long, self.snr_rejection)
                     # Validation
                     if self.snr_rejection == "SNR" and self.snr_threshold < 1:
                         raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
                     if self.snr_rejection == "CV" and self.snr_threshold > 1:
                         raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
-                    
                     # Get bad channels based on pair logic
-                    snr_bad_channels = get_bad_channels_by_pairs(raw_intensity.ch_names, snr, self.snr_threshold, self.snr_rejection)
-                    raw_intensity.info["bads"] = snr_bad_channels
+                    snr_bad_channels = get_bad_channels_by_pairs(raw_intensity_long.ch_names, snr, self.snr_threshold, self.snr_rejection)
+                    raw_intensity_long.info["bads"] = snr_bad_channels
                 else:
                     snr_bad_channels = []
 
-                raw_od = mne.preprocessing.nirs.optical_density(raw_intensity)
+                raw_od = mne.preprocessing.nirs.optical_density(raw_intensity_long)
+                raw_od_short = mne.preprocessing.nirs.optical_density(raw_intensity_short)
                 raw_od_original = raw_od.copy()
 
-                # Check channel name consistency
-                assert raw_intensity.ch_names == raw_od.ch_names, \
-                    f"Channel names mismatch!\nraw_intensity: {len(raw_intensity.ch_names)} channels\nraw_od: {len(raw_od.ch_names)} channels"
+                sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od_short, l_freq=0.5, h_freq=2.5)
+                sci_bad_channels = list(compress(raw_od_short.ch_names, sci < self.scalp_coupling_threshold))
+                raw_od_short.info["bads"] = sci_bad_channels
+                
+                if self.interpolate_bad_channels:
+                    raw_od.interpolate_bads(method={"fnirs":"nearest"})
+                
+                raw_od.add_channels([raw_od_short])
+
+                if self.apply_tddr:
+                    raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
                 
                 if self.short_channel_correction:
                     raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
-                raw_od = mne_nirs.channels.get_long_channels(raw_od)
-                
-                if self.apply_tddr:
-                    raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
-
-                sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od, l_freq=0.5, h_freq=2.5)
-
-                sci_bad_channels = list(compress(raw_od.ch_names, sci < self.scalp_coupling_threshold))
-                
-                # Filter SNR bad channels to only include those that still exist in the long channels dataset
-                snr_bad_channels_long_only = [ch for ch in snr_bad_channels if ch in raw_od.ch_names]
-                
-                # Combine bad channels from all preprocessing
-                all_bad_channels = sorted(list(set(snr_bad_channels_long_only + sci_bad_channels)))
-                raw_od.info["bads"] = all_bad_channels
-
-                if self.interpolate_bad_channels:
-                    raw_od.interpolate_bads()
-                
+                    
                 dpf = compute_differential_pathlength(raw_od)
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
                 raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
-
+                
                 if self.negative_correlation_enhancement:
                     raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
-
-                events, event_dict = mne.events_from_annotations(raw_haemo, self.standard_event_ids)
                 
+                events, event_dict = mne.events_from_annotations(raw_haemo, self.standard_event_ids)
+                        
                 # Set baseline parameter based on correction method
                 baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
                 
-                raw_epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
-                
+                raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
+
                 self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
                 
                 epochs = mne.Epochs(
