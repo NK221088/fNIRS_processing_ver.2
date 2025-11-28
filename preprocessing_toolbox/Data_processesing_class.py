@@ -3392,16 +3392,14 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 
                 if self.snr_rejection != "None":
                     snr = snr_rejection(raw_intensity_long, self.snr_rejection)
-                    
                     # Validation
                     if self.snr_rejection == "SNR" and self.snr_threshold < 1:
                         raise ValueError("Currently the classic signal to noise ratio is used but the threshold for SNR is below 1 resulting in all channels being marked as bad. Please set the threshold to a value above 1.")
                     if self.snr_rejection == "CV" and self.snr_threshold > 1:
                         raise ValueError("Currently the coefficient of variation is used but the threshold for CV is above 1 resulting in all channels being marked as bad. Please set the threshold to a value below 1.")
-                    
                     # Get bad channels based on pair logic
                     snr_bad_channels = get_bad_channels_by_pairs(raw_intensity_long.ch_names, snr, self.snr_threshold, self.snr_rejection)
-                    raw_intensity.info["bads"] = snr_bad_channels
+                    raw_intensity_long.info["bads"] = snr_bad_channels
                 else:
                     snr_bad_channels = []
 
@@ -3410,17 +3408,16 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 raw_od_original = raw_od.copy()
 
                 sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od_short, l_freq=0.5, h_freq=2.5)
-
+                sci_bad_channels = list(compress(raw_od_short.ch_names, sci < self.scalp_coupling_threshold))
+                raw_od_short.info["bads"] = sci_bad_channels
+                
                 if self.interpolate_bad_channels:
                     raw_od.interpolate_bads(method={"fnirs":"nearest"})
 
-                sci_bad_channels = list(compress(raw_od_short.ch_names, sci < self.scalp_coupling_threshold))
-                    
                 if self.apply_tddr:
                     raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
 
-                raw_od.info["bads"] = sci_bad_channels
-                    
+                raw_od.add_channels([raw_od_short])
                 if self.short_channel_correction:
                     raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
                 
