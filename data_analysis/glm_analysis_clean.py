@@ -117,11 +117,8 @@ def run_glm(method, raw, design_matrix, noise_model="ar1", bins=0, n_jobs=1, ver
         raw_copy_hbr = raw_copy.copy().pick("hbr")
         raw_hbo = raw_copy_hbo.get_data()
         raw_hbr = raw_copy_hbr.get_data()
-        raw_hbo -= np.mean(raw_hbo,axis = 1, keepdims=True)
-        raw_hbr -= np.mean(raw_hbr,axis = 1, keepdims=True)
-        pca = PCA()
-        pca_hbo = pca.fit_transform(raw_hbo.T)
-        pca_hbr = pca.fit_transform(raw_hbr.T)
+        pca_hbo =  PCA().fit_transform(raw_hbo.T)
+        pca_hbr =  PCA().fit_transform(raw_hbr.T)
         pca_hbo_first_PCA = pca_hbo[:, 0:1].T
         pca_hbr_first_PCA = pca_hbr[:, 0:1].T
         
@@ -131,7 +128,6 @@ def run_glm(method, raw, design_matrix, noise_model="ar1", bins=0, n_jobs=1, ver
                 if ch["kind"] == mne.io.constants.FIFF.FIFFV_FNIRS_CH:
                     ch["coil_type"] = mne.io.constants.FIFF.FIFFV_COIL_FNIRS_HBO
         pca_data = np.vstack([pca_hbo_first_PCA, pca_hbr_first_PCA])
-        pca_method = lambda data: pca_hbo_first_PCA if "hbo" in data[0] else pca_hbr_first_PCA
         info = mne.create_info(
         ch_names=["PC1_hbo", "PC1_hbr"],
         sfreq=raw_copy.info["sfreq"],
@@ -199,7 +195,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
     def glm_subject(subject, idx, data_types, drift_model, hrf_model):
         print(f"Constructing design matrix and running GLM on subject {idx+1}/{len(subjects)}")
         haemo = subject.raw_haemo.copy()
-        relevant_channels = [ch for ch in haemo.ch_names if ("S1" in ch) or ("S2" in ch) or ("S3" in ch) or ("S4" in ch)] #haemo.ch_names #
+        relevant_channels = haemo.ch_names #[ch for ch in haemo.ch_names if ("S1" in ch) or ("S2" in ch) or ("S3" in ch) or ("S4" in ch)] #
         haemo = haemo.pick(picks=relevant_channels)
         
         redundant_annotations = [x for x in np.unique(haemo.annotations.description) if x not in set(data_types)]
@@ -262,7 +258,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
                                             add_regs=add_regs,
                                             oversampling=oversampling,
                                             add_reg_names=add_reg_names,) 
-            glm_estimates = run_glm("Standard", haemo, design_matrix, n_jobs=1)
+            glm_estimates = run_glm("HbT", haemo, design_matrix, n_jobs=1)
 
         except Exception as e:
             print(f"Error type: {type(e).__name__}")
@@ -337,6 +333,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         library(ggplot2)
         library(patchwork)
         library(effectsize)
+        library(simr)
         
         # Create all three models
         # modelConch_plot <- lmer(theta ~ Condition + ch_name + Condition:ch_name + (1 | ID), 
@@ -429,39 +426,12 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         anova_condition_df <- as.data.frame(anova_result_condition)
         print(anova_result_condition)
         
-        # # Fit the model
-        # modelCondition_ML <- lmer(theta ~ Condition + (1 | ID), data=rdf, REML=FALSE)
-
-        # # ---- Diagnostics ----
-        # print("Column names in rdf:")
-        # print(names(rdf))
-
-        # print("Head of rdf:")
-        # print(head(rdf))
-
-        # print("Model formula:")
-        # print(formula(modelCondition_ML))
-
-        # print("Fixed effects:")
-        # print(fixef(modelCondition_ML))
-
-        # print("Model class:")
-        # print(class(modelCondition_ML))
-
-        # # ---- Now try simr ----
-        # library(simr)
-
-        # model_sim <- makeLmer(modelCondition_ML)
-
-        # pc <- powerCurve(
-        #     model_sim,
-        #     along="ID",
-        #     breaks=seq(20, 60, by=5),
-        #     nsim=100,
-        #     test=fixed("Conditionn_back", method="KR")
-        # )
-
-        # print(pc)
+        # Fit the model
+        modelCondition_ML <- lmer(theta ~ Condition + (1 | ID), data=rdf, REML=FALSE)
+        print(summary(modelCondition_ML))
+        model_sim <- modelCondition_ML
+        power_original <- powerSim(model_sim, nsim = 200, test = fixed("Condition"))
+        print(power_original)
 
         #Extract coefficents as dataframe:
         coef_summary_modelCondition <- as.data.frame(summary(modelCondition)$coefficients)
@@ -564,7 +534,7 @@ from collections import defaultdict
 from preprocessing_toolbox.load_data_function import data_loaders
 
 dataSetList = list(data_loaders.keys())
-dataLoaders = [dataSetList[15], dataSetList[17]]
+dataLoaders = [dataSetList[12]] #, dataSetList[17]]
 datasets = defaultdict(defaultdict)
 
 for data_loader in dataLoaders:
@@ -585,7 +555,7 @@ for data_loader in dataLoaders:
         "filter_upper_value": 0.5,
         "h_trans_bandwidth": 0.2,           
         "l_trans_bandwidth": 0.01,
-        "snr_rejection": "None",  # Default to None, can be set to "SNR" or "CV"
+        "snr_rejection": "SNR",  # Default to None, can be set to "SNR" or "CV"
         "snr_threshold": 8,  # Default threshold for SNR
         "Apply_TDDR": True,
         "interpolate_bad_channels": True,
@@ -612,6 +582,6 @@ for data_loader in dataLoaders:
     variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
     datasets[data_loader] = {key: value for key, value in zip(variables, data)}
 
-all_participants = datasets[dataLoaders[0]]["all_individuals"]# + datasets[dataLoaders[1]]["all_individuals"]
+all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
 number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])] #, len((datasets[dataLoaders[1]]["all_individuals"]))]
 run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)
