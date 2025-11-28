@@ -26,6 +26,8 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 
+from sklearn.decomposition import PCA
+from mne.preprocessing import ICA
 
 load_dotenv()
 save_path = Path(os.getenv(rf"data_save_path"))
@@ -215,33 +217,43 @@ def run_glm(method, raw, design_matrix, noise_model="ar1", bins=0, n_jobs=1, ver
         raw_copy_hbr = raw_copy.copy().pick("hbr")
         raw_hbo = raw_copy_hbo.get_data()
         raw_hbr = raw_copy_hbr.get_data()
-        Sigma_hbo = np.cov(raw_hbo)
-        Sigma_hbr = np.cov(raw_hbr)
-        eigenvalues_hbo, eigenvectors_hbo = np.linalg.eigh(Sigma_hbo)
-        eigenvalues_hbr, eigenvectors_hbr = np.linalg.eigh(Sigma_hbr)
-        idx_hbo = np.argsort(eigenvalues_hbo)[::-1]
-        eigenvalues_hbo = eigenvalues_hbo[idx_hbo]
-        eigenvectors_hbo = eigenvectors_hbo[:, idx_hbo]
-        idx_hbr = np.argsort(eigenvalues_hbr)[::-1]
-        eigenvalues_hbr = eigenvalues_hbr[idx_hbr]
-        eigenvectors_hbr = eigenvectors_hbr[:, idx_hbr]
-        pca_hbo = eigenvectors_hbo[:, 0] @ raw_hbo
-        pca_hbr = eigenvectors_hbr[:, 0] @ raw_hbr
+        raw_hbo -= np.mean(raw_hbo,axis = 1, keepdims=True)
+        raw_hbr -= np.mean(raw_hbr,axis = 1, keepdims=True)
+        pca = PCA()
+        pca_hbo = pca.fit_transform(raw_hbo.T)
+        pca_hbr = pca.fit_transform(raw_hbr.T)
+        pca_hbo_first_PCA = pca_hbo[:, 0:1].T
+        pca_hbr_first_PCA = pca_hbr[:, 0:1].T
+        
         pca_channel_names = [f"PC1_hbo", f"PC1_hbr"]
         groups = {ch_name: [i for i, ch in enumerate(raw_copy.ch_names) if ch.split(" ")[1] in ch_name.split("_")[1]] for ch_name in pca_channel_names}
         for ch in raw_copy.info["chs"]:
                 if ch["kind"] == mne.io.constants.FIFF.FIFFV_FNIRS_CH:
                     ch["coil_type"] = mne.io.constants.FIFF.FIFFV_COIL_FNIRS_HBO
-        pca_method = lambda data: pca_hbo if "hbo" in data[0] else pca_hbr
-        raw_pca = mne.channels.combine_channels(
-            raw_copy, 
-            groups=groups, 
-            method=pca_method)
-        glm_raw = raw_pca.copy()
-        glm_raw["PC1_hbo"] = pca_hbo
-        glm_raw["PC1_hbr"] = pca_hbr
+        pca_data = np.vstack([pca_hbo_first_PCA, pca_hbr_first_PCA])
+        pca_method = lambda data: pca_hbo_first_PCA if "hbo" in data[0] else pca_hbr_first_PCA
+        info = mne.create_info(
+        ch_names=["PC1_hbo", "PC1_hbr"],
+        sfreq=raw_copy.info["sfreq"],
+        ch_types=["hbo", "hbr"]
+        )
+        glm_raw = mne.io.RawArray(pca_data, info)
         picks = _picks_to_idx(glm_raw.info, "fnirs", exclude=[], allow_empty=True)
         ch_names = list(groups.keys())
+    
+    elif method == "ICA":
+        raw_copy = raw.copy()
+        raw_copy_hbo = raw_copy.copy().pick("hbo")
+        raw_copy_hbr = raw_copy.copy().pick("hbr")
+        ica_hbo = ICA(random_state=97)
+        ica_hbo.fit(raw_copy_hbo)
+        ica_hbr = ICA(random_state=97)
+        ica_hbr.fit(raw_copy_hbr)
+        raw_hbo_clean = ica_hbo.apply(raw_copy_hbo)
+        raw_hbr_clean = ica_hbr.apply(raw_copy_hbr)
+        glm_raw = raw_hbo_clean.add_channels([raw_hbr_clean])
+        picks = _picks_to_idx(glm_raw.info, "fnirs", exclude=[], allow_empty=True)
+        ch_names = list(glm_raw.ch_names)
         
     elif method == "HbT":
         raw_tmp = raw.copy()
@@ -350,7 +362,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
                                             add_regs=add_regs,
                                             oversampling=oversampling,
                                             add_reg_names=add_reg_names,) 
-            glm_estimates = run_glm("Standard", haemo, design_matrix, n_jobs=1)
+            glm_estimates = run_glm("ICA", haemo, design_matrix, n_jobs=1)
 
         except Exception as e:
             print(f"Error type: {type(e).__name__}")
