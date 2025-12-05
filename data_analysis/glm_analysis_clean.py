@@ -168,19 +168,25 @@ def run_glm(method, raw, design_matrix, noise_model="ar1", bins=0, n_jobs=1, ver
         glm_raw = raw.copy()
         picks = _picks_to_idx(glm_raw.info, "fnirs", exclude=[], allow_empty=True)
         ch_names = raw.ch_names
-    elif method == "mean_hbo":
+    elif method == "mean_HbT":
         raw_tmp = raw.copy()
-        for ch in raw_tmp.info["chs"]:
-            if ch["kind"] == mne.io.constants.FIFF.FIFFV_FNIRS_CH:
-                ch["coil_type"] = mne.io.constants.FIFF.FIFFV_COIL_FNIRS_HBO # We set the channel types to HbO to allow combination
-        ch_names = list(set([ch_name.strip("hbo").strip("hbr") + "HbT" for ch_name in raw_tmp.ch_names]))
-        groups = {ch_name: [i for i, ch in enumerate(raw.ch_names) if ch.strip(" hbo").strip(" hbr") in ch_name.strip(" HbT")] for ch_name in ch_names}
-        raw_HbT = mne.channels.combine_channels(
+        chromophores = ["hbo", "hbr"]
+        groups = {chromo: [i for i, ch in enumerate(raw_tmp.ch_names) if ch[-3:] == chromo] for chromo in chromophores}
+        raw_mean = mne.channels.combine_channels(
         raw_tmp, 
         groups=groups, 
         method="mean")
+        for ch in raw_mean.info["chs"]:
+            if ch["kind"] == mne.io.constants.FIFF.FIFFV_FNIRS_CH:
+                ch["coil_type"] = mne.io.constants.FIFF.FIFFV_COIL_FNIRS_HBO # We set the channel types to HbO to allow combination
+        groups = {"HbT": [0, 1]}
+        raw_HbT = mne.channels.combine_channels(
+        raw_mean, 
+        groups=groups, 
+        method=sum_method)
         glm_raw = raw_HbT.copy()
         picks = _picks_to_idx(glm_raw.info, "fnirs", exclude=[], allow_empty=True)
+        ch_names = glm_raw.ch_names
 
     if noise_model == "auto":
         noise_model = f"ar{int(np.round(glm_raw.info['sfreq'])) * 4}"
@@ -208,7 +214,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
     def glm_subject(subject, idx, data_types, drift_model, hrf_model):
         print(f"Constructing design matrix and running GLM on subject {idx+1}/{len(subjects)}")
         haemo = subject.raw_haemo.copy()
-        relevant_channels = haemo.ch_names #[ch for ch in haemo.ch_names if ("S1" in ch) or ("S2" in ch) or ("S3" in ch) or ("S4" in ch)] #
+        relevant_channels = [ch for ch in haemo.ch_names if ("S1" in ch) or ("S2" in ch) or ("S3" in ch) or ("S4" in ch)] # haemo.ch_names # 
         haemo = haemo.pick(picks=relevant_channels)
         
         redundant_annotations = [x for x in np.unique(haemo.annotations.description) if x not in set(data_types)]
@@ -219,7 +225,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         renames = {cond: cond.split("/")[1] if "/" in cond else cond for cond in haemo.annotations.description}
         haemo_isis = haemo.copy()
         haemo_isis.annotations.rename(renames_isis)
-        haemo.annotations.rename(renames_isis)
+        haemo.annotations.rename(renames)
         short_channel_haemo = get_short_channels(subject.raw_haemo_unfiltered)
         # haemo.resample(2.5, npad="auto")
         # short_channel_haemo.resample(2.5, npad="auto")
@@ -271,7 +277,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
                                             add_regs=add_regs,
                                             oversampling=oversampling,
                                             add_reg_names=add_reg_names,) 
-            glm_estimates = run_glm("mean_hbo", haemo, design_matrix, n_jobs=1)
+            glm_estimates = run_glm("mean_HbT", haemo, design_matrix, n_jobs=1)
 
         except Exception as e:
             print(f"Error type: {type(e).__name__}")
@@ -304,27 +310,57 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         # Convert to uM for nicer plotting below.
         # df_ind["theta"] = [t * 1.0e6 for t in df_ind["theta"]]
         cha["theta"] = [t * 1.0e6 for t in cha["theta"]]
+    
+
+        # Get column names for reference
+        cols = conditions.tolist()
+
+        # Find indices of your conditions
+        idx_control = cols.index('Control__gamma_custom_delay_hrf')
+        idx_Hard_math = cols.index('Hard_math__gamma_custom_delay_hrf')
+        idx_Math = cols.index('Math__gamma_custom_delay_hrf')
+
+        # Create contrast vectors
+        contrasts = {
+            'Hard_math_vs_control': np.array([-1, 1, 0] + [0]*22),
+            'Math_vs_control': np.array([-1, 0, 1] + [0]*22),
+        }
         
-        contrasts = {}
-        contrasts['active1_vs_control'] = glm_estimates.compute_contrast(
-            'active_1 - control', 
-            stat_type='t',
-            output_type='all'
-        )
-        contrasts['active2_vs_control'] = glm_estimates.compute_contrast(
-            'active_2 - control',
-            stat_type='t', 
-            output_type='all'
-        )
+        # Store all contrast results
+        contrast_results = {}
+        for name, expr in contrasts.items():
+            print(f"{name} => contrast vector")
+            result = glm_estimates.compute_contrast(expr)
+            
+            # Convert to DataFrame
+            df = result.to_dataframe()
+            df['contrast'] = name
+            df['ID'] = subject.name + "_" + ("HC" if idx < number_of_subjects[0] else "Patient")
+            df['Group'] = "HC" if idx < number_of_subjects[0] else "Patient"
+            
+            contrast_results[name] = df
         
-        return haemo, design_matrix, cha
+        return haemo, design_matrix, cha, contrast_results
     
     results = Parallel(n_jobs=1)(
     delayed(glm_subject)(subject, idx, class_instance.data_types, drift_model,hrf_model)
     for idx, subject in enumerate(subjects)
     )
 
-    haemos, design_matrices, cha_dfs = zip(*results)
+    haemos, design_matrices, cha_dfs, contrast_results = zip(*results)
+    
+    # Combine all contrast results across subjects
+    all_contrasts = []
+    for subject_contrasts in contrast_results:
+        for contrast_name, df in subject_contrasts.items():
+            all_contrasts.append(df)
+    
+    # Concatenate into single DataFrame
+    combined_contrasts_df = pd.concat(all_contrasts, ignore_index=True)
+    
+    # Save to CSV
+    combined_contrasts_df.to_csv(os.path.join(save_path, f'glm_contrast_results.csv'), index=False)
+    print(f"Saved contrast results to glm_contrast_results.csv")
 
     # betas_roi_df = pd.concat(subject_dfs, ignore_index=True)
 
@@ -357,114 +393,71 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         library(ggplot2)
         library(patchwork)
                 
-        # modelConch <- lmer(theta ~ Condition + ch_name + Condition:ch_name + (1 | ID), data=rdf, REML=FALSE)
-        # nullModelConch <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
-        # anova_result_Condch <- anova(modelConch, nullModelConch)
-        # anova_Condch_df <- as.data.frame(anova_result_Condch)
-        # print(anova_result_Condch)
-        # # # print(isSingular(modelConch, tol = 1e-4))
-        # # # print(summary(modelConch)$varcor)
-        # # X <- model.matrix(~ Condition * ch_name, data = rdf)
-        # # # print(qr(X)$rank)
-        # # # print(ncol(X))
+        modelConch <- lmer(theta ~ Condition + ch_name + Condition:ch_name + (1 | ID), data=rdf, REML=FALSE)
+        nullModelConch <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
+        anova_result_Condch <- anova(modelConch, nullModelConch)
+        anova_Condch_df <- as.data.frame(anova_result_Condch)
+        print(anova_result_Condch)
+        # print(isSingular(modelConch, tol = 1e-4))
+        # print(summary(modelConch)$varcor)
+        X <- model.matrix(~ Condition * ch_name, data = rdf)
+        # print(qr(X)$rank)
+        # print(ncol(X))
         
-        # # #Extract coefficents as dataframe:
-        # # coef_summary_modelConch <- as.data.frame(summary(modelConch)$coefficients)
-        # # coef_summary_modelConch$Parameter <- rownames(coef_summary_modelConch)
-        # # colnames(coef_summary_modelConch) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+        #Extract coefficents as dataframe:
+        coef_summary_modelConch <- as.data.frame(summary(modelConch)$coefficients)
+        coef_summary_modelConch$Parameter <- rownames(coef_summary_modelConch)
+        colnames(coef_summary_modelConch) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
 
-        # # #Extract coefficents for plotting:
-        # # coef_summary_nullModelConch <- as.data.frame(summary(nullModelConch)$coefficients)
-        # # coef_summary_nullModelConch$Parameter <- rownames(coef_summary_nullModelConch)
-        # # colnames(coef_summary_nullModelConch) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+        #Extract coefficents for plotting:
+        coef_summary_nullModelConch <- as.data.frame(summary(nullModelConch)$coefficients)
+        coef_summary_nullModelConch$Parameter <- rownames(coef_summary_nullModelConch)
+        colnames(coef_summary_nullModelConch) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
         
-        # # ################################################################################################################
+        # ################################################################################################################
         
-        # modelchannel <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
-        # nullModelchannel <- lmer(theta ~ Condition + (1 | ID), data=rdf, REML=FALSE)
-        # anova_result_channel <- anova(modelchannel, nullModelchannel)
-        # anova_channel_df <- as.data.frame(anova_result_channel)
-        # print(anova_result_channel)
+        modelchannel <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
+        nullModelchannel <- lmer(theta ~ Condition + (1 | ID), data=rdf, REML=FALSE)
+        anova_result_channel <- anova(modelchannel, nullModelchannel)
+        anova_channel_df <- as.data.frame(anova_result_channel)
+        print(anova_result_channel)
         
-        # # #Extract coefficents as dataframe:
-        # # coef_summary_modelchannel <- as.data.frame(summary(modelchannel)$coefficients)
-        # # coef_summary_modelchannel$Parameter <- rownames(coef_summary_modelchannel)
-        # # colnames(coef_summary_modelchannel) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+        #Extract coefficents as dataframe:
+        coef_summary_modelchannel <- as.data.frame(summary(modelchannel)$coefficients)
+        coef_summary_modelchannel$Parameter <- rownames(coef_summary_modelchannel)
+        colnames(coef_summary_modelchannel) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
         
-        # # #Extract coefficents for plotting:
-        # # coef_summary_nullModelchannel <- as.data.frame(summary(nullModelchannel)$coefficients)
-        # # coef_summary_nullModelchannel$Parameter <- rownames(coef_summary_nullModelchannel)
-        # # colnames(coef_summary_nullModelchannel) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+        #Extract coefficents for plotting:
+        coef_summary_nullModelchannel <- as.data.frame(summary(nullModelchannel)$coefficients)
+        coef_summary_nullModelchannel$Parameter <- rownames(coef_summary_nullModelchannel)
+        colnames(coef_summary_nullModelchannel) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
 
-        # # ################################################################################################################
+        # ################################################################################################################
         
-        # modelCondition <- lmer(theta ~ Condition + (1 | ID), data=rdf, REML=FALSE)
-        # nullModelCondition <- lmer(theta ~ (1 | ID), data=rdf, REML=FALSE)
-        # anova_result_condition <- anova(modelCondition, nullModelCondition)
-        # anova_condition_df <- as.data.frame(anova_result_condition)
-        # print(anova_result_condition)
+        modelCondition <- lmer(theta ~ Condition + (1 | ID), data=rdf, REML=FALSE)
+        nullModelCondition <- lmer(theta ~ (1 | ID), data=rdf, REML=FALSE)
+        anova_result_condition <- anova(modelCondition, nullModelCondition)
+        anova_condition_df <- as.data.frame(anova_result_condition)
+        print(anova_result_condition)
 
-        # #Extract coefficients as dataframe:
-        # coef_summary_modelCondition <- as.data.frame(summary(modelCondition)$coefficients)
-        # coef_summary_modelCondition$Parameter <- rownames(coef_summary_modelCondition)
-        # colnames(coef_summary_modelCondition) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+        #Extract coefficients as dataframe:
+        coef_summary_modelCondition <- as.data.frame(summary(modelCondition)$coefficients)
+        coef_summary_modelCondition$Parameter <- rownames(coef_summary_modelCondition)
+        colnames(coef_summary_modelCondition) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
         
-        # #Extract coefficients for plotting:
-        # coef_summary_nullModelCondition<- as.data.frame(summary(modelCondition)$coefficients)
-        # coef_summary_nullModelCondition$Parameter <- rownames(coef_summary_nullModelCondition)
-        # colnames(coef_summary_nullModelCondition) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+        #Extract coefficients for plotting:
+        coef_summary_nullModelCondition<- as.data.frame(summary(modelCondition)$coefficients)
+        coef_summary_nullModelCondition$Parameter <- rownames(coef_summary_nullModelCondition)
+        colnames(coef_summary_nullModelCondition) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
         
-        # # Check assumptions for modelCondition (final model for single group)
-        # modelCondition_plot <- lmer(theta ~ Condition + (1 | ID), 
-        #                             data=rdf, REML=TRUE)
+        # Check assumptions for modelCondition (final model for single group)
+        modelCondition_plot <- lmer(theta ~ Condition + (1 | ID), 
+                                    data=rdf, REML=TRUE)
 
-        # # Get all diagnostic plots
-        # diag_condition <- plot(check_model(modelCondition_plot, panel = FALSE))
+        # Get all diagnostic plots
+        diag_condition <- plot(check_model(modelCondition_plot, panel = FALSE))
 
-        # # Define plot names
-        # plot_names <- c(
-        #     "posterior_predictive_check",
-        #     "linearity",
-        #     "homogeneity_of_variance",
-        #     "influential_outliers",
-        #     "multicollinearity",
-        #     "normal_residuals"
-        # )
-
-        # # Save each diagnostic plot individually
-        # for(i in seq_along(plot_names)) {
-        #     filename <- file.path(Phase_1_assumptions_plot_save_path, 
-        #                         paste0("modelCondition_", plot_names[i], ".pdf"))
-            
-        #     tryCatch({
-        #         ggsave(filename, plot = diag_condition[[i]], width = 8, height = 6, device = "pdf")
-        #         message(paste("✓ Created:", filename))
-        #     }, error = function(e) {
-        #         message(paste("✗ Could not create:", plot_names[i], "-", e$message))
-        #     })
-        # }
-
-        # # Also save the complete panel
-        # pdf(file.path(Phase_1_assumptions_plot_save_path, "modelCondition_all_diagnostics.pdf"), 
-        #     width = 12, height = 10)
-        # plot(check_model(modelCondition_plot))
-        # dev.off()
-
-        # message("modelCondition diagnostic plots completed!")
-
-        ################################################################################################################
-
-        # Create the model for inference (REML=FALSE)
-        modelGroup <- lmer(theta ~ Condition:Group:ch_name + Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=FALSE)
-        print(anova(modelGroup))
-        
-        # Check assumptions for modelGroup (final model for two groups)
-        modelGroup_plot <- lmer(theta ~ Condition:Group:ch_name + Condition:ch_name + Condition:Group + Group:ch_name + Condition + ch_name + Group + (1 | ID), data=rdf, REML=TRUE)
-        
-        # Get all diagnostic plots as a list of ggplot objects
-        diagnostic_plots <- plot(check_model(modelGroup_plot, panel = FALSE))
-        
-        # Define plot names for each position
+        # Define plot names
         plot_names <- c(
             "posterior_predictive_check",
             "linearity",
@@ -473,25 +466,68 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
             "multicollinearity",
             "normal_residuals"
         )
-        
-        # Save each plot individually
-        for(i in seq_along(diagnostic_plots)) {
-            filename <- file.path(Phase_2_assumptions_plot_save_path, paste0("modelGroup_", plot_names[i], ".pdf"))
+
+        # Save each diagnostic plot individually
+        for(i in seq_along(plot_names)) {
+            filename <- file.path(Phase_1_assumptions_plot_save_path, 
+                                paste0("modelCondition_", plot_names[i], ".pdf"))
             
             tryCatch({
-                ggsave(filename, plot = diagnostic_plots[[i]], width = 8, height = 6, device = "pdf")
+                ggsave(filename, plot = diag_condition[[i]], width = 8, height = 6, device = "pdf")
                 message(paste("✓ Created:", filename))
             }, error = function(e) {
                 message(paste("✗ Could not create:", plot_names[i], "-", e$message))
             })
         }
-        
+
         # Also save the complete panel
-        pdf(file.path(Phase_2_assumptions_plot_save_path, "modelGroup_all_diagnostics.pdf"), width = 12, height = 10)
-        plot(check_model(modelGroup_plot))
+        pdf(file.path(Phase_1_assumptions_plot_save_path, "modelCondition_all_diagnostics.pdf"), 
+            width = 12, height = 10)
+        plot(check_model(modelCondition_plot))
         dev.off()
+
+        message("modelCondition diagnostic plots completed!")
+
+        ################################################################################################################
+
+        # # Create the model for inference (REML=FALSE)
+        # modelGroup <- lmer(theta ~ Condition:Group + Condition + Group + (1 | ID), data=rdf, REML=FALSE)
+        # print(anova(modelGroup))
         
-        message("modelGroup diagnostic plots completed!")
+        # # Check assumptions for modelGroup (final model for two groups)
+        # modelGroup_plot <- lmer(theta ~ Condition:Group + Condition + Group + (1 | ID), data=rdf, REML=TRUE)
+        
+        # # Get all diagnostic plots as a list of ggplot objects
+        # diagnostic_plots <- plot(check_model(modelGroup_plot, panel = FALSE))
+        
+        # # Define plot names for each position
+        # plot_names <- c(
+        #     "posterior_predictive_check",
+        #     "linearity",
+        #     "homogeneity_of_variance",
+        #     "influential_outliers",
+        #     "multicollinearity",
+        #     "normal_residuals"
+        # )
+        
+        # # Save each plot individually
+        # for(i in seq_along(diagnostic_plots)) {
+        #     filename <- file.path(Phase_2_assumptions_plot_save_path, paste0("modelGroup_", plot_names[i], ".pdf"))
+            
+        #     tryCatch({
+        #         ggsave(filename, plot = diagnostic_plots[[i]], width = 8, height = 6, device = "pdf")
+        #         message(paste("✓ Created:", filename))
+        #     }, error = function(e) {
+        #         message(paste("✗ Could not create:", plot_names[i], "-", e$message))
+        #     })
+        # }
+        
+        # # Also save the complete panel
+        # pdf(file.path(Phase_2_assumptions_plot_save_path, "modelGroup_all_diagnostics.pdf"), width = 12, height = 10)
+        # plot(check_model(modelGroup_plot))
+        # dev.off()
+        
+        # message("modelGroup diagnostic plots completed!")
         ''')
         
         with localconverter(pandas2ri.converter):
@@ -529,7 +565,7 @@ from collections import defaultdict
 from preprocessing_toolbox.load_data_function import data_loaders
 
 dataSetList = list(data_loaders.keys())
-dataLoaders = [dataSetList[15]] #, dataSetList[17]]
+dataLoaders = [dataSetList[-1]] #, dataSetList[17]]
 datasets = defaultdict(defaultdict)
 
 for data_loader in dataLoaders:
@@ -577,6 +613,6 @@ for data_loader in dataLoaders:
     variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
     datasets[data_loader] = {key: value for key, value in zip(variables, data)}
 
-all_participants = datasets[dataLoaders[0]]["all_individuals"]# + datasets[dataLoaders[1]]["all_individuals"]
+all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
 number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])] #, len((datasets[dataLoaders[1]]["all_individuals"]))]
 run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)

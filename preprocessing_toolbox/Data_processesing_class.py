@@ -46,6 +46,28 @@ def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_dur
             print(f"Error processing event {event} at index {idx}: {e}")
     return channel_values
 
+# def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_duration, annotations):
+#     previous_event = np.array([None, None, None])
+#     for idx, event in enumerate(events):
+#         try:
+#             if str(previous_event[2]) in annotations.keys():
+#                 if annotations[str(previous_event[2])] == "Control":
+#                     control_event_start = previous_event[0]
+#                     control_event_end = control_event_start + int(stimulus_duration[str(previous_event[2])]*sfreq)
+#                     event_start = event[0]
+#                     event_end = event_start + int(stimulus_duration[str(event[2])]*sfreq)
+#                     control_average = np.mean(channel_values[control_event_start:control_event_end])
+#                     channel_values[event_start:event_end] -= control_average
+#                     previous_event = event
+#                 else:
+#                     previous_event = event
+#             else:
+#                 previous_event = event
+#                 continue
+#         except Exception as e:
+#             print(f"Error processing event {event} at index {idx}: {e}")
+#     return channel_values
+
 def find_snirf_file(folder_path):
     """
     Find the .snirf file in the nested folder structure.
@@ -2574,7 +2596,7 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 
                 if self.negative_correlation_enhancement:
                     raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
-                
+                                    
                 events, event_dict = mne.events_from_annotations(raw_haemo, self.standard_event_ids)
                         
                 # Set baseline parameter based on correction method
@@ -3362,8 +3384,10 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 raw_intensity = self.make_annotations(excel_path, raw_intensity, events)
                 self.standard_event_ids = {value: int(float(key)) for key, value in self.annotation_names.items()}
                 try:
-                    approx_birth = raw_intensity.info["meas_date"].replace(tzinfo=None) - relativedelta(years=ages[folder_name[:2]])
-                    raw_intensity.info["subject_info"]["birthday"] = approx_birth
+                    birthday = datetime.strptime(ages[folder_name[:2]][:6], "%d%m%y")
+                    if birthday.year > datetime.now().year:
+                        birthday = birthday.replace(birthday.year - 100)
+                    raw_intensity.info["subject_info"]["birthday"] = birthday
                 except:
                     print("No age data available for participant")
                 self.tmax = max(self.stimulus_duration.values())     
@@ -3425,28 +3449,6 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
                 self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
-                                
-                def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_duration, annotations):
-                    previous_event = np.array([None, None, None])
-                    for idx, event in enumerate(events):
-                        try:
-                            if str(previous_event[2]) in annotations.keys():
-                                if annotations[str(previous_event[2])] == "Control":
-                                    control_event_start = previous_event[0]
-                                    control_event_end = control_event_start + int(stimulus_duration[str(previous_event[2])]*sfreq)
-                                    event_start = event[0]
-                                    event_end = event_start + int(stimulus_duration[str(event[2])]*sfreq)
-                                    control_average = np.mean(channel_values[control_event_start:control_event_end])
-                                    channel_values[event_start:event_end] -= control_average
-                                    previous_event = event
-                                else:
-                                    previous_event = event
-                            else:
-                                previous_event = event
-                                continue
-                        except Exception as e:
-                            print(f"Error processing event {event} at index {idx}: {e}")
-                    return channel_values
                 
                 epochs = mne.Epochs(
                     raw_haemo,
@@ -3456,18 +3458,18 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                     tmax=self.tmax,
                     reject=self.reject_criteria,
                     reject_by_annotation=True,
-                    proj=False,
+                    proj=True,
                     baseline=baseline,
                     preload=True,
                     detrend=None,
                     verbose=True,
                 )
-
+                            
                 first_samp_correct_events = events.copy()
                 first_samp_correct_events[:,0] = events[:,0] - raw_haemo._first_samps
                 raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
                 raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
-                        
+                                
                 self.drop_log.append(epochs.drop_log)
                 if len(epochs) != 0:
                     # Apply custom baseline correction if needed
@@ -3526,8 +3528,6 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         # Update all_data with control_dict
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
-        print(len(self.Individual_participants))
-        print(np.mean(all_data["Control"]))
         return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
 
 ###############################################################################################################################################################################################
@@ -3827,6 +3827,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                     snr_bad_channels = []
 
                 raw_od = mne.preprocessing.nirs.optical_density(raw_intensity_long)
+                dpf = compute_differential_pathlength(raw_od)
                 raw_od_short = mne.preprocessing.nirs.optical_density(raw_intensity_short)
                 raw_od_original = raw_od.copy()
 
@@ -3841,14 +3842,14 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
 
                 if self.apply_tddr:
                     raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
+
+                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf).copy()
                 
                 if self.short_channel_correction:
                     raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
-                    
-                dpf = compute_differential_pathlength(raw_od)
-                raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
 
-                raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od_original, ppf=0.1).copy()
+                raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
+                
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
                 
                 if self.negative_correlation_enhancement:
