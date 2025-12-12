@@ -322,8 +322,8 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
 
         # Create contrast vectors
         contrasts = {
-            'Hard_math_vs_control': np.array([-1, 1, 0] + [0]*22),
-            'Math_vs_control': np.array([-1, 0, 1] + [0]*22),
+            'Hard_math_vs_control': np.array([-1, 1, 0] + [0]*(np.shape(glm_estimates.theta())[1]-3)),
+            'Math_vs_control': np.array([-1, 0, 1] + [0]*(np.shape(glm_estimates.theta())[1]-3)),
         }
         
         # Store all contrast results

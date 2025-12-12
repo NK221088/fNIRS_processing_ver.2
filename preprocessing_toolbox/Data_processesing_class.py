@@ -3783,8 +3783,6 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         
         for i, folder_name in enumerate(all_folders, start=1):
             patient_name = folder_name[0] + folder_name[folder_name.find("ID")+2:folder_name.find("ID")+4].replace("_", "") + "_" + folder_name.split("/")[1][0] + folder_name.split("/")[1][-1] + "_" + folder_name.split("/")[2][0]
-            if patient_name == "'P1_S1_P2'":
-                print("")
             if folder_name.split("/")[2].split("_")[-1] in ["1", "2", "3"]:
                 patient_name += folder_name.split("/")[2].split("_")[-1]
             if patient_name.endswith("P") or patient_name[1] == ("P"):
