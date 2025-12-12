@@ -3559,11 +3559,11 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                                 '6': 'Math',
                                 '7': 'Math',
                                 '8': 'Math',
-                                '9': 'Hard_math',
-                                '10': 'Hard_math',
-                                '11': 'Hard_math',
-                                '12': 'Hard_math',
-                                '13': 'Hard_math'}
+                                '9': 'Hard_Math',
+                                '10': 'Hard_Math',
+                                '11': 'Hard_Math',
+                                '12': 'Hard_Math',
+                                '13': 'Hard_Math'}
         self.standard_event_ids = {
         }
         key = file_path.replace(":", "").replace(" ", "_").replace("-", "_")
@@ -3575,14 +3575,14 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.stimulus_duration = {
                                 'Control': 21,
                                 'Math': 25,
-                                'Hard_math': 25,
+                                'Hard_Math': 25,
                                 }
         self.scalp_coupling_threshold = scalp_coupling_threshold
         self.reject_criteria = reject_criteria
         self.tmin = tmin
         self.tmax = 20
         self.baseline = (None, 0)
-        self.data_types = ['Math', 'Hard_math']
+        self.data_types = ['Math', 'Hard_Math']
         self.data_name = data_name
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["1", "2", "3"]
@@ -3594,8 +3594,8 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
-        self.subjects_to_exclude = {"fNIRS EEG Marwan data load": ["P7_S1_P2", "P17_S1_P2"],
-                                    }
+        self.subjects_to_exclude = {"fNIRS EEG Marwan data load": ["P7_S1_P2", "P17_S1_P2", 'P1_S1_P2'],
+                                    } # 'P1_S1_P2': Too many math
         self.folder_errors = []
         self.age_file = Path(os.getenv("demographic_data_path_Marwan".replace(" ", "_").replace("-", "_")))
         super().__init__(
@@ -3783,6 +3783,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         
         for i, folder_name in enumerate(all_folders, start=1):
             patient_name = folder_name[0] + folder_name[folder_name.find("ID")+2:folder_name.find("ID")+4].replace("_", "") + "_" + folder_name.split("/")[1][0] + folder_name.split("/")[1][-1] + "_" + folder_name.split("/")[2][0]
+            
             if folder_name.split("/")[2].split("_")[-1] in ["1", "2", "3"]:
                 patient_name += folder_name.split("/")[2].split("_")[-1]
             if patient_name.endswith("P") or patient_name[1] == ("P"):
