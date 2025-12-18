@@ -29,6 +29,8 @@ from pathlib import Path
 from sklearn.decomposition import PCA
 from mne.preprocessing import ICA
 
+from collections import Counter
+
 load_dotenv()
 save_path = Path(os.getenv(rf"data_save_path"))
 Phase_1_assumptions_plot_save_path = Path(os.getenv(rf"Phase_1_assumptions_plot_save_path"))
@@ -228,7 +230,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         renames = {cond: cond.split("/")[1] if "/" in cond else cond for cond in haemo.annotations.description}
         haemo_isis = haemo.copy()
         haemo_isis.annotations.rename(renames_isis)
-        haemo.annotations.rename(renames)
+        haemo.annotations.rename(renames_isis)
         short_channel_haemo = get_short_channels(subject.raw_haemo_unfiltered)
         # haemo.resample(2.5, npad="auto")
         # short_channel_haemo.resample(2.5, npad="auto")
@@ -248,7 +250,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         hrf_model = hrf_model
         min_onset = 0 # Normally used for fMRI in case events are coded relative to a trigger that happens before scanning. Not relevant here.
         high_pass = high_pass_value #high_pass_value
-        add_regs = short_channel_haemo.get_data().T * 10**6 # Scale to uM
+        add_regs = short_channel_haemo.get_data().T
         oversampling = 1 # Default value.
         drift_order = 1 # When we use the cosine drift model this parameter doesn't really matter, as the drift order is then actually determined by the high_pass argument
         add_reg_names = short_channel_haemo.ch_names
@@ -274,7 +276,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
                                             events,
                                             drift_model=drift_model,
                                             drift_order=drift_order,
-                                            hrf_model=hrf_model_,
+                                            hrf_model="glover + derivative",
                                             min_onset=min_onset,
                                             high_pass=high_pass,
                                             add_regs=add_regs,
@@ -310,26 +312,27 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         cha["ID"] = subject.name
         # cha["ID"] = subject.name + "_" + "HC" if idx < number_of_subjects[0] else subject.name + "_" + "Patient"
         # cha["Group"] = "HC" if idx < number_of_subjects[0] else "Patient"
-        
-        # Convert to uM for nicer plotting below.
-        # df_ind["theta"] = [t * 1.0e6 for t in df_ind["theta"]]
-        cha["theta"] = [t * 1.0e6 for t in cha["theta"]]
     
 
         # Get column names for reference
         cols = conditions.tolist()
 
         # Find indices of your conditions
-        idx_control = cols.index('Control__gamma_custom_delay_hrf')
-        idx_Hard_math = cols.index('Hard_Math__gamma_custom_delay_hrf')
-        idx_Math = cols.index('Math__gamma_custom_delay_hrf')
+        condition_indices = {}
+        for type_name in np.unique(haemo.annotations.description):
+            condition_indices[type_name] = cols.index(type_name)
 
         # Create contrast vectors
-        contrasts = {
-            'Hard_math_vs_control': np.array([-1, 1, 0] + [0]*(np.shape(glm_estimates.theta())[1]-3)),
-            'Math_vs_control': np.array([-1, 0, 1] + [0]*(np.shape(glm_estimates.theta())[1]-3)),
-        }
-        
+        contrasts = {}
+        for key in condition_indices.keys():
+            if key == "Control":
+                continue
+            contrast_array = np.zeros(len(cols))
+            contrast_array[condition_indices["Control"]] = -1
+            contrast_array[condition_indices[key]] = 1
+            contrasts[f"{key}_vs_Control"] = contrast_array
+
+
         # Store all contrast results
         contrast_results = {}
         for name, expr in contrasts.items():
@@ -385,9 +388,13 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         
         # For Marwans data only
         responders = significant_results["ID"].to_list()
-        responders = list(set([responder[:3].replace("_", "") for responder in responders]))
-        ch_summary["ID_prefix"] = ch_summary["ID"].str.split("_").str[0].str[1].astype(int)
-        ch_summary_responders = ch_summary[ch_summary["ID_prefix"].isin(responders)]
+        responders = [responder[:3].replace("_", "") for responder in responders]
+        responders_count = Counter(responders)
+        significant_responders = [int(ID.split("P")[1]) for ID, count in responders_count.items() if count >= 8]
+        print("Responders:")
+        print(significant_responders)
+        ch_summary["ID_prefix"] = ch_summary["ID"].str.split("_").str[0].str.split("P").str[1].astype(int)
+        ch_summary = ch_summary[ch_summary["ID_prefix"].isin(significant_responders)]
         ch_summary["Session_ID"] = ch_summary["ID"].str.split("_").str[1].str[1].astype(int)
         ch_summary["Recording"] = ch_summary["ID"].str.split("_").str[2]
         ch_summary["Recording"] = ch_summary["Recording"].replace("B", 0)
@@ -402,9 +409,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
                                     left_on=["ID_prefix", "Session_ID"],
                                     right_on=["Subject", "Session_ID"],
                                     how="left"
-                                    )
-        
-        
+                                    )        
 
         # Save the dataframe to verify it's identical
         # ch_summary.to_csv(rf"C:\Users\NKUE0003\OneDrive - Region Hovedstaden\Bachelor\Results\debug_ch_summary.csv", index=False)
@@ -563,11 +568,11 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         ################################################################################################################
 
         # Create the model for inference (REML=FALSE)
-        modelDrug <- lmer(theta ~ Condition:Recording:Drug + Condition:Recording + Condition:Drug + Recording:Drug + Condition + Recording + Drug + (1 | ID), data=rdf, REML=FALSE)
+        modelDrug <- lmer(theta ~ Condition:Recording:Drug + Condition:Recording + Condition:Drug + Recording:Drug + Condition + Recording + Drug + (1 | ID_prefix), data=rdf, REML=FALSE)
         print(anova(modelDrug))
         
         # Check assumptions for modelDrug (final model for two groups)
-        modelDrug_plot <- lmer(theta ~ Condition:Recording:Drug + Condition:Recording + Condition:Drug + Recording:Drug + Condition + Recording + Drug + (1 | ID), data=rdf, REML=TRUE)
+        modelDrug_plot <- lmer(theta ~ Condition:Recording:Drug + Condition:Recording + Condition:Drug + Recording:Drug + Condition + Recording + Drug + (1 | ID_prefix), data=rdf, REML=TRUE)
         
         # Get all diagnostic plots as a list of ggplot objects
         diagnostic_plots <- plot(check_model(modelDrug_plot, panel = FALSE))

@@ -3594,8 +3594,10 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
-        self.subjects_to_exclude = {"fNIRS EEG Marwan data load": ["P7_S1_P2", "P17_S1_P2", 'P1_S1_P2'],
-                                    } # 'P1_S1_P2': Too many math
+        self.subjects_to_exclude = {"fNIRS EEG Marwan data load": ["P7_S1_P2", "P17_S1_P2", 'P1_S1_P2', 'P40_S1_B', 'P40_S1_B', 'P40_S1_P2', 'P40_S1_P2', 'P40_S2_P1',
+       'P40_S2_P1', 'P40_S2_P2', 'P40_S2_P2', 'P40_S3_B', 'P40_S3_B',
+       'P40_S3_P1', 'P40_S3_P1', 'P40_S3_P2', 'P40_S3_P2'],
+                                    } # 'P1_S1_P2': Too many math, We exclude all patient 40 recordings, as we have no drug data 
         self.folder_errors = []
         self.age_file = Path(os.getenv("demographic_data_path_Marwan".replace(" ", "_").replace("-", "_")))
         super().__init__(
@@ -3833,21 +3835,32 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od_short, l_freq=0.5, h_freq=2.5)
                 sci_bad_channels = list(compress(raw_od_short.ch_names, sci < self.scalp_coupling_threshold))
                 raw_od_short.info["bads"] = sci_bad_channels
-                
+
+                if self.apply_tddr:
+                    raw_od_short = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od_short)
+                    raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
+                    
                 if self.interpolate_bad_channels:
                     raw_od.interpolate_bads(method={"fnirs":"nearest"})
                 
                 raw_od.add_channels([raw_od_short])
 
-                if self.apply_tddr:
-                    raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
-
                 raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf).copy()
+                raw_haemo_unfiltered._data *= 1e6
                 
+                from mne.io.constants import FIFF
+                for ch in raw_haemo_unfiltered.info['chs']:
+                    if ch['kind'] == FIFF.FIFFV_FNIRS_CH:
+                        ch['unit_mul'] = FIFF.FIFF_UNITM_MU  # Set unit to micromolar
+                                
                 if self.short_channel_correction:
                     raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
 
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
+                raw_haemo._data *= 1e6
+                for ch in raw_haemo.info['chs']:
+                    if ch['kind'] == FIFF.FIFFV_FNIRS_CH:
+                        ch['unit_mul'] = FIFF.FIFF_UNITM_MU  # Set unit to micromolar
                 
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
                 
