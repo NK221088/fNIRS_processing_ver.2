@@ -3891,10 +3891,10 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                     verbose=True,
                 )
 
-                first_samp_correct_events = events.copy()
-                first_samp_correct_events[:,0] = events[:,0] - raw_haemo._first_samps
-                raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
-                raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
+                # first_samp_correct_events = events.copy()
+                # first_samp_correct_events[:,0] = events[:,0] - raw_haemo._first_samps
+                # raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
+                # raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
                         
                 self.drop_log.append(epochs.drop_log)
                 if len(epochs) != 0:

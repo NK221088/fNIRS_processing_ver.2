@@ -276,7 +276,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
                                             events,
                                             drift_model=drift_model,
                                             drift_order=drift_order,
-                                            hrf_model="glover + derivative",
+                                            hrf_model=hrf_model_,
                                             min_onset=min_onset,
                                             high_pass=high_pass,
                                             add_regs=add_regs,
@@ -319,18 +319,19 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
 
         # Find indices of your conditions
         condition_indices = {}
-        for type_name in np.unique(haemo.annotations.description):
+        types = np.unique(haemo.annotations.description) + hrf_model_suffix
+        for type_name in types:
             condition_indices[type_name] = cols.index(type_name)
 
         # Create contrast vectors
         contrasts = {}
         for key in condition_indices.keys():
-            if key == "Control":
+            if key == f"Control{hrf_model_suffix}":
                 continue
             contrast_array = np.zeros(len(cols))
-            contrast_array[condition_indices["Control"]] = -1
+            contrast_array[condition_indices[f"Control{hrf_model_suffix}"]] = -1
             contrast_array[condition_indices[key]] = 1
-            contrasts[f"{key}_vs_Control"] = contrast_array
+            contrasts[f"{key}_vs_Control{hrf_model_suffix}"] = contrast_array
 
 
         # Store all contrast results
@@ -390,7 +391,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         responders = significant_results["ID"].to_list()
         responders = [responder[:3].replace("_", "") for responder in responders]
         responders_count = Counter(responders)
-        significant_responders = [int(ID.split("P")[1]) for ID, count in responders_count.items() if count >= 8]
+        significant_responders = [int(ID.split("P")[1]) for ID, count in responders_count.items() if count >= 1]
         print("Responders:")
         print(significant_responders)
         ch_summary["ID_prefix"] = ch_summary["ID"].str.split("_").str[0].str.split("P").str[1].astype(int)
