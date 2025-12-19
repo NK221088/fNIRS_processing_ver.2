@@ -3571,11 +3571,11 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                                 '6': 'Math',
                                 '7': 'Math',
                                 '8': 'Math',
-                                '9': 'Hard_math',
-                                '10': 'Hard_math',
-                                '11': 'Hard_math',
-                                '12': 'Hard_math',
-                                '13': 'Hard_math'}
+                                '9': 'Hard_Math',
+                                '10': 'Hard_Math',
+                                '11': 'Hard_Math',
+                                '12': 'Hard_Math',
+                                '13': 'Hard_Math'}
         self.standard_event_ids = {
         }
         key = file_path.replace(":", "").replace(" ", "_").replace("-", "_")
@@ -3587,14 +3587,14 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.stimulus_duration = {
                                 'Control': 21,
                                 'Math': 25,
-                                'Hard_math': 25,
+                                'Hard_Math': 25,
                                 }
         self.scalp_coupling_threshold = scalp_coupling_threshold
         self.reject_criteria = reject_criteria
         self.tmin = tmin
         self.tmax = 20
         self.baseline = (None, 0)
-        self.data_types = ['Math', 'Hard_math']
+        self.data_types = ['Math', 'Hard_Math']
         self.data_name = data_name
         self.interpolate_bad_channels = interpolate_bad_channels
         self.unwanted = ["1", "2", "3"]
@@ -3606,8 +3606,10 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
-        self.subjects_to_exclude = {"fNIRS EEG Marwan data load": ["P7_S1_P2", "P17_S1_P2"],
-                                    }
+        self.subjects_to_exclude = {"fNIRS EEG Marwan data load": ["P7_S1_P2", "P17_S1_P2", 'P1_S1_P2', 'P40_S1_B', 'P40_S1_B', 'P40_S1_P2', 'P40_S1_P2', 'P40_S2_P1',
+       'P40_S2_P1', 'P40_S2_P2', 'P40_S2_P2', 'P40_S3_B', 'P40_S3_B',
+       'P40_S3_P1', 'P40_S3_P1', 'P40_S3_P2', 'P40_S3_P2'],
+                                    } # 'P1_S1_P2': Too many math, We exclude all patient 40 recordings, as we have no drug data 
         self.folder_errors = []
         self.age_file = Path(os.getenv("demographic_data_path_Marwan".replace(" ", "_").replace("-", "_")))
         super().__init__(
@@ -3795,6 +3797,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         
         for i, folder_name in enumerate(all_folders, start=1):
             patient_name = folder_name[0] + folder_name[folder_name.find("ID")+2:folder_name.find("ID")+4].replace("_", "") + "_" + folder_name.split("/")[1][0] + folder_name.split("/")[1][-1] + "_" + folder_name.split("/")[2][0]
+            
             if folder_name.split("/")[2].split("_")[-1] in ["1", "2", "3"]:
                 patient_name += folder_name.split("/")[2].split("_")[-1]
             if patient_name.endswith("P") or patient_name[1] == ("P"):
@@ -3844,21 +3847,32 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 sci = mne.preprocessing.nirs.scalp_coupling_index(raw_od_short, l_freq=0.5, h_freq=2.5)
                 sci_bad_channels = list(compress(raw_od_short.ch_names, sci < self.scalp_coupling_threshold))
                 raw_od_short.info["bads"] = sci_bad_channels
-                
+
+                if self.apply_tddr:
+                    raw_od_short = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od_short)
+                    raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
+                    
                 if self.interpolate_bad_channels:
                     raw_od.interpolate_bads(method={"fnirs":"nearest"})
                 
                 raw_od.add_channels([raw_od_short])
 
-                if self.apply_tddr:
-                    raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
-
                 raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf).copy()
+                raw_haemo_unfiltered._data *= 1e6
                 
+                from mne.io.constants import FIFF
+                for ch in raw_haemo_unfiltered.info['chs']:
+                    if ch['kind'] == FIFF.FIFFV_FNIRS_CH:
+                        ch['unit_mul'] = FIFF.FIFF_UNITM_MU  # Set unit to micromolar
+                                
                 if self.short_channel_correction:
                     raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
 
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
+                raw_haemo._data *= 1e6
+                for ch in raw_haemo.info['chs']:
+                    if ch['kind'] == FIFF.FIFFV_FNIRS_CH:
+                        ch['unit_mul'] = FIFF.FIFF_UNITM_MU  # Set unit to micromolar
                 
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
                 
@@ -3889,10 +3903,10 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                     verbose=True,
                 )
 
-                first_samp_correct_events = events.copy()
-                first_samp_correct_events[:,0] = events[:,0] - raw_haemo._first_samps
-                raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
-                raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
+                # first_samp_correct_events = events.copy()
+                # first_samp_correct_events[:,0] = events[:,0] - raw_haemo._first_samps
+                # raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
+                # raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
                         
                 self.drop_log.append(epochs.drop_log)
                 if len(epochs) != 0:
