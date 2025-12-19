@@ -24,28 +24,6 @@ os.environ['PYTHONUTF8'] = '1'
 # Load environment variables as dictionary with explicit UTF-8 encoding
 config = dotenv_values(".env", encoding='utf-8')
 
-def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_duration, annotations):
-    previous_event = np.array([None, None, None])
-    for idx, event in enumerate(events):
-        try:
-            if str(previous_event[2]) in annotations.keys():
-                if annotations[str(previous_event[2])] == "Control":
-                    control_event_start = previous_event[0]
-                    control_event_end = control_event_start + int(stimulus_duration[annotations[str(previous_event[2])]]*sfreq)
-                    event_start = event[0]
-                    event_end = event_start + int(stimulus_duration[annotations[str(event[2])]]*sfreq)
-                    control_average = np.mean(channel_values[control_event_start:control_event_end])
-                    channel_values[event_start:event_end] -= control_average
-                    previous_event = event
-                else:
-                    previous_event = event
-            else:
-                previous_event = event
-                continue
-        except Exception as e:
-            print(f"Error processing event {event} at index {idx}: {e}")
-    return channel_values
-
 # def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_duration, annotations):
 #     previous_event = np.array([None, None, None])
 #     for idx, event in enumerate(events):
@@ -53,9 +31,9 @@ def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_dur
 #             if str(previous_event[2]) in annotations.keys():
 #                 if annotations[str(previous_event[2])] == "Control":
 #                     control_event_start = previous_event[0]
-#                     control_event_end = control_event_start + int(stimulus_duration[str(previous_event[2])]*sfreq)
+#                     control_event_end = control_event_start + int(stimulus_duration[annotations[str(previous_event[2])]]*sfreq)
 #                     event_start = event[0]
-#                     event_end = event_start + int(stimulus_duration[str(event[2])]*sfreq)
+#                     event_end = event_start + int(stimulus_duration[annotations[str(event[2])]]*sfreq)
 #                     control_average = np.mean(channel_values[control_event_start:control_event_end])
 #                     channel_values[event_start:event_end] -= control_average
 #                     previous_event = event
@@ -67,6 +45,28 @@ def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_dur
 #         except Exception as e:
 #             print(f"Error processing event {event} at index {idx}: {e}")
 #     return channel_values
+
+def apply_baseline_correction(channel_values, times, sfreq, events, stimulus_duration, annotations):
+    previous_event = np.array([None, None, None])
+    for idx, event in enumerate(events):
+        try:
+            if str(previous_event[2]) in annotations.keys():
+                if annotations[str(previous_event[2])] == "Control":
+                    control_event_start = previous_event[0]
+                    control_event_end = control_event_start + int(stimulus_duration[str(previous_event[2])]*sfreq)
+                    event_start = event[0]
+                    event_end = event_start + int(stimulus_duration[str(event[2])]*sfreq)
+                    control_average = np.mean(channel_values[control_event_start:control_event_end])
+                    channel_values[event_start:event_end] -= control_average
+                    previous_event = event
+                else:
+                    previous_event = event
+            else:
+                previous_event = event
+                continue
+        except Exception as e:
+            print(f"Error processing event {event} at index {idx}: {e}")
+    return channel_values
 
 def find_snirf_file(folder_path):
     """
@@ -3421,20 +3421,32 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 sci_bad_channels = list(compress(raw_od_short.ch_names, sci < self.scalp_coupling_threshold))
                 raw_od_short.info["bads"] = sci_bad_channels
                 
+                if self.apply_tddr:
+                    raw_od_short = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od_short)
+                    raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
+                
                 if self.interpolate_bad_channels:
                     raw_od.interpolate_bads(method={"fnirs":"nearest"})
                 
                 raw_od.add_channels([raw_od_short])
 
-                if self.apply_tddr:
-                    raw_od = mne.preprocessing.nirs.temporal_derivative_distribution_repair(raw_od)
-
                 raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf).copy()
+                raw_haemo_unfiltered._data *= 1e6
+                                
+                from mne.io.constants import FIFF
+                for ch in raw_haemo_unfiltered.info['chs']:
+                    if ch['kind'] == FIFF.FIFFV_FNIRS_CH:
+                        ch['unit_mul'] = FIFF.FIFF_UNITM_MU
                 
                 if self.short_channel_correction:
                     raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
 
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
+                raw_haemo._data *= 1e6
+
+                for ch in raw_haemo_unfiltered.info['chs']:
+                    if ch['kind'] == FIFF.FIFFV_FNIRS_CH:
+                        ch['unit_mul'] = FIFF.FIFF_UNITM_MU
                 
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
                 
@@ -3465,10 +3477,10 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                     verbose=True,
                 )
                             
-                first_samp_correct_events = events.copy()
-                first_samp_correct_events[:,0] = events[:,0] - raw_haemo._first_samps
-                raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
-                raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
+                # first_samp_correct_events = events.copy()
+                # first_samp_correct_events[:,0] = events[:,0] - raw_haemo._first_samps
+                # raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
+                # raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
                                 
                 self.drop_log.append(epochs.drop_log)
                 if len(epochs) != 0:
