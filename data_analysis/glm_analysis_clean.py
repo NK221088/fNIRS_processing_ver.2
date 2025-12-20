@@ -229,11 +229,11 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         if len(redundant_annotations) != 0:
             for annotation in redundant_annotations:
                 haemo.annotations.delete(haemo.annotations.description == annotation)
-        renames_isis = {cond: cond.split("/")[0] if "/" in cond else cond for cond in haemo.annotations.description}
-        renames = {cond: cond.split("/")[1] if "/" in cond else cond for cond in haemo.annotations.description}
+        renames_isis = {cond: cond.split("_")[0] if "_" in cond else cond for cond in haemo.annotations.description}
+        renames = {cond: cond.split("_")[1] if "_" in cond else cond for cond in haemo.annotations.description}
         haemo_isis = haemo.copy()
         haemo_isis.annotations.rename(renames_isis)
-        haemo.annotations.rename(renames)
+        haemo.annotations.rename(renames_isis)
         short_channel_haemo = get_short_channels(subject.raw_haemo_unfiltered)
         # haemo.resample(2.5, npad="auto")
         # short_channel_haemo.resample(2.5, npad="auto")
@@ -255,7 +255,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         high_pass = high_pass_value #high_pass_value
         add_regs = short_channel_haemo.get_data().T
         add_regs = short_channel_haemo.get_data().T
-        oversampling = 1 # Default value.
+        oversampling = 50 # Default value.
         drift_order = 1 # When we use the cosine drift model this parameter doesn't really matter, as the drift order is then actually determined by the high_pass argument
         add_reg_names = short_channel_haemo.ch_names
         fir_delays = range(21) # Default when we don't use a FIR model
@@ -316,40 +316,37 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         cha["ID"] = subject.name + "_" + "HC" if idx < number_of_subjects[0] else subject.name + "_" + "Patient"
         cha["Group"] = "HC" if idx < number_of_subjects[0] else "Patient"
     
+        contrast_results = {}
+        if "Marwan" in class_instance.data_name:
+            # Get column names for reference
+            cols = conditions.tolist()
+            cols = [col.replace(hrf_model_suffix, "") for col in cols]
 
-        # # Get column names for reference
-        # cols = conditions.tolist()
-
-        # # Find indices of your conditions
-        # condition_indices = {}
-        # types = np.unique(haemo.annotations.description)
-        # for type_name in types:
-        #     condition_indices[type_name] = cols.index(type_name)
-
-        # # Create contrast vectors
-        # contrasts = {}
-        # for key in condition_indices.keys():
-        #     if key == "Control":
-        #         continue
-        #     contrast_array = np.zeros(len(cols))
-        #     contrast_array[condition_indices["Control"]] = -1
-        #     contrast_array[condition_indices[key]] = 1
-        #     contrasts[f"{key}_vs_Control"] = contrast_array
-
-
-        # # Store all contrast results
-        # contrast_results = {}
-        # for name, expr in contrasts.items():
-        #     print(f"{name} => contrast vector")
-        #     result = glm_estimates.compute_contrast(expr)
-            
-        #     # Convert to DataFrame
-        #     df = result.to_dataframe()
-        #     df['contrast'] = name
-        #     df['ID'] = subject.name + "_" + ("HC" if idx < number_of_subjects[0] else "Patient")
-        #     df['Group'] = "HC" if idx < number_of_subjects[0] else "Patient"
-            
-        #     contrast_results[name] = df
+            # Find indices of your conditions
+            condition_indices = {}
+            types = np.unique(haemo.annotations.description)
+            for type_name in types:
+                condition_indices[type_name] = cols.index(type_name)
+            # Create contrast vectors
+            contrasts = {}
+            for key in condition_indices.keys():
+                if key == "Control":
+                    continue
+                contrast_array = np.zeros(len(cols))
+                contrast_array[condition_indices["Control"]] = -1
+                contrast_array[condition_indices[key]] = 1
+                contrasts[f"{key}_vs_Control"] = contrast_array
+            # Store all contrast results
+            for name, expr in contrasts.items():
+                print(f"{name} => contrast vector")
+                result = glm_estimates.compute_contrast(expr)
+                # Convert to DataFrame
+                df = result.to_dataframe()
+                df['contrast'] = name
+                df['ID'] = subject.name + "_" + ("HC" if idx < number_of_subjects[0] else "Patient")
+                df['Group'] = "HC" if idx < number_of_subjects[0] else "Patient"
+                
+                contrast_results[name] = df
         
         return haemo, design_matrix, cha, contrast_results
     
@@ -360,24 +357,23 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
 
     haemos, design_matrices, cha_dfs, contrast_results = zip(*results)
     
-    # Combine all contrast results across subjects
-    all_contrasts = []
-    for subject_contrasts in contrast_results:
-        for contrast_name, df in subject_contrasts.items():
-            all_contrasts.append(df)
-    
-    # Concatenate into single DataFrame
-    combined_contrasts_df = pd.concat(all_contrasts, ignore_index=True)
-    
-    # Save to CSV
-    combined_contrasts_df.to_csv(os.path.join(save_path, f'glm_contrast_results.csv'), index=False)
-    print(f"Saved contrast results to glm_contrast_results.csv")
-    significant_results = combined_contrasts_df[combined_contrasts_df["Significant"] == True]
-    significant_results.to_csv(os.path.join(save_path, f'significant_glm_contrast_results.csv'), index=False)
-    print(f"Saved contrast results to glm_contrast_results.csv")
-    significant_results = combined_contrasts_df[combined_contrasts_df["Significant"] == True]
-    significant_results.to_csv(os.path.join(save_path, f'significant_glm_contrast_results.csv'), index=False)
-    print(f"Saved contrast results to glm_contrast_results.csv")
+    if "Marwan" in class_instance.data_name:
+        # Combine all contrast results across subjects
+        all_contrasts = []
+        for subject_contrasts in contrast_results:
+            for contrast_name, df in subject_contrasts.items():
+                all_contrasts.append(df)
+        # Concatenate into single DataFrame
+        combined_contrasts_df = pd.concat(all_contrasts, ignore_index=True)
+        # Save to CSV
+        combined_contrasts_df.to_csv(os.path.join(save_path, f'glm_contrast_results.csv'), index=False)
+        print(f"Saved contrast results to glm_contrast_results.csv")
+        significant_results = combined_contrasts_df[combined_contrasts_df["Significant"] == True]
+        significant_results.to_csv(os.path.join(save_path, f'significant_glm_contrast_results.csv'), index=False)
+        print(f"Saved contrast results to glm_contrast_results.csv")
+        significant_results = combined_contrasts_df[combined_contrasts_df["Significant"] == True]
+        significant_results.to_csv(os.path.join(save_path, f'significant_glm_contrast_results.csv'), index=False)
+        print(f"Saved contrast results to glm_contrast_results.csv")
 
     # betas_roi_df = pd.concat(subject_dfs, ignore_index=True)
 
@@ -390,33 +386,31 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         betas_cha_df = pd.concat(cha_dfs, ignore_index=True)
         ch_summary = betas_cha_df.query("Condition in @data_types")
         
-        # For Marwans data only
-        # responders = significant_results["ID"].to_list()
-        # responders = [responder[:3].replace("_", "") for responder in responders]
-        # responders_count = Counter(responders)
-        # significant_responders = [int(ID.split("P")[1]) for ID, count in responders_count.items() if count >= 1]
-        # print("Responders:")
-        # print(significant_responders)
-        # ch_summary["ID_prefix"] = ch_summary["ID"].str.split("_").str[0].str.split("P").str[1].astype(int)
-        # ch_summary = ch_summary[ch_summary["ID_prefix"].isin(significant_responders)]
-        # ch_summary["Session_ID"] = ch_summary["ID"].str.split("_").str[1].str[1].astype(int)
-        # ch_summary["Recording"] = ch_summary["ID"].str.split("_").str[2]
-        # ch_summary["Recording"] = ch_summary["Recording"].replace("B", 0)
-        # ch_summary["Recording"] = ch_summary["Recording"].replace("P1", 1)
-        # ch_summary["Recording"] = ch_summary["Recording"].replace("P2", 2)
+        if "Marwan" in class_instance.data_name:
+            #For Marwans data only
+            responders = significant_results["ID"].to_list()
+            responders = [responder[:3].replace("_", "") for responder in responders]
+            responders_count = Counter(responders)
+            significant_responders = [int(ID.split("P")[1]) for ID, count in responders_count.items() if count >= 7]
+            print("Responders:")
+            print(significant_responders)
+            ch_summary["ID_prefix"] = ch_summary["ID"].str.split("_").str[0].str.split("P").str[1].astype(int)
+            ch_summary = ch_summary[ch_summary["ID_prefix"].isin(significant_responders)]
+            ch_summary["Session_ID"] = ch_summary["ID"].str.split("_").str[1].str[1].astype(int)
+            ch_summary["Recording"] = ch_summary["ID"].str.split("_").str[2]
+            ch_summary["Recording"] = ch_summary["Recording"].replace("B", 0)
+            ch_summary["Recording"] = ch_summary["Recording"].replace("P1", 1)
+            ch_summary["Recording"] = ch_summary["Recording"].replace("P2", 2)
 
-        # drug_data = pd.read_excel(drug_path)
-        # drug_data = drug_data[["Subject", "Drug"]]
-        # drug_data["Session_ID"] = drug_data.groupby("Subject").cumcount() + 1
-        # ch_summary = ch_summary.merge(
-        #                             drug_data[["Subject", "Session_ID", "Drug"]],
-        #                             left_on=["ID_prefix", "Session_ID"],
-        #                             right_on=["Subject", "Session_ID"],
-        #                             how="left"
-        #                             )        
-
-        # Save the dataframe to verify it's identical
-        # ch_summary.to_csv(rf"C:\Users\NKUE0003\OneDrive - Region Hovedstaden\Bachelor\Results\debug_ch_summary.csv", index=False)
+            drug_data = pd.read_excel(drug_path)
+            drug_data = drug_data[["Subject", "Drug"]]
+            drug_data["Session_ID"] = drug_data.groupby("Subject").cumcount() + 1
+            ch_summary = ch_summary.merge(
+                                        drug_data[["Subject", "Session_ID", "Drug"]],
+                                        left_on=["ID_prefix", "Session_ID"],
+                                        right_on=["Subject", "Session_ID"],
+                                        how="left"
+                                        )        
         with localconverter(pandas2ri.converter):
             globalenv["rdf"] = ch_summary
         globalenv["Phase_1_assumptions_plot_save_path"] = str(Phase_1_assumptions_plot_save_path).replace("\\", "/")
@@ -528,58 +522,17 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
 
         # message("modelCondition diagnostic plots completed!")
 
-        ################################################################################################################
-
-        # Create the model for inference (REML=FALSE)
-        modelGroup <- lmer(theta ~ Condition:Group + Condition + Group + (1 | ID), data=rdf, REML=FALSE)
-        print(anova(modelGroup))
-        
-        # Check assumptions for modelGroup (final model for two groups)
-        modelGroup_plot <- lmer(theta ~ Condition:Group + Condition + Group + (1 | ID), data=rdf, REML=TRUE)
-        
-        # Get all diagnostic plots as a list of ggplot objects
-        diagnostic_plots <- plot(check_model(modelGroup_plot, panel = FALSE))
-        
-        # Define plot names for each position
-        plot_names <- c(
-            "posterior_predictive_check",
-            "linearity",
-            "homogeneity_of_variance",
-            "influential_outliers",
-            "multicollinearity",
-            "normal_residuals"
-        )
-        
-        # Save each plot individually
-        for(i in seq_along(diagnostic_plots)) {
-            filename <- file.path(Phase_2_assumptions_plot_save_path, paste0("modelGroup_", plot_names[i], ".pdf"))
-            
-            tryCatch({
-                ggsave(filename, plot = diagnostic_plots[[i]], width = 8, height = 6, device = "pdf")
-                message(paste("✓ Created:", filename))
-            }, error = function(e) {
-                message(paste("✗ Could not create:", plot_names[i], "-", e$message))
-            })
-        }
-        
-        # Also save the complete panel
-        pdf(file.path(Phase_2_assumptions_plot_save_path, "modelGroup_all_diagnostics.pdf"), width = 12, height = 10)
-        plot(check_model(modelGroup_plot))
-        dev.off()
-        
-        # message("modelGroup diagnostic plots completed!")
-
-        ################################################################################################################
+        # ################################################################################################################
 
         # # Create the model for inference (REML=FALSE)
-        # modelDrug <- lmer(theta ~ Condition:Recording:Drug + Condition:Recording + Condition:Drug + Recording:Drug + Condition + Recording + Drug + (1 | ID_prefix), data=rdf, REML=FALSE)
-        # print(anova(modelDrug))
+        # modelGroup <- lmer(theta ~ Condition:Group + Condition + Group + (1 | ID), data=rdf, REML=FALSE)
+        # print(anova(modelGroup))
         
-        # # Check assumptions for modelDrug (final model for two groups)
-        # modelDrug_plot <- lmer(theta ~ Condition:Recording:Drug + Condition:Recording + Condition:Drug + Recording:Drug + Condition + Recording + Drug + (1 | ID_prefix), data=rdf, REML=TRUE)
+        # # Check assumptions for modelGroup (final model for two groups)
+        # modelGroup_plot <- lmer(theta ~ Condition:Group + Condition + Group + (1 | ID), data=rdf, REML=TRUE)
         
         # # Get all diagnostic plots as a list of ggplot objects
-        # diagnostic_plots <- plot(check_model(modelDrug_plot, panel = FALSE))
+        # diagnostic_plots <- plot(check_model(modelGroup_plot, panel = FALSE))
         
         # # Define plot names for each position
         # plot_names <- c(
@@ -593,7 +546,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         
         # # Save each plot individually
         # for(i in seq_along(diagnostic_plots)) {
-        #     filename <- file.path(Phase_3_assumptions_plot_save_path, paste0("modelDrug_", plot_names[i], ".pdf"))
+        #     filename <- file.path(Phase_2_assumptions_plot_save_path, paste0("modelGroup_", plot_names[i], ".pdf"))
             
         #     tryCatch({
         #         ggsave(filename, plot = diagnostic_plots[[i]], width = 8, height = 6, device = "pdf")
@@ -604,11 +557,52 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         # }
         
         # # Also save the complete panel
-        # pdf(file.path(Phase_3_assumptions_plot_save_path, "modelDrug_all_diagnostics.pdf"), width = 12, height = 10)
-        # plot(check_model(modelDrug_plot))
+        # pdf(file.path(Phase_2_assumptions_plot_save_path, "modelGroup_all_diagnostics.pdf"), width = 12, height = 10)
+        # plot(check_model(modelGroup_plot))
         # dev.off()
         
-        # # message("modelDrug diagnostic plots completed!")
+        # # message("modelGroup diagnostic plots completed!")
+
+        ################################################################################################################
+
+        # Create the model for inference (REML=FALSE)
+        modelDrug <- lmer(theta ~ Condition:Recording:Drug + Condition:Recording + Condition:Drug + Recording:Drug + Condition + Recording + Drug + (1 | ID_prefix), data=rdf, REML=FALSE)
+        print(anova(modelDrug))
+        
+        # Check assumptions for modelDrug (final model for two groups)
+        modelDrug_plot <- lmer(theta ~ Condition:Recording:Drug + Condition:Recording + Condition:Drug + Recording:Drug + Condition + Recording + Drug + (1 | ID_prefix), data=rdf, REML=TRUE)
+        
+        # Get all diagnostic plots as a list of ggplot objects
+        diagnostic_plots <- plot(check_model(modelDrug_plot, panel = FALSE))
+        
+        # Define plot names for each position
+        plot_names <- c(
+            "posterior_predictive_check",
+            "linearity",
+            "homogeneity_of_variance",
+            "influential_outliers",
+            "multicollinearity",
+            "normal_residuals"
+        )
+        
+        # Save each plot individually
+        for(i in seq_along(diagnostic_plots)) {
+            filename <- file.path(Phase_3_assumptions_plot_save_path, paste0("modelDrug_", plot_names[i], ".pdf"))
+            
+            tryCatch({
+                ggsave(filename, plot = diagnostic_plots[[i]], width = 8, height = 6, device = "pdf")
+                message(paste("✓ Created:", filename))
+            }, error = function(e) {
+                message(paste("✗ Could not create:", plot_names[i], "-", e$message))
+            })
+        }
+        
+        # Also save the complete panel
+        pdf(file.path(Phase_3_assumptions_plot_save_path, "modelDrug_all_diagnostics.pdf"), width = 12, height = 10)
+        plot(check_model(modelDrug_plot))
+        dev.off()
+        
+        # message("modelDrug diagnostic plots completed!")
         ''')
         
         # with localconverter(pandas2ri.converter):
@@ -646,7 +640,7 @@ from collections import defaultdict
 from preprocessing_toolbox.load_data_function import data_loaders
 
 dataSetList = list(data_loaders.keys())
-dataLoaders = [dataSetList[15]] #, dataSetList[17]]
+dataLoaders = [dataSetList[-1]] #, dataSetList[17]]
 datasets = defaultdict(defaultdict)
 
 for data_loader in dataLoaders:
