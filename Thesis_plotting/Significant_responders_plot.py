@@ -2,8 +2,13 @@ import pandas as pd
 from collections import Counter
 import matplotlib.pyplot as plt
 import numpy as np
+import os
+from dotenv import load_dotenv
+from pathlib import Path
 
-df = pd.read_csv(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_2\Phase_2\responders_counts.csv", index_col=0)
+load_dotenv()
+responders_count_path = Path(os.getenv(rf"Marwan_responders_count"))
+df = pd.read_csv(responders_count_path, index_col=0)
 data = df['count'].to_dict()
 total_number_of_patients = 50
 threshold = 7

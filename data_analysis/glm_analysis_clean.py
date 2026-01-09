@@ -435,7 +435,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
 
         lme4 = importr("lme4")
         
-        model = "Drug2" #"Drug" # "Condition_Group" #"Condition" # 
+        model =  "Condition" # "Condition_Group" #"Drug2" #"Drug" #
         if model == "Condition":
             r('''
             library(lme4)
@@ -1712,7 +1712,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
 # from preprocessing_toolbox.load_data_function import data_loaders
 
 # dataSetList = list(data_loaders.keys())
-# dataLoaders = [dataSetList[-1]] #, dataSetList[17]]
+# dataLoaders = [dataSetList[17]] #, dataSetList[17]]
 # datasets = defaultdict(defaultdict)
 
 # for data_loader in dataLoaders:

@@ -2624,21 +2624,21 @@ class fNIRS_Melika_tongue_long_data_load(fNIRS_data_load):
                 
                 epochs = reject_if_single_event_type(epochs, self.data_types + ["Control"])
                 
-                first_samp_correct_events = events.copy()
-                first_samp_correct_events[:,0] = events[:,0] - raw_haemo._first_samps
-                raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
-                raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
+                # first_samp_correct_events = events.copy()
+                # first_samp_correct_events[:,0] = events[:,0] - raw_haemo._first_samps
+                # raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
+                # raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
                 
                 self.drop_log.append(epochs.drop_log)
                 if len(epochs) != 0:
                     # Apply custom baseline correction if needed
-                    if self.baseline_correction != "xSecondsBefore":
-                        corrector = baselineCorrection(self.baseline_correction)
-                        epochs = corrector.apply_correction(
-                            self.baseline_correction,
-                            epochs,
-                            data_types=self.data_types,
-                        )
+                    # if self.baseline_correction != "xSecondsBefore":
+                    #     corrector = baselineCorrection(self.baseline_correction)
+                    #     epochs = corrector.apply_correction(
+                    #         self.baseline_correction,
+                    #         epochs,
+                    #         data_types=self.data_types,
+                    #     )
 
                     self.all_raw_epochs.append(raw_epochs)
                     self.all_epochs.append(epochs)
@@ -3228,9 +3228,9 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
-        self.subjects_to_exclude = {"EEG fNIRS HC baseline data": ["C5", "C7", "C8", "C9"],
+        self.subjects_to_exclude = {"EEG fNIRS HC baseline data": ["C5", "C7", "C8", "C9",], # "C27", "C16", "C19"
                                     "EEG fNIRS HC follow up data": [],
-                                    "EEG fNIRS patient baseline data": ["P6", "P9", "P10", "P11"], # "P27", "P29"
+                                    "EEG fNIRS patient baseline data": ["P6", "P9", "P10", "P11"], # , , "P27", "P28", "P12""P15"
                                     "EEG fNIRS patient follow up data": []
                                     }
         self.folder_errors = []
@@ -3377,8 +3377,6 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
             patient_name = f"{folder_name[:3]}".replace("-", "")
             if patient_name in self.subjects_to_exclude[self.data_name]:
                 continue
-            if "27" in folder_name:
-                print("debug")
             try:
                 excel_path = self.find_excel_file(os.path.join(self.file_path, folder_name))
                 raw_intensity = self.define_raw_intensity(folder_name)
@@ -3463,49 +3461,49 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 
                 raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
-                sum_method = lambda data: np.sum(data, axis=0)
-                raw_tmp = raw_haemo.copy()
-                chromophores = ["hbo", "hbr"]
-                groups = {chromo: [i for i, ch in enumerate(raw_tmp.ch_names) if ch[-3:] == chromo] for chromo in chromophores}
-                raw_mean = mne.channels.combine_channels(
-                raw_tmp, 
-                groups=groups, 
-                method="mean")
-                for ch in raw_mean.info["chs"]:
-                    if ch["kind"] == mne.io.constants.FIFF.FIFFV_FNIRS_CH:
-                        ch["coil_type"] = mne.io.constants.FIFF.FIFFV_COIL_FNIRS_HBO # We set the channel types to HbO to allow combination
-                groups = {"hbt": [0, 1]}
-                raw_HbT = mne.channels.combine_channels(
-                raw_mean, 
-                groups=groups, 
-                method=sum_method)
-                glm_raw = raw_HbT.copy()
-                # Get the HbT data
-                hbt_data = glm_raw.get_data()
-                hbt_data = np.tile(hbt_data, (8, 1))
+                # sum_method = lambda data: np.sum(data, axis=0)
+                # raw_tmp = raw_haemo.copy()
+                # chromophores = ["hbo", "hbr"]
+                # groups = {chromo: [i for i, ch in enumerate(raw_tmp.ch_names) if ch[-3:] == chromo] for chromo in chromophores}
+                # raw_mean = mne.channels.combine_channels(
+                # raw_tmp, 
+                # groups=groups, 
+                # method="mean")
+                # for ch in raw_mean.info["chs"]:
+                #     if ch["kind"] == mne.io.constants.FIFF.FIFFV_FNIRS_CH:
+                #         ch["coil_type"] = mne.io.constants.FIFF.FIFFV_COIL_FNIRS_HBO # We set the channel types to HbO to allow combination
+                # groups = {"hbt": [0, 1]}
+                # raw_HbT = mne.channels.combine_channels(
+                # raw_mean, 
+                # groups=groups, 
+                # method=sum_method)
+                # glm_raw = raw_HbT.copy()
+                # # Get the HbT data
+                # hbt_data = glm_raw.get_data()
+                # hbt_data = np.tile(hbt_data, (8, 1))
 
-                # Create channel info for HbT
-                orig_ch_names = [ch for ch in mne_nirs.channels.get_long_channels(raw_haemo.copy().pick("hbo")).ch_names]
-                hbt_ch_names = [name.replace("hbo", "hbt") for name in orig_ch_names]
-                hbt_info = mne.create_info(
-                    ch_names=hbt_ch_names,
-                    sfreq=raw_haemo.info['sfreq'],
-                )
+                # # Create channel info for HbT
+                # orig_ch_names = [ch for ch in mne_nirs.channels.get_long_channels(raw_haemo.copy().pick("hbo")).ch_names]
+                # hbt_ch_names = [name.replace("hbo", "hbt") for name in orig_ch_names]
+                # hbt_info = mne.create_info(
+                #     ch_names=hbt_ch_names,
+                #     sfreq=raw_haemo.info['sfreq'],
+                # )
 
-                # Copy relevant info from raw_haemo
-                hbt_info['subject_info'] = raw_haemo.info.get('subject_info', None)
+                # # Copy relevant info from raw_haemo
+                # hbt_info['subject_info'] = raw_haemo.info.get('subject_info', None)
 
-                # Create a new Raw object with HbT
-                info_channel = mne_nirs.channels.get_long_channels(raw_haemo.copy()).info["chs"][0]
-                hbt_raw = mne.io.RawArray(hbt_data, hbt_info)
-                for ch in hbt_raw.info["chs"]:
-                    ch["coil_type"] = info_channel["coil_type"]
-                    ch["unit"] = info_channel["unit"]
-                    ch["unit_mul"] = info_channel["unit_mul"]
-                    ch["kind"] = info_channel["kind"]                    
+                # # Create a new Raw object with HbT
+                # info_channel = mne_nirs.channels.get_long_channels(raw_haemo.copy()).info["chs"][0]
+                # hbt_raw = mne.io.RawArray(hbt_data, hbt_info)
+                # for ch in hbt_raw.info["chs"]:
+                #     ch["coil_type"] = info_channel["coil_type"]
+                #     ch["unit"] = info_channel["unit"]
+                #     ch["unit_mul"] = info_channel["unit_mul"]
+                #     ch["kind"] = info_channel["kind"]                    
 
-                # Now add it to raw_haemo
-                raw_haemo = raw_haemo.add_channels([hbt_raw], force_update_info=True)
+                # # Now add it to raw_haemo
+                # raw_haemo = raw_haemo.add_channels([hbt_raw], force_update_info=True)
 
                 Participant_i = individual_participant_class(f"{patient_name}".replace("-", ""))
                 Participant_i.raw_intensity = raw_intensity
