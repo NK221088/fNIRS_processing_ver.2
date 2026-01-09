@@ -71,11 +71,11 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
 
     # Create evoked data dictionary for each condition
     evoked_dict = {}
-
+    # data_types = [data_types[0].split("/")[0]]
     for data_type in data_types:
         for hemoglobin in ("HbO", "HbR"):
             # Compute evoked responses per subject
-            evoked_list = [epoch[data_type].average(picks=hemoglobin.lower()) for epoch in epochs if data_type in epoch.event_id]
+            evoked_list = [epoch.copy()[data_type].crop(tmin=0 , tmax=16).average(picks=hemoglobin.lower()) for epoch in epochs] #  if data_type in epoch.event_id
 
 
             # Rename channels inside each evoked object
@@ -90,7 +90,9 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
     base_colors = {evt.split("/")[0]: mpl.colors.to_hex(cmap(i)) for i, evt in enumerate(data_types)}
 
     # Expand to exact evoked_dict keys (event/chromophore)
-    color_dict = {key: base_colors[key.split("/")[0]] for key in evoked_dict.keys()}
+    # color_dict = {key: base_colors[key.split("/")[0]] for key in evoked_dict.keys()}
+    color_dict = dict(HbO="#AA3377", HbR="b")
+
 
     # Styles fixed by chromophore
     styles_dict = {
@@ -115,7 +117,7 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
 
     # Plot evoked data
     plot = mne.viz.plot_compare_evokeds(
-        padded_dict, combine=combine_strategy, ci=0.95, colors=color_dict, styles=styles_dict, show_sensors=True, show=False, picks=picks_,
+        evoked_dict, combine=combine_strategy, ci=0.95, colors=color_dict, styles=styles_dict, show_sensors=True, show=False, picks=picks_, ylim=dict(hbo=(-0.10, 0.16), hbr=(-0.10, 0.16))
     )
 
     # Save the plot if specified

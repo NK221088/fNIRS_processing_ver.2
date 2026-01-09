@@ -3230,7 +3230,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
         self.apply_tddr = apply_tddr
         self.subjects_to_exclude = {"EEG fNIRS HC baseline data": ["C5", "C7", "C8", "C9"],
                                     "EEG fNIRS HC follow up data": [],
-                                    "EEG fNIRS patient baseline data": ["P6", "P9", "P10", "P11"],
+                                    "EEG fNIRS patient baseline data": ["P6", "P9", "P10", "P11"], # "P27", "P29"
                                     "EEG fNIRS patient follow up data": []
                                     }
         self.folder_errors = []
@@ -3323,7 +3323,7 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 markers = [marker for marker in markers if type(marker) != str and str(marker) != 'nan']
                 for time, marker in zip(times, markers):
                     if "0_back" in self.annotation_names[str(int(markers[0]))]:
-                        actual_events = np.vstack([actual_events, np.array([int(actual_events[-1][0]+15*sfreq), int(0), int(0)])]) # Add control/baseline/rest before active task
+                        actual_events = np.vstack([actual_events, np.array([int(int(time*sfreq)-15*sfreq), int(0), int(0)])]) # Add control/baseline/rest before active task
                     if marker == 2: marker = 0
                     actual_events = np.vstack([actual_events, np.array([int(time*sfreq), int(0), int(marker)])])
             except:
@@ -3335,8 +3335,8 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 # Add stimulus duration
                 if self.stimulus_duration[str(actual_events[:,2][-1])] == 0:
                     self.stimulus_duration[str(actual_events[:,2][-1])] = times[-1] - (actual_events[:,0] / sfreq)[-1] + 3 # We add 3 as the compute the time from the last trigger, but the duration of this event has to be accounted for
-                if "3_back" not in self.annotation_names[str(actual_events[-1][2])]:
-                    actual_events = np.vstack([actual_events, np.array([int((times[-1]+3)*sfreq), int(0), int(0)])]) # Add control/baseline/rest before active task
+                if "0_back" not in self.annotation_names[str(actual_events[-1][2])]:
+                    actual_events = np.vstack([actual_events, np.array([int(actual_events[-1][0]-15*sfreq), int(0), int(0)])]) # Add control/baseline/rest before active task
             print("Sucessfully added all events")
         return actual_events
     
@@ -3377,6 +3377,8 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
             patient_name = f"{folder_name[:3]}".replace("-", "")
             if patient_name in self.subjects_to_exclude[self.data_name]:
                 continue
+            if "27" in folder_name:
+                print("debug")
             try:
                 excel_path = self.find_excel_file(os.path.join(self.file_path, folder_name))
                 raw_intensity = self.define_raw_intensity(folder_name)
@@ -3432,22 +3434,22 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 raw_od.add_channels([raw_od_short])
 
                 raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf).copy()
-                raw_haemo_unfiltered._data *= 1e6
+                # raw_haemo_unfiltered._data *= 1e6
                                 
-                from mne.io.constants import FIFF
-                for ch in raw_haemo_unfiltered.info['chs']:
-                    if ch['kind'] == FIFF.FIFFV_FNIRS_CH:
-                        ch['unit_mul'] = FIFF.FIFF_UNITM_MU
+                # from mne.io.constants import FIFF
+                # for ch in raw_haemo_unfiltered.info['chs']:
+                #     if ch['kind'] == FIFF.FIFFV_FNIRS_CH:
+                #         ch['unit_mul'] = FIFF.FIFF_UNITM_MU
                 
                 if self.short_channel_correction:
                     raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
 
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
-                raw_haemo._data *= 1e6
+                # raw_haemo._data *= 1e6
 
-                for ch in raw_haemo_unfiltered.info['chs']:
-                    if ch['kind'] == FIFF.FIFFV_FNIRS_CH:
-                        ch['unit_mul'] = FIFF.FIFF_UNITM_MU
+                # for ch in raw_haemo_unfiltered.info['chs']:
+                #     if ch['kind'] == FIFF.FIFFV_FNIRS_CH:
+                #         ch['unit_mul'] = FIFF.FIFF_UNITM_MU
                 
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
                 
@@ -3461,70 +3463,112 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 
                 raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
+                sum_method = lambda data: np.sum(data, axis=0)
+                raw_tmp = raw_haemo.copy()
+                chromophores = ["hbo", "hbr"]
+                groups = {chromo: [i for i, ch in enumerate(raw_tmp.ch_names) if ch[-3:] == chromo] for chromo in chromophores}
+                raw_mean = mne.channels.combine_channels(
+                raw_tmp, 
+                groups=groups, 
+                method="mean")
+                for ch in raw_mean.info["chs"]:
+                    if ch["kind"] == mne.io.constants.FIFF.FIFFV_FNIRS_CH:
+                        ch["coil_type"] = mne.io.constants.FIFF.FIFFV_COIL_FNIRS_HBO # We set the channel types to HbO to allow combination
+                groups = {"hbt": [0, 1]}
+                raw_HbT = mne.channels.combine_channels(
+                raw_mean, 
+                groups=groups, 
+                method=sum_method)
+                glm_raw = raw_HbT.copy()
+                # Get the HbT data
+                hbt_data = glm_raw.get_data()
+                hbt_data = np.tile(hbt_data, (8, 1))
+
+                # Create channel info for HbT
+                orig_ch_names = [ch for ch in mne_nirs.channels.get_long_channels(raw_haemo.copy().pick("hbo")).ch_names]
+                hbt_ch_names = [name.replace("hbo", "hbt") for name in orig_ch_names]
+                hbt_info = mne.create_info(
+                    ch_names=hbt_ch_names,
+                    sfreq=raw_haemo.info['sfreq'],
+                )
+
+                # Copy relevant info from raw_haemo
+                hbt_info['subject_info'] = raw_haemo.info.get('subject_info', None)
+
+                # Create a new Raw object with HbT
+                info_channel = mne_nirs.channels.get_long_channels(raw_haemo.copy()).info["chs"][0]
+                hbt_raw = mne.io.RawArray(hbt_data, hbt_info)
+                for ch in hbt_raw.info["chs"]:
+                    ch["coil_type"] = info_channel["coil_type"]
+                    ch["unit"] = info_channel["unit"]
+                    ch["unit_mul"] = info_channel["unit_mul"]
+                    ch["kind"] = info_channel["kind"]                    
+
+                # Now add it to raw_haemo
+                raw_haemo = raw_haemo.add_channels([hbt_raw], force_update_info=True)
+
+                Participant_i = individual_participant_class(f"{patient_name}".replace("-", ""))
+                Participant_i.raw_intensity = raw_intensity
+                Participant_i.raw_od = raw_od
+                Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
+                Participant_i.raw_haemo = raw_haemo
+                self.number_of_participants += 1
                 self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
-                
                 epochs = mne.Epochs(
                     raw_haemo,
                     events,
                     event_id=event_dict,
                     tmin=self.tmin,
                     tmax=self.tmax,
-                    reject=self.reject_criteria,
-                    reject_by_annotation=True,
-                    proj=True,
-                    baseline=baseline,
+                    reject=None,#self.reject_criteria,
+                    reject_by_annotation=None,
+                    proj=False,
+                    baseline=None,
                     preload=True,
                     detrend=None,
                     verbose=True,
                 )
-                            
+
                 # first_samp_correct_events = events.copy()
                 # first_samp_correct_events[:,0] = events[:,0] - raw_haemo._first_samps
                 # raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
                 # raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
-                                
+                        
                 self.drop_log.append(epochs.drop_log)
+                if len(epochs) == 0:
+                    print("Debug")
                 if len(epochs) != 0:
                     # Apply custom baseline correction if needed
-                    if self.baseline_correction != "xSecondsBefore":
-                        corrector = baselineCorrection(self.baseline_correction)
-                        epochs = corrector.apply_correction(
-                            self.baseline_correction,
-                            epochs,
-                            data_types=self.data_types,
-                        )
+                    # if self.baseline_correction != "xSecondsBefore":
+                    #     corrector = baselineCorrection(self.baseline_correction)
+                        # epochs = corrector.apply_correction(
+                        #     self.baseline_correction,
+                        #     epochs,
+                        #     data_types=self.data_types,
+                        # )
 
                     self.all_raw_epochs.append(raw_epochs)
                     self.all_epochs.append(epochs)
                     self.all_control.append(epochs["Control"].get_data(copy=True))
-                    patient_name = f"subject_{folder_name[:3]}".replace("-", "")
-                    Participant_i = individual_participant_class(patient_name)
                     Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
-                    Participant_i.raw_intensity = raw_intensity
-                    Participant_i.raw_od = raw_od
-                    Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
-                    Participant_i.raw_haemo = raw_haemo
                     Participant_i.raw_epochs = raw_epochs
                     Participant_i.epochs = epochs
                     
                     for name in self.data_types:
                         getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
                         Participant_i.events.update({name: epochs[name].get_data(copy=True)})
-                    
-                    getattr(self, 'Individual_participants').append(Participant_i)
-                    self.number_of_participants += 1
-                                
+                                                
                 else:
                     print(f"No valid epochs for participant {patient_name}, skipping.")
                     self.folder_errors.append(f"No epochs remaining for {folder_name}.")
+                getattr(self, 'Individual_participants').append(Participant_i)
+            
             except FileNotFoundError as e:
                 print(f"Error loading {folder_name}: {e}")
                 self.folder_errors.append(f"Unexpected error with {folder_name}: {e}")
-                
             except Exception as e:
                 print(f"Unexpected error with {folder_name}: {e}")
-                self.folder_errors.append(f"Unexpected error with {folder_name}: {e}")
-                
+                self.folder_errors.append(f"Unexpected error with {folder_name}: {e}")                
 
         # Concatenate the control data
         self.all_control = np.concatenate(self.all_control, axis=0)
@@ -3586,7 +3630,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = {
-                                'Control': 21,
+                                'Control': 20,
                                 'Math': 25,
                                 'Hard_Math': 25,
                                 }
@@ -3607,10 +3651,8 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
-        self.subjects_to_exclude = {"fNIRS EEG Marwan data load": ["P7_S1_P2", "P17_S1_P2", 'P1_S1_P2', 'P40_S1_B', 'P40_S1_B', 'P40_S1_P2', 'P40_S1_P2', 'P40_S2_P1',
-       'P40_S2_P1', 'P40_S2_P2', 'P40_S2_P2', 'P40_S3_B', 'P40_S3_B',
-       'P40_S3_P1', 'P40_S3_P1', 'P40_S3_P2', 'P40_S3_P2'],
-                                    } # 'P1_S1_P2': Too many math, We exclude all patient 40 recordings, as we have no drug data 
+        self.subjects_to_exclude = {"fNIRS EEG Marwan data load": [], 
+                                    }
         self.folder_errors = []
         self.age_file = Path(os.getenv("demographic_data_path_Marwan".replace(" ", "_").replace("-", "_")))
         super().__init__(
@@ -3691,9 +3733,17 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         new_onsets = list(cropped_raw_data.annotations.onset.copy())
         new_durations = list(cropped_raw_data.annotations.duration.copy())
         new_descriptions = list(cropped_raw_data.annotations.description.copy())
+        last_math_onset = np.max([an["onset"] for an in cropped_raw_data.annotations if an["description"] == "Math"])
+        last_hard_math_onset = np.max([an["onset"] for an in cropped_raw_data.annotations if an["description"] == "Hard_Math"])
+        new_onsets.append(last_math_onset + self.stimulus_duration["Math"])
+        new_durations.append(self.stimulus_duration["Control"])
+        new_descriptions.append("Control")
+        new_onsets.append(last_hard_math_onset + self.stimulus_duration["Hard_Math"])
+        new_durations.append(self.stimulus_duration["Control"])
+        new_descriptions.append("Control")
         for annotation in cropped_raw_data.annotations:
             if annotation["description"] in list(self.annotation_names.values()):
-                new_onsets.append(annotation["onset"] + self.stimulus_duration[annotation["description"]])
+                new_onsets.append(annotation["onset"] - self.stimulus_duration["Control"]) #+ self.stimulus_duration[annotation["description"]])
                 new_durations.append(self.stimulus_duration["Control"])
                 new_descriptions.append("Control")
         new_annotations = mne.Annotations(onset = new_onsets, duration = new_durations, description = new_descriptions)
@@ -3718,7 +3768,8 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
             'S6_D5': 'S6_D4',
             'S6_D6': 'S6_D5',
             'S7_D6': 'S7_D5',
-            'S8_D4': 'S8_D5',
+            'S8_D6': 'S8_D5',
+            'S8_D4': 'S8_D6',
         }
 
         # Rename channels in your raw data
@@ -3746,7 +3797,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         sources = {}
         detectors = {}
 
-        with open(rf"L:\AuditData\CONNECT-ME\Nikolai\Data\Marwan\CONMED3_Montage\Standard_Optodes.txt", 'r') as f:
+        with open(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\data\Marwan_copy\CONMED3_Montage\Standard_Optodes.txt", 'r') as f:
             for line in f:
                 parts = line.strip().split(',')
                 label = parts[0]
@@ -3760,7 +3811,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                     detectors[new_label] = coords
 
         fiducials = {}
-        with open(rf"L:\AuditData\CONNECT-ME\Nikolai\Data\Marwan\CONMED3_Montage\digpts.txt", 'r') as f:
+        with open(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\data\Marwan_copy\CONMED3_Montage\digpts.txt", 'r') as f:
             for line in f:
                 if ':' in line:
                     parts = line.strip().split(':')
@@ -3798,7 +3849,8 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         
         for i, folder_name in enumerate(all_folders, start=1):
             patient_name = folder_name[0] + folder_name[folder_name.find("ID")+2:folder_name.find("ID")+4].replace("_", "") + "_" + folder_name.split("/")[1][0] + folder_name.split("/")[1][-1] + "_" + folder_name.split("/")[2][0]
-            
+            # if "20" not in folder_name:
+            #     continue
             if folder_name.split("/")[2].split("_")[-1] in ["1", "2", "3"]:
                 patient_name += folder_name.split("/")[2].split("_")[-1]
             if patient_name.endswith("P") or patient_name[1] == ("P"):
@@ -3807,13 +3859,27 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 continue
             try:
                 raw_intensity = self.define_raw_intensity(folder_name)
-                # raw_intensity = self.replace(raw_intensity)
+                if len(raw_intensity.annotations.description) < 13:
+                    if raw_intensity.annotations.description.astype(float).astype(int).min() != 4 or raw_intensity.annotations.description.astype(float).astype(int).max() != 13:
+                        print(f"Unexpected error with {folder_name}: Not all repetitions are present")
+                        self.folder_errors.append(f"Unexpected error with {folder_name}: Not all repetitions are present")
+                        continue
+                raw_intensity = self.replace(raw_intensity)
                 raw_intensity.annotations.description = np.array([anno.split(".")[0] for anno in raw_intensity.annotations.description])
                 for _unwanted in self.unwanted:
                     unwanted = np.nonzero(raw_intensity.annotations.description == _unwanted)
                     raw_intensity.annotations.delete(unwanted)
+
                 raw_intensity = self.make_annotations(raw_intensity)
                 self.standard_event_ids = {value: int(float(key)) for key, value in self.annotation_names.items()}
+                if len(np.unique(raw_intensity.annotations.description)) < (len(self.data_types)+1):
+                    print(f"Unexpected error with {folder_name}: Not all events are present")
+                    self.folder_errors.append(f"Unexpected error with {folder_name}: Not all events are present")
+                    continue
+                if len(raw_intensity.ch_names) != 46:
+                    print(f"Unexpected error with {folder_name}: Different number of channels ({len(raw_intensity.ch_names)}) present")
+                    self.folder_errors.append(f"Unexpected error with {folder_name}: Different number of channels ({len(raw_intensity.ch_names)}) present")
+                    continue
                 try:
                     birthday = datetime.strptime(str(ages[folder_name[0] + folder_name[folder_name.find("ID")+2:folder_name.find("ID")+4].replace("_", "")]), "%d%m%y")
                     if birthday.year > datetime.now().year:
@@ -3821,9 +3887,13 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                     raw_intensity.info["subject_info"]["birthday"] = birthday
                 except:
                     print("No age data available for participant")
-                self.tmax = max(self.stimulus_duration.values())         
-                raw_intensity = self.crop_data(raw_intensity)
-                
+                self.tmax = max(self.stimulus_duration.values())
+                if len(raw_intensity.annotations.description) < 22:
+                    print(f"WAIT WHAT WHAT?!")
+                # raw_intensity = self.crop_data(raw_intensity)
+                if len(raw_intensity.annotations.description) < 22:
+                    print(f"WAIT WHAT?!")
+
                 raw_intensity_long = mne_nirs.channels.get_long_channels(raw_intensity)
                 raw_intensity_short = mne_nirs.channels.get_short_channels(raw_intensity)
                 
@@ -3859,21 +3929,21 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 raw_od.add_channels([raw_od_short])
 
                 raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf).copy()
-                raw_haemo_unfiltered._data *= 1e6
+                # raw_haemo_unfiltered._data *= 1e6
                 
-                from mne.io.constants import FIFF
-                for ch in raw_haemo_unfiltered.info['chs']:
-                    if ch['kind'] == FIFF.FIFFV_FNIRS_CH:
-                        ch['unit_mul'] = FIFF.FIFF_UNITM_MU  # Set unit to micromolar
+                # from mne.io.constants import FIFF
+                # for ch in raw_haemo_unfiltered.info['chs']:
+                #     if ch['kind'] == FIFF.FIFFV_FNIRS_CH:
+                #         ch['unit_mul'] = FIFF.FIFF_UNITM_MU  # Set unit to micromolar
                                 
                 if self.short_channel_correction:
                     raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
 
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
-                raw_haemo._data *= 1e6
-                for ch in raw_haemo.info['chs']:
-                    if ch['kind'] == FIFF.FIFFV_FNIRS_CH:
-                        ch['unit_mul'] = FIFF.FIFF_UNITM_MU  # Set unit to micromolar
+                # raw_haemo._data *= 1e6
+                # for ch in raw_haemo.info['chs']:
+                #     if ch['kind'] == FIFF.FIFFV_FNIRS_CH:
+                #         ch['unit_mul'] = FIFF.FIFF_UNITM_MU  # Set unit to micromolar
                 
                 raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
                 
@@ -3885,20 +3955,72 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 # Set baseline parameter based on correction method
                 baseline = self.baseline if self.baseline_correction == "xSecondsBefore" else None
                 
-                raw_epochs = epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
+                raw_epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
-                self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
-                
+
+                # sum_method = lambda data: np.sum(data, axis=0)
+                # raw_tmp = raw_haemo.copy()
+                # chromophores = ["hbo", "hbr"]
+                # groups = {chromo: [i for i, ch in enumerate(raw_tmp.ch_names) if ch[-3:] == chromo] for chromo in chromophores}
+                # raw_mean = mne.channels.combine_channels(
+                # raw_tmp, 
+                # groups=groups, 
+                # method="mean")
+                # for ch in raw_mean.info["chs"]:
+                #     if ch["kind"] == mne.io.constants.FIFF.FIFFV_FNIRS_CH:
+                #         ch["coil_type"] = mne.io.constants.FIFF.FIFFV_COIL_FNIRS_HBO # We set the channel types to HbO to allow combination
+                # groups = {"hbt": [0, 1]}
+                # raw_HbT = mne.channels.combine_channels(
+                # raw_mean, 
+                # groups=groups, 
+                # method=sum_method)
+                # glm_raw = raw_HbT.copy()
+                # # Get the HbT data
+                # hbt_data = glm_raw.get_data()
+                # hbt_data = np.tile(hbt_data, (15, 1))
+
+                # # Create channel info for HbT
+                # orig_ch_names = [ch for ch in mne_nirs.channels.get_long_channels(raw_haemo.copy().pick("hbo")).ch_names]
+                # hbt_ch_names = [name.replace("hbo", "hbt") for name in orig_ch_names]
+                # hbt_info = mne.create_info(
+                #     ch_names=hbt_ch_names,
+                #     sfreq=raw_haemo.info['sfreq'],
+                # )
+
+                # # Copy relevant info from raw_haemo
+                # hbt_info['subject_info'] = raw_haemo.info.get('subject_info', None)
+
+                # # Create a new Raw object with HbT
+                # info_channel = mne_nirs.channels.get_long_channels(raw_haemo.copy()).info["chs"][0]
+                # hbt_raw = mne.io.RawArray(hbt_data, hbt_info)
+                # for ch in hbt_raw.info["chs"]:
+                #     ch["coil_type"] = info_channel["coil_type"]
+                #     ch["unit"] = info_channel["unit"]
+                #     ch["unit_mul"] = info_channel["unit_mul"]
+                #     ch["kind"] = info_channel["kind"]                    
+
+                # # Now add it to raw_haemo
+                # raw_haemo = raw_haemo.add_channels([hbt_raw], force_update_info=True)
+                names = [ind.name for ind in self.Individual_participants]
+                if f"{patient_name}".replace("-", "") in names:
+                    print("debug")
+                Participant_i = individual_participant_class(f"{patient_name}".replace("-", ""))
+                Participant_i.raw_intensity = raw_intensity
+                Participant_i.raw_od = raw_od
+                Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
+                Participant_i.raw_haemo = raw_haemo
+                self.number_of_participants += 1
+                # self.reject_criteria = compute_p2p(raw_epochs, self.data_types+["Control"], 95)
                 epochs = mne.Epochs(
                     raw_haemo,
                     events,
                     event_id=event_dict,
                     tmin=self.tmin,
                     tmax=self.tmax,
-                    reject=self.reject_criteria,
-                    reject_by_annotation=True,
+                    reject=None,#self.reject_criteria,
+                    reject_by_annotation=None,
                     proj=False,
-                    baseline=baseline,
+                    baseline=None,
                     preload=True,
                     detrend=None,
                     verbose=True,
@@ -3908,41 +4030,34 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 # first_samp_correct_events[:,0] = events[:,0] - raw_haemo._first_samps
                 # raw_haemo.apply_function(apply_baseline_correction, picks="hbo", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
                 # raw_haemo.apply_function(apply_baseline_correction, picks="hbr", times=raw_haemo.times, sfreq=raw_haemo.info["sfreq"], events=first_samp_correct_events, stimulus_duration=self.stimulus_duration, annotations = self.annotation_names)
-                        
+                if len(epochs) < 22:
+                    print(f"WAIT WHAT WHAT?!")
                 self.drop_log.append(epochs.drop_log)
                 if len(epochs) != 0:
                     # Apply custom baseline correction if needed
-                    if self.baseline_correction != "xSecondsBefore":
-                        corrector = baselineCorrection(self.baseline_correction)
-                        epochs = corrector.apply_correction(
-                            self.baseline_correction,
-                            epochs,
-                            data_types=self.data_types,
-                        )
+                    # if self.baseline_correction != "xSecondsBefore":
+                    #     corrector = baselineCorrection(self.baseline_correction)
+                        # epochs = corrector.apply_correction(
+                        #     self.baseline_correction,
+                        #     epochs,
+                        #     data_types=self.data_types,
+                        # )
 
                     self.all_raw_epochs.append(raw_epochs)
                     self.all_epochs.append(epochs)
                     self.all_control.append(epochs["Control"].get_data(copy=True))
-                    
-                    Participant_i = individual_participant_class(f"{patient_name}".replace("-", ""))
                     Participant_i.events.update({"Control": epochs["Control"].get_data(copy=True)})
-                    Participant_i.raw_intensity = raw_intensity
-                    Participant_i.raw_od = raw_od
-                    Participant_i.raw_haemo_unfiltered = raw_haemo_unfiltered
-                    Participant_i.raw_haemo = raw_haemo
                     Participant_i.raw_epochs = raw_epochs
                     Participant_i.epochs = epochs
                     
                     for name in self.data_types:
                         getattr(self, f'all_{name}').append(epochs[name].get_data(copy=True))
                         Participant_i.events.update({name: epochs[name].get_data(copy=True)})
-                                      
-                    getattr(self, 'Individual_participants').append(Participant_i)
-                    self.number_of_participants += 1
                                                 
                 else:
                     print(f"No valid epochs for participant {patient_name}, skipping.")
                     self.folder_errors.append(f"No epochs remaining for {folder_name}.")
+                getattr(self, 'Individual_participants').append(Participant_i)
             
             except FileNotFoundError as e:
                 print(f"Error loading {folder_name}: {e}")
@@ -3966,4 +4081,54 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         # Update all_data with control_dict
         all_freq = self.all_epochs[0].info['sfreq']
         self.data_types.append("Control")
+        names = [ind.name for ind in self.Individual_participants]
+        patient_ids = np.unique([name.split("_")[0] for name in names])
+        patient_sessions = np.unique([name.replace("_" + name.split("_")[2], "") for name in names])
+        patient_recordings = [name.split("_")[0] for name in names]
+
+        # Count sessions per patient
+        session_counts = pd.Series(patient_sessions).str.split('_').str[0].value_counts()
+
+        # Count recordings per patient
+        recording_counts = pd.Series(patient_recordings).value_counts()
+
+        # Combine into a DataFrame
+        df = pd.DataFrame({
+            'sessions': session_counts,
+            'recordings': recording_counts
+        }).sort_index()
+
+        # Fill any missing values with 0 (in case a patient has sessions but no recordings or vice versa)
+        df = df.fillna(0).astype(int)
+
+        if df["recordings"].sum() == len(self.all_epochs):
+            df.to_csv(os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_2" f"\data_overview.csv"))
+        excluded_recordings = []
+        for recording in self.folder_errors:
+            folder_name = recording[22:].split(":")[0]
+            patient_name = folder_name[0] + folder_name[folder_name.find("ID")+2:folder_name.find("ID")+4].replace("_", "") + "_" + folder_name.split("/")[1][0] + folder_name.split("/")[1][-1] + "_" + folder_name.split("/")[2][0]
+            if folder_name.split("/")[2].split("_")[-1] in ["1", "2", "3"]:
+                patient_name += folder_name.split("/")[2].split("_")[-1]
+            excluded_recordings.append(patient_name)
+        names = excluded_recordings
+        patient_ids = np.unique([name.split("_")[0] for name in names])
+        patient_sessions = np.unique([name.replace("_" + name.split("_")[2], "") for name in names])
+        patient_recordings = [name.split("_")[0] for name in names]
+
+        # Count sessions per patient
+        session_counts = pd.Series(patient_sessions).str.split('_').str[0].value_counts()
+
+        # Count recordings per patient
+        recording_counts = pd.Series(patient_recordings).value_counts()
+
+        # Combine into a DataFrame
+        df_ex = pd.DataFrame({
+            'sessions': session_counts,
+            'recordings': recording_counts
+        }).sort_index()
+
+        # Fill any missing values with 0 (in case a patient has sessions but no recordings or vice versa)
+        df_ex = df_ex.fillna(0).astype(int)
+
+        df_ex.to_csv(os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_2" f"\excluded_data_overview.csv"))
         return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
