@@ -102,9 +102,16 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
 
     # Prepare picks
     if picks_ != "all":
-        picks_ = set([s.removesuffix(" hbo").removesuffix(" hbr") for s in picks_]) 
-        picks_ = list(picks_)
+        picks_ = list(set([s.removesuffix(" hbo").removesuffix(" hbr") for s in picks_]))
 
+    
+    # base_colors = {"Pa": "#AA3377", "HC": "b", "Covert": "b", "Non-Covert": "#AA3377"} 
+    # color_dict = {key: base_colors[key.split('/')[0]] for i, key in enumerate(evoked_dict.keys())}
+
+    # base_styles = {"hbo": "-", "hbr": "--", "hbt": "-."} 
+    # styles_dict = {key: {"linestyle": base_styles[key.split('/')[-1].lower()]} for i, key in enumerate(evoked_dict.keys())}
+    
+    
     
     # Find maximum length among all evokeds
     max_len = max(evk.data.shape[1] for lst in evoked_dict.values() for evk in lst)
@@ -117,7 +124,7 @@ def standard_fNIRS_response_plot(epochs, data_types: list, bad_channels_strategy
 
     # Plot evoked data
     plot = mne.viz.plot_compare_evokeds(
-        evoked_dict, combine=combine_strategy, ci=0.95, colors=color_dict, styles=styles_dict, show_sensors=True, show=False, picks=picks_, ylim=dict(hbo=(-0.10, 0.16), hbr=(-0.10, 0.16))
+        evoked_dict, combine=combine_strategy, ci=0.95, colors=color_dict, styles=styles_dict, show_sensors=True, show=False, picks=picks_ #, ylim=dict(hbo=(-0.10, 0.16), hbr=(-0.10, 0.16))
     )
 
     # Save the plot if specified

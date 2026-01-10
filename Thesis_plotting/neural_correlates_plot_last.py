@@ -36,6 +36,7 @@ from mne import Annotations
 
 load_dotenv()
 save_path = Path(os.getenv(rf"data_save_path"))
+Study_1_phase_1_neural_correlates_save_path = Path(os.getenv(rf"Study_1_phase_1_neural_correlates_save_path"))
 Phase_1_assumptions_plot_save_path = Path(os.getenv(rf"Phase_1_assumptions_plot_save_path"))
 Phase_1_ANOVA_save_path = Path(os.getenv(rf"Phase_1_ANOVA_save_path"))
 Phase_2_assumptions_plot_save_path = Path(os.getenv(rf"Phase_2_assumptions_plot_save_path"))
@@ -322,12 +323,12 @@ for n_back_ in all_n_back_:
             plot = mne.viz.plot_compare_evokeds(
                 evoked_dict, combine=combine_strategy, ci=0.95, colors=color_dict, styles=styles_dict, show_sensors=True, show=False, picks=plotting_picks_, title="", ylim=ylim)
             if n_back_ == "single":
-                filename = os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_{study}\Phase_{phase}\Neural_correlates", f"standard_fNIRS_response_plot_n_back_{chromo}.pdf")
+                filename = os.path.join(Study_1_phase_1_neural_correlates_save_path, f"standard_fNIRS_response_plot_patient_only_n_back_{chromo}.pdf")
             elif n_back_ == "Control":
-                filename = os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_{study}\Phase_{phase}\Neural_correlates", f"standard_fNIRS_response_plot_control_{chromo}.pdf")
+                filename = os.path.join(Study_1_phase_1_neural_correlates_save_path, f"standard_fNIRS_response_plot_patient_only_control_{chromo}.pdf")
             else:
                 n_back_file_name = data_type.split("/")[-1]
-                filename = os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_{study}\Phase_{phase}\Neural_correlates", f"standard_fNIRS_response_plot_{n_back_file_name}_{chromo}.pdf")
+                filename = os.path.join(Study_1_phase_1_neural_correlates_save_path, f"standard_fNIRS_response_plot_patient_only_{n_back_file_name}_{chromo}.pdf")
 
         elif study == 2:
             ylim = dict(hbo=(-0.01, 0.01), hbr=(-0.01, 0.01)) if chromo != "HbT" else dict(hbo=(-0.06, 0.06))
