@@ -402,7 +402,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
             responders = significant_results["ID"].to_list()
             responders = [responder[:3].replace("_", "") for responder in responders]
             responders_count = Counter(responders)
-            threshold = 7
+            threshold = 4
             significant_responders = [int(ID.split("P")[1]) for ID, count in responders_count.items() if count >= threshold]
             print("Responders:")
             print(responders_count)
@@ -410,6 +410,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
             responders_df = pd.DataFrame.from_dict(dict(responders_count), orient='index', columns=['count'])
             responders_df.to_csv(os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_2\Phase_2", f'responders_counts.csv'))
             print(significant_responders)
+            significant_responders = [ 3,  6, 11, 17, 20, 21, 22, 27, 29, 38, 39, 43]#9
             ch_summary["ID_prefix"] = ch_summary["ID"].str.split("_").str[0].str.split("P").str[1].astype(int)
             ch_summary = ch_summary[ch_summary["ID_prefix"].isin(significant_responders)]
             ch_summary["Session_ID"] = ch_summary["ID"].str.split("_").str[1].str[1].astype(int)
@@ -426,7 +427,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
                                         right_on=["Subject", "Session_ID"],
                                         how="left"
                                         )
-            # ch_summary.loc[ch_summary['Recording'] == 0, 'Drug'] = 'No Drug'
+            ch_summary.loc[ch_summary['Recording'] == 0, 'Drug'] = 'None'
         with localconverter(pandas2ri.converter):
             globalenv["rdf"] = ch_summary
         globalenv["Phase_1_assumptions_plot_save_path"] = str(Phase_1_assumptions_plot_save_path).replace("\\", "/")
@@ -1705,62 +1706,62 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         # anova_Group_df.to_csv(os.path.join(save_path, f"anova_group_df.csv"))
         # anova_Group_df.to_csv(os.path.join(save_path, f"anova_group_df.csv"))
 
-# import sys
-# parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-# sys.path.append(parent_dir)
-# from collections import defaultdict
-# from preprocessing_toolbox.load_data_function import data_loaders
+import sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(parent_dir)
+from collections import defaultdict
+from preprocessing_toolbox.load_data_function import data_loaders
 
-# dataSetList = list(data_loaders.keys())
-# dataLoaders = [dataSetList[-1]] #, dataSetList[17]]
-# datasets = defaultdict(defaultdict)
+dataSetList = list(data_loaders.keys())
+dataLoaders = [dataSetList[-1]] #, dataSetList[17]]
+datasets = defaultdict(defaultdict)
 
-# for data_loader in dataLoaders:
-#     settings = {
-#         "data_set": data_loader,  # Default to first dataset
-#         "epoch_type": "TongueMI",
-#         "individual": "All Individuals",
-#         "short_channel_correction": True,
-#         "negative_correlation_enhancement": False,
-#         "haemo_type": "hbo",
-#         "baseline_correction": "Previous rest period",
-#         "tmin": 0,
-#         "stimulus_duration": 5,
-#         "scalp_coupling_threshold": 0.8,
-#         "reject_criteria": dict(hbo=80e-6),
-#         "unwanted": ["15.0"],
-#         "filter_lower_value": 0.01,
-#         "filter_upper_value": 0.5,
-#         "h_trans_bandwidth": 0.2,           
-#         "l_trans_bandwidth": 0.01,
-#         "snr_rejection": "SNR",  # Default to None, can be set to "SNR" or "CV"
-#         "snr_threshold": 8,  # Default threshold for SNR
-#         "Apply_TDDR": True,
-#         "interpolate_bad_channels": True,
-#     }
-#     current_loader = data_loaders[data_loader](
-#                     data_name = data_loader,
-#                     file_path = data_loader,
-#                     short_channel_correction=settings["short_channel_correction"],
-#                     negative_correlation_enhancement=settings["negative_correlation_enhancement"],
-#                     interpolate_bad_channels=settings["interpolate_bad_channels"],
-#                     baseline_correction=settings["baseline_correction"],
-#                     tmin=settings["tmin"],
-#                     filter_lower_value=settings["filter_lower_value"],
-#                     filter_upper_value=settings["filter_upper_value"],
-#                     l_trans_bandwidth=settings["l_trans_bandwidth"],
-#                     h_trans_bandwidth=settings["h_trans_bandwidth"],
-#                     scalp_coupling_threshold=settings["scalp_coupling_threshold"],
-#                     reject_criteria=settings["reject_criteria"],
-#                     snr_rejection=settings["snr_rejection"],
-#                     snr_threshold=settings["snr_threshold"],
-#                     apply_tddr=settings["Apply_TDDR"]
-#                 )
-#     data = current_loader.load_data()
-#     variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
-#     datasets[data_loader] = {key: value for key, value in zip(variables, data)}
+for data_loader in dataLoaders:
+    settings = {
+        "data_set": data_loader,  # Default to first dataset
+        "epoch_type": "TongueMI",
+        "individual": "All Individuals",
+        "short_channel_correction": True,
+        "negative_correlation_enhancement": False,
+        "haemo_type": "hbo",
+        "baseline_correction": "Previous rest period",
+        "tmin": 0,
+        "stimulus_duration": 5,
+        "scalp_coupling_threshold": 0.8,
+        "reject_criteria": dict(hbo=80e-6),
+        "unwanted": ["15.0"],
+        "filter_lower_value": 0.01,
+        "filter_upper_value": 0.5,
+        "h_trans_bandwidth": 0.2,           
+        "l_trans_bandwidth": 0.01,
+        "snr_rejection": "SNR",  # Default to None, can be set to "SNR" or "CV"
+        "snr_threshold": 8,  # Default threshold for SNR
+        "Apply_TDDR": True,
+        "interpolate_bad_channels": True,
+    }
+    current_loader = data_loaders[data_loader](
+                    data_name = data_loader,
+                    file_path = data_loader,
+                    short_channel_correction=settings["short_channel_correction"],
+                    negative_correlation_enhancement=settings["negative_correlation_enhancement"],
+                    interpolate_bad_channels=settings["interpolate_bad_channels"],
+                    baseline_correction=settings["baseline_correction"],
+                    tmin=settings["tmin"],
+                    filter_lower_value=settings["filter_lower_value"],
+                    filter_upper_value=settings["filter_upper_value"],
+                    l_trans_bandwidth=settings["l_trans_bandwidth"],
+                    h_trans_bandwidth=settings["h_trans_bandwidth"],
+                    scalp_coupling_threshold=settings["scalp_coupling_threshold"],
+                    reject_criteria=settings["reject_criteria"],
+                    snr_rejection=settings["snr_rejection"],
+                    snr_threshold=settings["snr_threshold"],
+                    apply_tddr=settings["Apply_TDDR"]
+                )
+    data = current_loader.load_data()
+    variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
+    datasets[data_loader] = {key: value for key, value in zip(variables, data)}
 
-# all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
-# number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])] #, len((datasets[dataLoaders[1]]["all_individuals"]))]
+all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
+number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])] #, len((datasets[dataLoaders[1]]["all_individuals"]))]
 
-# run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)
+run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)

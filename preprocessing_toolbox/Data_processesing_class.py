@@ -3651,7 +3651,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
-        self.subjects_to_exclude = {"fNIRS EEG Marwan data load": [], 
+        self.subjects_to_exclude = {"fNIRS EEG Marwan data load": ["P29", "P9"], #"P20", 
                                     }
         self.folder_errors = []
         self.age_file = Path(os.getenv("demographic_data_path_Marwan".replace(" ", "_").replace("-", "_")))
@@ -3855,8 +3855,10 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 patient_name += folder_name.split("/")[2].split("_")[-1]
             if patient_name.endswith("P") or patient_name[1] == ("P"):
                 print("ERROR")
-            if patient_name in self.subjects_to_exclude[self.data_name]:
+            if patient_name[:3] in self.subjects_to_exclude[self.data_name]:
                 continue
+            # if not patient_name.endswith("B"):
+            #     continue
             try:
                 raw_intensity = self.define_raw_intensity(folder_name)
                 if len(raw_intensity.annotations.description) < 13:
