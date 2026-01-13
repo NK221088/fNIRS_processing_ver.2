@@ -3440,8 +3440,8 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
                 #     if ch['kind'] == FIFF.FIFFV_FNIRS_CH:
                 #         ch['unit_mul'] = FIFF.FIFF_UNITM_MU
                 
-                # if self.short_channel_correction:
-                #     raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
+                if self.short_channel_correction:
+                    raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
 
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
                 # raw_haemo._data *= 1e6

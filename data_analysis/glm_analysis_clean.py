@@ -47,7 +47,7 @@ from mne.io.pick import _picks_to_idx
 from nilearn.glm.first_level import run_glm as nilearn_glm
 from mne_nirs.statistics import RegressionResults
 
-def run_glm(method, raw, design_matrix, noise_model="ar1", bins=0, n_jobs=1, verbose=0):
+def _run_glm(method, raw, design_matrix, noise_model="ar1", bins=0, n_jobs=1, verbose=0):
     """
     GLM fit for an MNE structure containing fNIRS data.
 
@@ -290,7 +290,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
                                             oversampling=oversampling,
                                             add_reg_names=add_reg_names,
                                             ) 
-            glm_estimates = run_glm("sum_HbT", haemo, design_matrix, n_jobs=3)
+            glm_estimates = _run_glm("mean_HbT", haemo, design_matrix, n_jobs=3)
 
         except Exception as e:
             print(f"Error type: {type(e).__name__}")
@@ -1718,7 +1718,7 @@ from collections import defaultdict
 from preprocessing_toolbox.load_data_function import data_loaders
 
 dataSetList = list(data_loaders.keys())
-dataLoaders = [dataSetList[15], dataSetList[17]]
+dataLoaders = [dataSetList[-1]] #, dataSetList[17]]
 datasets = defaultdict(defaultdict)
 
 for data_loader in dataLoaders:
@@ -1766,7 +1766,7 @@ for data_loader in dataLoaders:
     variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
     datasets[data_loader] = {key: value for key, value in zip(variables, data)}
 
-all_participants = datasets[dataLoaders[0]]["all_individuals"] + datasets[dataLoaders[1]]["all_individuals"]
-number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"]), len((datasets[dataLoaders[1]]["all_individuals"]))]
+all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
+number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])] #, len((datasets[dataLoaders[1]]["all_individuals"]))]
 
 run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)
