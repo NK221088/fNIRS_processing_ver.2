@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 load_dotenv()
-responders_count_path = Path(os.getenv(rf"Marwan_responders_count"))
-df = pd.read_csv(responders_count_path, index_col=0)
+responders_count_path = Path(os.getenv("Marwan_responders_count"))
+df = pd.read_csv(rf"{responders_count_path}", index_col=0)
 data = df['count'].to_dict()
 total_number_of_patients = 50
 threshold = 7
@@ -67,4 +67,4 @@ ax.spines["top"].set_visible(False)
 ax.spines["right"].set_visible(False)
 
 plt.tight_layout()
-plt.savefig("significant_responders_plot.pdf")
+plt.savefig("significant_responders_plot.png", dpi=600)

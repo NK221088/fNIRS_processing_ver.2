@@ -3,7 +3,7 @@ import mne
 from mne_nirs.experimental_design import longest_inter_annotation_interval
 from nilearn.glm.first_level import make_first_level_design_matrix
 # from mne_nirs.experimental_design import make_first_level_design_matrix
-from mne_nirs.statistics import run_glm
+# from mne_nirs.statistics import run_glm
 from pandas import DataFrame
 
 from joblib import Parallel, delayed
@@ -226,6 +226,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         else:
             relevant_channels =  [ch for ch in haemo.ch_names if ("S1" in ch) or ("S2" in ch) or ("S3" in ch) or ("S4" in ch)]
         haemo = haemo.pick(picks=relevant_channels)
+        short_channel_haemo =  mne_nirs.channels.get_short_channels(haemo)
         haemo = mne_nirs.channels.get_long_channels(haemo)
         
         redundant_annotations = [x for x in np.unique(haemo.annotations.description) if x not in set(data_types)]
@@ -237,7 +238,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         haemo_isis = haemo.copy()
         haemo_isis.annotations.rename(renames_isis)
         haemo.annotations.rename(renames_isis)
-        short_channel_haemo =  mne_nirs.channels.get_short_channels(subject.raw_haemo_unfiltered)
+        
         # haemo.resample(2.5, npad="auto")
         # short_channel_haemo.resample(2.5, npad="auto")
         isis, names = longest_inter_annotation_interval(haemo_isis)
@@ -256,7 +257,6 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         hrf_model = hrf_model
         min_onset = 0 # Normally used for fMRI in case events are coded relative to a trigger that happens before scanning. Not relevant here.
         high_pass = high_pass_value #high_pass_value
-        add_regs = short_channel_haemo.get_data().T
         add_regs = short_channel_haemo.get_data().T
         oversampling = 10
         drift_order = 1 # When we use the cosine drift model this parameter doesn't really matter, as the drift order is then actually determined by the high_pass argument
@@ -288,8 +288,9 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
                                             high_pass=high_pass,
                                             add_regs=add_regs,
                                             oversampling=oversampling,
-                                            add_reg_names=add_reg_names,) 
-            glm_estimates = run_glm("mean_HbT", haemo, design_matrix, n_jobs=3)
+                                            add_reg_names=add_reg_names,
+                                            ) 
+            glm_estimates = run_glm("sum_HbT", haemo, design_matrix, n_jobs=3)
 
         except Exception as e:
             print(f"Error type: {type(e).__name__}")
@@ -400,17 +401,21 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         if "Marwan" in class_instance.data_name:
             #For Marwans data only
             responders = significant_results["ID"].to_list()
+            
             responders = [responder[:3].replace("_", "") for responder in responders]
             responders_count = Counter(responders)
-            threshold = 4
-            significant_responders = [int(ID.split("P")[1]) for ID, count in responders_count.items() if count >= threshold]
+            
+            ch_ids = combined_contrasts_df["ID"].to_list()
+            ch_ids = [id_[:3].replace("_", "") for id_ in ch_ids]
+            ind_counts = Counter(ch_ids)
+            threshold = 9/18
+            significant_responders = [int(ID.split("P")[1]) for ID, count in responders_count.items() if (count / ind_counts[ID]) > threshold]
             print("Responders:")
             print(responders_count)
             print(f"Significant responders with counts greater than or equal to {threshold}:")
             responders_df = pd.DataFrame.from_dict(dict(responders_count), orient='index', columns=['count'])
             responders_df.to_csv(os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_2\Phase_2", f'responders_counts.csv'))
             print(significant_responders)
-            significant_responders = [ 3,  6, 11, 17, 20, 21, 22, 27, 29, 38, 39, 43]#9
             ch_summary["ID_prefix"] = ch_summary["ID"].str.split("_").str[0].str.split("P").str[1].astype(int)
             ch_summary = ch_summary[ch_summary["ID_prefix"].isin(significant_responders)]
             ch_summary["Session_ID"] = ch_summary["ID"].str.split("_").str[1].str[1].astype(int)
@@ -436,7 +441,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
 
         lme4 = importr("lme4")
         
-        model =  "Condition" # "Condition_Group" #"Drug2" #"Drug" #
+        model = "Condition_Group" #"Condition" #"Drug2" #  "Drug" #
         if model == "Condition":
             r('''
             library(lme4)
@@ -1713,7 +1718,7 @@ from collections import defaultdict
 from preprocessing_toolbox.load_data_function import data_loaders
 
 dataSetList = list(data_loaders.keys())
-dataLoaders = [dataSetList[-1]] #, dataSetList[17]]
+dataLoaders = [dataSetList[15], dataSetList[17]]
 datasets = defaultdict(defaultdict)
 
 for data_loader in dataLoaders:
@@ -1761,7 +1766,7 @@ for data_loader in dataLoaders:
     variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
     datasets[data_loader] = {key: value for key, value in zip(variables, data)}
 
-all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
-number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])] #, len((datasets[dataLoaders[1]]["all_individuals"]))]
+all_participants = datasets[dataLoaders[0]]["all_individuals"] + datasets[dataLoaders[1]]["all_individuals"]
+number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"]), len((datasets[dataLoaders[1]]["all_individuals"]))]
 
 run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)

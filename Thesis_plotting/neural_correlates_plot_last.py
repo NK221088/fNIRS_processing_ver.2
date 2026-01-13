@@ -46,6 +46,9 @@ Phase_3_assumptions_plot_save_path = Path(os.getenv(rf"Study_2_Phase_2_assumptio
 Phase_3_ANOVA_save_path = Path(os.getenv(rf"Study_2_Phase_2_ANOVA_save_path"))
 drug_path = Path(os.getenv(rf"Marwan_drug_data"))
 
+
+follow_up_results_save_path = Path(os.getenv(rf"follow_up_results_save_path"))
+
 from mne.io.pick import _picks_to_idx
 from nilearn.glm.first_level import run_glm as nilearn_glm
 from mne_nirs.statistics import RegressionResults
@@ -116,12 +119,13 @@ number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"]), len((dat
 
 if "Marwan" in dataLoaders[0]:
     study = 2
-else:
-    study = 1
-if len(number_of_subjects) > 1 or "patient" in dataLoaders[0].lower() or study == 2:
     phase = 2
 else:
-    phase = 1
+    study = 1
+    if len(number_of_subjects) > 1:
+        phase = 2
+    else:
+        phase = 1
 
 long_channels = mne_nirs.channels.get_long_channels(datasets[dataLoaders[0]]["all_individuals"][0].raw_haemo.copy()).ch_names
 
@@ -163,7 +167,10 @@ for n_back_ in all_n_back_:
         for data_number in range(len(number_of_subjects)):
             if study == 1:
                 if data_number == 0:
-                    end = "HC"
+                    if len(epochs) == 1:
+                        end = "Pa"
+                    else:
+                        end = "HC"
                 elif data_number == 1:
                     end = "Pa"
             if study == 1 and phase == 2:
@@ -204,17 +211,31 @@ for n_back_ in all_n_back_:
     if study == 1:
         if phase == 1:
             if n_back_ == "single":
-                n_backs = ["HC/n_back"]
+                n_backs = ["Pa/n_back"]
             elif n_back_ == "Control":
-                n_backs = ["HC/Control"]
+                n_backs = ["Pa/Control"]
             elif n_back_ == "0_back":
-                n_backs = ['HC/n_back/0_back']
+                n_backs = ['Pa/n_back/0_back']
             elif n_back_ == "1_back":
-                n_backs = ['HC/n_back/1_back']
+                n_backs = ['Pa/n_back/1_back']
             elif n_back_ == "2_back":
-                n_backs = ['HC/n_back/2_back']
+                n_backs = ['Pa/n_back/2_back']
             elif n_back_ == "3_back":
-                n_backs = ['HC/n_back/3_back']
+                n_backs = ['Pa/n_back/3_back']
+                
+                
+            # if n_back_ == "single":
+            #     n_backs = ["HC/n_back"]
+            # elif n_back_ == "Control":
+            #     n_backs = ["HC/Control"]
+            # elif n_back_ == "0_back":
+            #     n_backs = ['HC/n_back/0_back']
+            # elif n_back_ == "1_back":
+            #     n_backs = ['HC/n_back/1_back']
+            # elif n_back_ == "2_back":
+            #     n_backs = ['HC/n_back/2_back']
+            # elif n_back_ == "3_back":
+            #     n_backs = ['HC/n_back/3_back']
         elif phase == 2:
             if n_back_ == "single":
                 n_backs = ["HC/n_back", "Pa/n_back"]
@@ -312,6 +333,21 @@ for n_back_ in all_n_back_:
     evoked_dicts = [hbt_evoked, hbo_evoked, hbr_evoked]
     styles_dicts = [hbt_style, hbo_style, hbr_style]
     color_dicts = [hbt_color, hbo_color, hbr_color]
+    
+    from scipy import stats
+    def manual_conf_int(data):
+        confidence_level = 0.95
+        mean = np.mean(data, axis=0)
+        sem = stats.sem(data, axis=0)  # Standard error of the mean across channels
+
+        # Number of channels (samples) - this is what we're averaging over
+        n_channels = data.shape[0]
+        ci = sem * stats.t.ppf((1 + confidence_level) / 2, n_channels - 1)
+        lower_bound = mean - ci
+        upper_bound = mean + ci
+        conf_int = (lower_bound, upper_bound)
+        return conf_int
+    
     for i in range (len(evoked_dicts)):
         evoked_dict = evoked_dicts[i]
         styles_dict = styles_dicts[i]
@@ -321,14 +357,14 @@ for n_back_ in all_n_back_:
         if study == 1:
             ylim = dict(hbo=(-0.075, 0.16), hbr=(-0.075, 0.16)) if chromo != "HbT" else dict(hbo=(-0.3, 0.3))
             plot = mne.viz.plot_compare_evokeds(
-                evoked_dict, combine=combine_strategy, ci=0.95, colors=color_dict, styles=styles_dict, show_sensors=True, show=False, picks=plotting_picks_, title="", ylim=ylim)
+                evoked_dict, combine=combine_strategy, ci=0.95, colors=color_dict, styles=styles_dict, show_sensors=True, show=False, picks=plotting_picks_, title="", ylim=ylim) #
             if n_back_ == "single":
-                filename = os.path.join(Study_1_phase_1_neural_correlates_save_path, f"standard_fNIRS_response_plot_patient_only_n_back_{chromo}.pdf")
+                filename = os.path.join(follow_up_results_save_path, f"standard_fNIRS_response_plot_patient_only_n_back_{chromo}.pdf")
             elif n_back_ == "Control":
-                filename = os.path.join(Study_1_phase_1_neural_correlates_save_path, f"standard_fNIRS_response_plot_patient_only_control_{chromo}.pdf")
+                filename = os.path.join(follow_up_results_save_path, f"standard_fNIRS_response_plot_patient_only_control_{chromo}.pdf")
             else:
                 n_back_file_name = data_type.split("/")[-1]
-                filename = os.path.join(Study_1_phase_1_neural_correlates_save_path, f"standard_fNIRS_response_plot_patient_only_{n_back_file_name}_{chromo}.pdf")
+                filename = os.path.join(follow_up_results_save_path, f"standard_fNIRS_response_plot_patient_only_{n_back_file_name}_{chromo}.pdf")
 
         elif study == 2:
             ylim = dict(hbo=(-0.01, 0.01), hbr=(-0.01, 0.01)) if chromo != "HbT" else dict(hbo=(-0.06, 0.06))
@@ -341,7 +377,40 @@ for n_back_ in all_n_back_:
             else:
                 n_back_file_name = data_type.split("/")[-1]
                 filename = os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_{study}\Phase_{phase}\Neural_correlates", f"standard_fNIRS_response_plot_{n_back_file_name}_{chromo}.pdf")
-        
+        # if chromo != "HbT":
+        #     # Get the figure and axes
+        #     fig = plot[0]
+        #     axes = fig.get_axes()
+        #     ax = axes[0]  # The main plot axis (axes[1] is usually the sensor plot)
+
+        #     # Now compute and add confidence intervals for each condition
+        #     for key, evoked_list in evoked_dict.items():
+        #         # Stack the data from all evoked objects: (n_channels, n_times)
+        #         data = np.array([evoked.get_data() for evoked in evoked_list]).squeeze()
+                
+        #         # Scale the data first
+        #         data_scaled = data * 10**6
+                
+        #         # Compute statistics across channels (axis=0) on scaled data
+        #         mean = np.mean(data_scaled, axis=0)
+        #         sem = stats.sem(data_scaled, axis=0)  # SEM on scaled data
+        #         n_channels = data_scaled.shape[0]
+        #         ci_width = sem * stats.t.ppf(0.975, n_channels - 1)
+                
+        #         lower = mean - ci_width
+        #         upper = mean + ci_width
+                
+        #         # Get time axis
+        #         times = evoked_list[0].times
+                
+        #         # Add shaded confidence interval
+        #         color = color_dict[key]
+        #         ax.fill_between(times, lower, upper, alpha=0.2, color=color)
+        #     fig.tight_layout()
+        #     fig.savefig(filename)
+        #     print(f"Plot saved as {filename}")
+        #     plt.close(fig)  # Close the figure after saving
+        # else:
         plot[0].savefig(filename)
         print(f"Plot saved as {filename}")
         plt.close(plot[0])  # Close the figure after saving
