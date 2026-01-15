@@ -3848,16 +3848,14 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         
         for i, folder_name in enumerate(all_folders, start=1):
             patient_name = folder_name[0] + folder_name[folder_name.find("ID")+2:folder_name.find("ID")+4].replace("_", "") + "_" + folder_name.split("/")[1][0] + folder_name.split("/")[1][-1] + "_" + folder_name.split("/")[2][0]
-            # if "20" not in folder_name:
-            #     continue
             if folder_name.split("/")[2].split("_")[-1] in ["1", "2", "3"]:
                 patient_name += folder_name.split("/")[2].split("_")[-1]
             if patient_name.endswith("P") or patient_name[1] == ("P"):
                 print("ERROR")
             if patient_name[:3] in self.subjects_to_exclude[self.data_name]:
                 continue
-            # if not "P29" in patient_name:
-            #     continue
+            if not "P29" in patient_name:
+                continue
             try:
                 raw_intensity = self.define_raw_intensity(folder_name)
                 if len(raw_intensity.annotations.description) < 13:
@@ -3937,8 +3935,8 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 #     if ch['kind'] == FIFF.FIFFV_FNIRS_CH:
                 #         ch['unit_mul'] = FIFF.FIFF_UNITM_MU  # Set unit to micromolar
                                 
-                # if self.short_channel_correction:
-                #     raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
+                if self.short_channel_correction:
+                    raw_od = mne_nirs.signal_enhancement.short_channel_regression(raw_od)
 
                 raw_haemo = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf)
                 # raw_haemo._data *= 1e6
@@ -4116,20 +4114,20 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         patient_sessions = np.unique([name.replace("_" + name.split("_")[2], "") for name in names])
         patient_recordings = [name.split("_")[0] for name in names]
 
-        # Count sessions per patient
-        session_counts = pd.Series(patient_sessions).str.split('_').str[0].value_counts()
+        # # Count sessions per patient
+        # session_counts = pd.Series(patient_sessions).str.split('_').str[0].value_counts()
 
-        # Count recordings per patient
-        recording_counts = pd.Series(patient_recordings).value_counts()
+        # # Count recordings per patient
+        # recording_counts = pd.Series(patient_recordings).value_counts()
 
-        # Combine into a DataFrame
-        df_ex = pd.DataFrame({
-            'sessions': session_counts,
-            'recordings': recording_counts
-        }).sort_index()
+        # # Combine into a DataFrame
+        # df_ex = pd.DataFrame({
+        #     'sessions': session_counts,
+        #     'recordings': recording_counts
+        # }).sort_index()
 
-        # Fill any missing values with 0 (in case a patient has sessions but no recordings or vice versa)
-        df_ex = df_ex.fillna(0).astype(int)
+        # # Fill any missing values with 0 (in case a patient has sessions but no recordings or vice versa)
+        # df_ex = df_ex.fillna(0).astype(int)
 
-        df_ex.to_csv(os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_2" f"\excluded_data_overview.csv"))
+        # df_ex.to_csv(os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_2" f"\excluded_data_overview.csv"))
         return self.all_epochs, self.data_name, all_data, all_freq, self.data_types, self.Individual_participants
