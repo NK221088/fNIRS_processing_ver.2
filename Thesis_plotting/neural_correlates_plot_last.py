@@ -66,7 +66,7 @@ from Thesis_plotting.Significant_responders_plot import covert_responders
 
 
 dataSetList = list(data_loaders.keys())
-dataLoaders = [dataSetList[15], dataSetList[17]]
+dataLoaders = [dataSetList[17]] #, dataSetList[17]]
 datasets = defaultdict(defaultdict)
 
 for data_loader in dataLoaders:
@@ -114,8 +114,8 @@ for data_loader in dataLoaders:
     variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
     datasets[data_loader] = {key: value for key, value in zip(variables, data)}
 
-all_participants = datasets[dataLoaders[0]]["all_individuals"] + datasets[dataLoaders[1]]["all_individuals"]
-number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"]), len((datasets[dataLoaders[1]]["all_individuals"]))]
+all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
+number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])] #, len((datasets[dataLoaders[1]]["all_individuals"]))]
 
 if "Marwan" in dataLoaders[0]:
     study = 2
@@ -377,43 +377,43 @@ for n_back_ in all_n_back_:
             else:
                 n_back_file_name = data_type.split("/")[-1]
                 filename = os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_{study}\Phase_{phase}\Neural_correlates", f"standard_fNIRS_response_plot_{n_back_file_name}_{chromo}.pdf")
-        # if chromo != "HbT":
-        #     # Get the figure and axes
-        #     fig = plot[0]
-        #     axes = fig.get_axes()
-        #     ax = axes[0]  # The main plot axis (axes[1] is usually the sensor plot)
+        if chromo != "HbT":
+            # Get the figure and axes
+            fig = plot[0]
+            axes = fig.get_axes()
+            ax = axes[0]  # The main plot axis (axes[1] is usually the sensor plot)
 
-        #     # Now compute and add confidence intervals for each condition
-        #     for key, evoked_list in evoked_dict.items():
-        #         # Stack the data from all evoked objects: (n_channels, n_times)
-        #         data = np.array([evoked.get_data() for evoked in evoked_list]).squeeze()
+            # Now compute and add confidence intervals for each condition
+            for key, evoked_list in evoked_dict.items():
+                # Stack the data from all evoked objects: (n_channels, n_times)
+                data = np.array([evoked.get_data() for evoked in evoked_list]).squeeze()
                 
-        #         # Scale the data first
-        #         data_scaled = data * 10**6
+                # Scale the data first
+                data_scaled = data * 10**6
                 
-        #         # Compute statistics across channels (axis=0) on scaled data
-        #         mean = np.mean(data_scaled, axis=0)
-        #         sem = stats.sem(data_scaled, axis=0)  # SEM on scaled data
-        #         n_channels = data_scaled.shape[0]
-        #         ci_width = sem * stats.t.ppf(0.975, n_channels - 1)
+                # Compute statistics across channels (axis=0) on scaled data
+                mean = np.mean(data_scaled, axis=0)
+                sem = stats.sem(data_scaled, axis=0)  # SEM on scaled data
+                n_channels = data_scaled.shape[0]
+                ci_width = sem * stats.t.ppf(0.975, n_channels - 1)
                 
-        #         lower = mean - ci_width
-        #         upper = mean + ci_width
+                lower = mean - ci_width
+                upper = mean + ci_width
                 
-        #         # Get time axis
-        #         times = evoked_list[0].times
+                # Get time axis
+                times = evoked_list[0].times
                 
-        #         # Add shaded confidence interval
-        #         color = color_dict[key]
-        #         ax.fill_between(times, lower, upper, alpha=0.2, color=color)
-        #     fig.tight_layout()
-        #     fig.savefig(filename)
-        #     print(f"Plot saved as {filename}")
-        #     plt.close(fig)  # Close the figure after saving
-        # else:
-        plot[0].savefig(filename)
-        print(f"Plot saved as {filename}")
-        plt.close(plot[0])  # Close the figure after saving
+                # Add shaded confidence interval
+                color = color_dict[key]
+                ax.fill_between(times, lower, upper, alpha=0.2, color=color)
+            fig.tight_layout()
+            fig.savefig(filename)
+            print(f"Plot saved as {filename}")
+            plt.close(fig)  # Close the figure after saving
+        else:
+            plot[0].savefig(filename)
+            print(f"Plot saved as {filename}")
+            plt.close(plot[0])  # Close the figure after saving
             
 
 # Only_responders = True

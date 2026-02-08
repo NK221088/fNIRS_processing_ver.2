@@ -3376,8 +3376,8 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
             patient_name = f"{folder_name[:3]}".replace("-", "")
             if patient_name in self.subjects_to_exclude[self.data_name]:
                 continue
-            # if not "P27" in patient_name:
-            #     continue
+            if not "P20" in patient_name:
+                continue
             try:
                 excel_path = self.find_excel_file(os.path.join(self.file_path, folder_name))
                 raw_intensity = self.define_raw_intensity(folder_name)

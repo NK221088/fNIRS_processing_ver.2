@@ -226,7 +226,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         else:
             relevant_channels =  [ch for ch in haemo.ch_names if ("S1" in ch) or ("S2" in ch) or ("S3" in ch) or ("S4" in ch)]
         haemo = haemo.pick(picks=relevant_channels)
-        short_channel_haemo =  mne_nirs.channels.get_short_channels(haemo)
+        # short_channel_haemo =  mne_nirs.channels.get_short_channels(haemo)
         haemo = mne_nirs.channels.get_long_channels(haemo)
         
         redundant_annotations = [x for x in np.unique(haemo.annotations.description) if x not in set(data_types)]
@@ -238,6 +238,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         haemo_isis = haemo.copy()
         haemo_isis.annotations.rename(renames_isis)
         haemo.annotations.rename(renames_isis)
+        short_channel_haemo = mne_nirs.channels.get_short_channels(subject.raw_haemo_unfiltered)
         
         # haemo.resample(2.5, npad="auto")
         # short_channel_haemo.resample(2.5, npad="auto")
@@ -432,13 +433,14 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
                                         right_on=["Subject", "Session_ID"],
                                         how="left"
                                         )
-            ch_summary.loc[ch_summary['Recording'] == 0, 'Drug'] = 'None'
+            ch_summary.loc[ch_summary['Recording'] == 0, 'Drug'] = 'No_Drug'
+        
         with localconverter(pandas2ri.converter):
             globalenv["rdf"] = ch_summary
         globalenv["Phase_1_assumptions_plot_save_path"] = str(Phase_1_assumptions_plot_save_path).replace("\\", "/")
         globalenv["Phase_2_assumptions_plot_save_path"] = str(Phase_2_assumptions_plot_save_path).replace("\\", "/")
         globalenv["Phase_3_assumptions_plot_save_path"] = str(Phase_3_assumptions_plot_save_path).replace("\\", "/")
-
+        ch_summary.to_csv(os.path.join(save_path, f'glm_betas_summary.csv'), index=False)
         lme4 = importr("lme4")
         
         model = "Condition_Group" #"Condition" #"Drug2" #  "Drug" #
@@ -1767,6 +1769,6 @@ for data_loader in dataLoaders:
     datasets[data_loader] = {key: value for key, value in zip(variables, data)}
 
 all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
-number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])] #, len((datasets[dataLoaders[1]]["all_individuals"]))]
+number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])]#, len((datasets[dataLoaders[1]]["all_individuals"]))]
 
 run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)
