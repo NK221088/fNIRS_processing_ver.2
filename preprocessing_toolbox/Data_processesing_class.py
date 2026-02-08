@@ -3376,8 +3376,6 @@ class fNIRS_EEG_HC_baseline_data_load(fNIRS_data_load):
             patient_name = f"{folder_name[:3]}".replace("-", "")
             if patient_name in self.subjects_to_exclude[self.data_name]:
                 continue
-            if not "P20" in patient_name:
-                continue
             try:
                 excel_path = self.find_excel_file(os.path.join(self.file_path, folder_name))
                 raw_intensity = self.define_raw_intensity(folder_name)
@@ -3853,8 +3851,6 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
             if patient_name.endswith("P") or patient_name[1] == ("P"):
                 print("ERROR")
             if patient_name[:3] in self.subjects_to_exclude[self.data_name]:
-                continue
-            if not "P29" in patient_name:
                 continue
             try:
                 raw_intensity = self.define_raw_intensity(folder_name)

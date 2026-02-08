@@ -1720,7 +1720,7 @@ from collections import defaultdict
 from preprocessing_toolbox.load_data_function import data_loaders
 
 dataSetList = list(data_loaders.keys())
-dataLoaders = [dataSetList[-1]] #, dataSetList[17]]
+dataLoaders = [dataSetList[15]] #, dataSetList[17]]
 datasets = defaultdict(defaultdict)
 
 for data_loader in dataLoaders:
