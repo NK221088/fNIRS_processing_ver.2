@@ -16,7 +16,7 @@ from statistical_analysis import statistical_analysis
 from preprocessing_dialog import show_preprocessing_dialog
 from plot_settings_dialog import show_plot_settings_dialog
 from shared_GUI_functions import *
-# from data_analysis.glm_analysis_clean import run_glm_analysis
+from data_analysis.glm_analysis_clean import run_glm_analysis
 
 # Import the GLM tab module
 from glm_tab import create_glm_tab
@@ -63,7 +63,7 @@ plotTypesList = ["Epoch Plot",
 
 # Default settings (add hemoglobin type to settings)
 settings = {
-    "data_set": dataSetList[17],  # Default to first dataset
+    "data_set": dataSetList[19],  # Default to first dataset
     "epoch_type": "HandMI",
     "individual": "All Individuals",
     "short_channel_correction": True,

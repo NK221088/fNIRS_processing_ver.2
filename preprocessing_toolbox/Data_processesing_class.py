@@ -3924,6 +3924,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 raw_od.add_channels([raw_od_short])
 
                 raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf).copy()
+                
                 # raw_haemo_unfiltered._data *= 1e6
                 
                 # from mne.io.constants import FIFF
@@ -4096,8 +4097,8 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         # Fill any missing values with 0 (in case a patient has sessions but no recordings or vice versa)
         df = df.fillna(0).astype(int)
 
-        if df["recordings"].sum() == len(self.all_epochs):
-            df.to_csv(os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_2" f"\data_overview.csv"))
+        # if df["recordings"].sum() == len(self.all_epochs):
+        #     df.to_csv(os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_2" f"\data_overview.csv"))
         excluded_recordings = []
         for recording in self.folder_errors:
             folder_name = recording[22:].split(":")[0]
