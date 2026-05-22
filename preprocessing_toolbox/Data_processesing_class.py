@@ -3794,7 +3794,8 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         sources = {}
         detectors = {}
 
-        with open(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\data\Marwan_copy\CONMED3_Montage\Standard_Optodes.txt", 'r') as f:
+        optodes_file_name = config.get("standard_optodes")
+        with open(optodes_file_name, 'r') as f:
             for line in f:
                 parts = line.strip().split(',')
                 label = parts[0]
@@ -3808,7 +3809,9 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                     detectors[new_label] = coords
 
         fiducials = {}
-        with open(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\data\Marwan_copy\CONMED3_Montage\digpts.txt", 'r') as f:
+
+        digpts_filename = config.get("digpts")
+        with open(digpts_filename, 'r') as f:
             for line in f:
                 if ':' in line:
                     parts = line.strip().split(':')
@@ -3851,6 +3854,8 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
             if patient_name.endswith("P") or patient_name[1] == ("P"):
                 print("ERROR")
             if patient_name[:3] in self.subjects_to_exclude[self.data_name]:
+                continue
+            if not patient_name[:3] in ["P3_", "P9_"]:
                 continue
             try:
                 raw_intensity = self.define_raw_intensity(folder_name)
@@ -3924,7 +3929,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 raw_od.add_channels([raw_od_short])
 
                 raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf).copy()
-                
+
                 # raw_haemo_unfiltered._data *= 1e6
                 
                 # from mne.io.constants import FIFF
