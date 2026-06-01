@@ -35,14 +35,14 @@ import mne_nirs
 load_dotenv()
 save_path = Path(os.getenv(rf"data_save_path"))
 
-Phase_1_assumptions_plot_save_path = Path(os.getenv(rf"S1RQ1_assumptions_plot_save_path"))
-Phase_1_ANOVA_save_path = Path(os.getenv(rf"S1RQ1_ANOVA_save_path"))
+# Phase_1_assumptions_plot_save_path = Path(os.getenv(rf"S1RQ1_assumptions_plot_save_path"))
+# Phase_1_ANOVA_save_path = Path(os.getenv(rf"S1RQ1_ANOVA_save_path"))
 
-Phase_2_assumptions_plot_save_path = Path(os.getenv(rf"S1RQ2_assumptions_plot_save_path"))
-Phase_2_ANOVA_save_path = Path(os.getenv(rf"S1RQ2_ANOVA_save_path"))
+# Phase_2_assumptions_plot_save_path = Path(os.getenv(rf"S1RQ2_assumptions_plot_save_path"))
+# Phase_2_ANOVA_save_path = Path(os.getenv(rf"S1RQ2_ANOVA_save_path"))
 
-Phase_3_assumptions_plot_save_path = Path(os.getenv(rf"S2RQ2_assumptions_plot_save_path"))
-Phase_3_ANOVA_save_path = Path(os.getenv(rf"S2RQ2_ANOVA_save_path"))
+# Phase_3_assumptions_plot_save_path = Path(os.getenv(rf"S2RQ2_assumptions_plot_save_path"))
+# Phase_3_ANOVA_save_path = Path(os.getenv(rf"S2RQ2_ANOVA_save_path"))
 
 drug_path = Path(os.getenv(rf"Marwan_drug_data"))
 
@@ -294,7 +294,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
                                             oversampling=oversampling,
                                             add_reg_names=add_reg_names,
                                             ) 
-            glm_estimates = _run_glm("mean_HbT", haemo, design_matrix, n_jobs=3)
+            glm_estimates = _run_glm("mean_HbT", haemo, design_matrix, n_jobs=1)
 
         except Exception as e:
             print(f"Error type: {type(e).__name__}")
@@ -325,36 +325,36 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         cha["Group"] = "HC" if idx < number_of_subjects[0] else "Patient"
     
         contrast_results = {}
-        if "Marwan" in class_instance.data_name:
-            # Get column names for reference
-            cols = conditions.tolist()
-            cols = [col.replace(hrf_model_suffix, "") for col in cols]
+        # if "Marwan" in class_instance.data_name:
+        #     # Get column names for reference
+        #     cols = conditions.tolist()
+        #     cols = [col.replace(hrf_model_suffix, "") for col in cols]
 
-            # Find indices of your conditions
-            condition_indices = {}
-            types = np.unique(haemo.annotations.description)
-            for type_name in types:
-                condition_indices[type_name] = cols.index(type_name)
-            # Create contrast vectors
-            contrasts = {}
-            for key in condition_indices.keys():
-                if key == "Control":
-                    continue
-                contrast_array = np.zeros(len(cols))
-                contrast_array[condition_indices["Control"]] = -1
-                contrast_array[condition_indices[key]] = 1
-                contrasts[f"{key}_vs_Control"] = contrast_array
-            # Store all contrast results
-            for name, expr in contrasts.items():
-                print(f"{name} => contrast vector")
-                result = glm_estimates.compute_contrast(expr)
-                # Convert to DataFrame
-                df = result.to_dataframe()
-                df['contrast'] = name
-                df['ID'] = subject.name + "_" + ("HC" if idx < number_of_subjects[0] else "Patient")
-                df['Group'] = "HC" if idx < number_of_subjects[0] else "Patient"
+        #     # Find indices of your conditions
+        #     condition_indices = {}
+        #     types = np.unique(haemo.annotations.description)
+        #     for type_name in types:
+        #         condition_indices[type_name] = cols.index(type_name)
+        #     # Create contrast vectors
+        #     contrasts = {}
+        #     for key in condition_indices.keys():
+        #         if key == "Control":
+        #             continue
+        #         contrast_array = np.zeros(len(cols))
+        #         contrast_array[condition_indices["Control"]] = -1
+        #         contrast_array[condition_indices[key]] = 1
+        #         contrasts[f"{key}_vs_Control"] = contrast_array
+        #     # Store all contrast results
+        #     for name, expr in contrasts.items():
+        #         print(f"{name} => contrast vector")
+        #         result = glm_estimates.compute_contrast(expr)
+        #         # Convert to DataFrame
+        #         df = result.to_dataframe()
+        #         df['contrast'] = name
+        #         df['ID'] = subject.name + "_" + ("HC" if idx < number_of_subjects[0] else "Patient")
+        #         df['Group'] = "HC" if idx < number_of_subjects[0] else "Patient"
                 
-                contrast_results[name] = df
+        #         contrast_results[name] = df
         
         return haemo, design_matrix, cha, contrast_results, isis
     
@@ -438,1255 +438,1255 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
                                         )
             ch_summary.loc[ch_summary['Recording'] == 0, 'Drug'] = 'No_Drug'
         
-        with localconverter(pandas2ri.converter):
-            globalenv["rdf"] = ch_summary
-        globalenv["Phase_1_assumptions_plot_save_path"] = str(Phase_1_assumptions_plot_save_path).replace("\\", "/")
-        globalenv["Phase_2_assumptions_plot_save_path"] = str(Phase_2_assumptions_plot_save_path).replace("\\", "/")
-        globalenv["Phase_3_assumptions_plot_save_path"] = str(Phase_3_assumptions_plot_save_path).replace("\\", "/")
-        ch_summary.to_csv(os.path.join(save_path, f'glm_betas_summary.csv'), index=False)
-        lme4 = importr("lme4")
+#         with localconverter(pandas2ri.converter):
+#             globalenv["rdf"] = ch_summary
+#         globalenv["Phase_1_assumptions_plot_save_path"] = str(Phase_1_assumptions_plot_save_path).replace("\\", "/")
+#         globalenv["Phase_2_assumptions_plot_save_path"] = str(Phase_2_assumptions_plot_save_path).replace("\\", "/")
+#         globalenv["Phase_3_assumptions_plot_save_path"] = str(Phase_3_assumptions_plot_save_path).replace("\\", "/")
+#         ch_summary.to_csv(os.path.join(save_path, f'glm_betas_summary.csv'), index=False)
+#         lme4 = importr("lme4")
         
-        model = "Condition_Group" #"Condition" #"Drug2" #  "Drug" #
-        if model == "Condition":
-            r('''
-            library(lme4)
-            library(lmerTest)
-            library(performance)
-            library(see)
-            library(ggplot2)
-            library(patchwork)
-            library(influence.ME)
+#         model = "Condition_Group" #"Condition" #"Drug2" #  "Drug" #
+#         if model == "Condition":
+#             r('''
+#             library(lme4)
+#             library(lmerTest)
+#             library(performance)
+#             library(see)
+#             library(ggplot2)
+#             library(patchwork)
+#             library(influence.ME)
 
-            ################################################################################################################
+#             ################################################################################################################
 
-            # ============================================================================
-            # HIERARCHICAL MODEL TESTING FOR CONDITION MODEL
-            # ============================================================================
-            # Tests main effect of Condition against null model
-            # Using proper model comparisons with likelihood ratio tests
+#             # ============================================================================
+#             # HIERARCHICAL MODEL TESTING FOR CONDITION MODEL
+#             # ============================================================================
+#             # Tests main effect of Condition against null model
+#             # Using proper model comparisons with likelihood ratio tests
 
-            # ============================================================================
-            # STEP 1: FIT THE FULL MODEL
-            # ============================================================================
-            cat("Fitting full model with Condition...\\n")
-            model_full <- lmer(theta ~ Condition + (1 | ID), 
-                            data = rdf, REML = FALSE)
+#             # ============================================================================
+#             # STEP 1: FIT THE FULL MODEL
+#             # ============================================================================
+#             cat("Fitting full model with Condition...\\n")
+#             model_full <- lmer(theta ~ Condition + (1 | ID), 
+#                             data = rdf, REML = FALSE)
 
-            # ============================================================================
-            # STEP 2: TEST MAIN EFFECT OF CONDITION
-            # ============================================================================
-            cat("\\n", rep("=", 80), "\\n", sep = "")
-            cat("TESTING MAIN EFFECT OF CONDITION\\n")
-            cat(rep("=", 80), "\\n", sep = "")
+#             # ============================================================================
+#             # STEP 2: TEST MAIN EFFECT OF CONDITION
+#             # ============================================================================
+#             cat("\\n", rep("=", 80), "\\n", sep = "")
+#             cat("TESTING MAIN EFFECT OF CONDITION\\n")
+#             cat(rep("=", 80), "\\n", sep = "")
 
-            # Null model (intercept only)
-            model_null <- lmer(theta ~ 1 + (1 | ID), 
-                            data = rdf, REML = FALSE)
+#             # Null model (intercept only)
+#             model_null <- lmer(theta ~ 1 + (1 | ID), 
+#                             data = rdf, REML = FALSE)
 
-            cat("\\nComparing:\\n")
-            cat("  Full model: Condition included\\n")
-            cat("  Null model: Intercept only\\n\\n")
-            test_condition <- anova(model_null, model_full)
-            print(test_condition)
+#             cat("\\nComparing:\\n")
+#             cat("  Full model: Condition included\\n")
+#             cat("  Null model: Intercept only\\n\\n")
+#             test_condition <- anova(model_null, model_full)
+#             print(test_condition)
 
-            # Store result
-            condition_sig <- test_condition$`Pr(>Chisq)`[2] < 0.05
+#             # Store result
+#             condition_sig <- test_condition$`Pr(>Chisq)`[2] < 0.05
 
-            if (condition_sig) {
-            cat("\\n-> Main effect of Condition IS significant (p = ", 
-                format.pval(test_condition$`Pr(>Chisq)`[2], digits = 4), ")\\n", sep = "")
-            } else {
-            cat("\\n-> Main effect of Condition NOT significant (p = ", 
-                format.pval(test_condition$`Pr(>Chisq)`[2], digits = 4), ")\\n", sep = "")
-            }
+#             if (condition_sig) {
+#             cat("\\n-> Main effect of Condition IS significant (p = ", 
+#                 format.pval(test_condition$`Pr(>Chisq)`[2], digits = 4), ")\\n", sep = "")
+#             } else {
+#             cat("\\n-> Main effect of Condition NOT significant (p = ", 
+#                 format.pval(test_condition$`Pr(>Chisq)`[2], digits = 4), ")\\n", sep = "")
+#             }
 
-            # ============================================================================
-            # STEP 3: SUMMARY OF RESULTS
-            # ============================================================================
-            cat("\\n", rep("=", 80), "\\n", sep = "")
-            cat("SUMMARY OF SIGNIFICANT EFFECTS (alpha = 0.05)\\n")
-            cat(rep("=", 80), "\\n\\n")
+#             # ============================================================================
+#             # STEP 3: SUMMARY OF RESULTS
+#             # ============================================================================
+#             cat("\\n", rep("=", 80), "\\n", sep = "")
+#             cat("SUMMARY OF SIGNIFICANT EFFECTS (alpha = 0.05)\\n")
+#             cat(rep("=", 80), "\\n\\n")
 
-            cat("Main effect:\\n")
-            if (condition_sig) {
-            cat("  Check Condition (p = ", 
-                format.pval(test_condition$`Pr(>Chisq)`[2], digits = 4), ")\\n", sep = "")
-            } else {
-            cat("  (none significant)\\n")
-            }
+#             cat("Main effect:\\n")
+#             if (condition_sig) {
+#             cat("  Check Condition (p = ", 
+#                 format.pval(test_condition$`Pr(>Chisq)`[2], digits = 4), ")\\n", sep = "")
+#             } else {
+#             cat("  (none significant)\\n")
+#             }
 
-            # ============================================================================
-            # STEP 4: BUILD AND FIT FINAL MODEL
-            # ============================================================================
-            cat("\\n", rep("=", 80), "\\n", sep = "")
-            cat("BUILDING FINAL MODEL\\n")
-            cat(rep("=", 80), "\\n\\n")
+#             # ============================================================================
+#             # STEP 4: BUILD AND FIT FINAL MODEL
+#             # ============================================================================
+#             cat("\\n", rep("=", 80), "\\n", sep = "")
+#             cat("BUILDING FINAL MODEL\\n")
+#             cat(rep("=", 80), "\\n\\n")
 
-            # Build model formula based on significant effects
-            if (condition_sig) {
-            formula_str <- "theta ~ Condition + (1 | ID)"
-            } else {
-            formula_str <- "theta ~ 1 + (1 | ID)"
-            }
+#             # Build model formula based on significant effects
+#             if (condition_sig) {
+#             formula_str <- "theta ~ Condition + (1 | ID)"
+#             } else {
+#             formula_str <- "theta ~ 1 + (1 | ID)"
+#             }
 
-            cat("Based on significance testing, the final model is:\\n\\n")
-            cat(formula_str, "\\n\\n")
+#             cat("Based on significance testing, the final model is:\\n\\n")
+#             cat(formula_str, "\\n\\n")
 
-            # Fit the final model with REML = TRUE
-            cat("Fitting final model with REML = TRUE...\\n")
-            final_model <- lmer(as.formula(formula_str), data = rdf, REML = TRUE)
+#             # Fit the final model with REML = TRUE
+#             cat("Fitting final model with REML = TRUE...\\n")
+#             final_model <- lmer(as.formula(formula_str), data = rdf, REML = TRUE)
 
-            # Extract and display coefficients if Condition is significant
-            if (condition_sig) {
-            cat("\\nModel coefficients:\\n")
-            coef_summary <- as.data.frame(summary(final_model)$coefficients)
-            coef_summary$Parameter <- rownames(coef_summary)
-            colnames(coef_summary) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
-            print(coef_summary)
-            }
+#             # Extract and display coefficients if Condition is significant
+#             if (condition_sig) {
+#             cat("\\nModel coefficients:\\n")
+#             coef_summary <- as.data.frame(summary(final_model)$coefficients)
+#             coef_summary$Parameter <- rownames(coef_summary)
+#             colnames(coef_summary) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+#             print(coef_summary)
+#             }
 
-            cat("\\n", rep("=", 80), "\\n", sep = "")
+#             cat("\\n", rep("=", 80), "\\n", sep = "")
             
-            # ============================================================================
-            # STEP 5: CHECK ASSUMPTIONS FOR FINAL MODEL ONLY
-            # ============================================================================
-            cat("\\n", rep("=", 80), "\\n", sep = "")
-            cat("CHECKING ASSUMPTIONS FOR FINAL MODEL\\n")
-            cat(rep("=", 80), "\\n\\n")
+#             # ============================================================================
+#             # STEP 5: CHECK ASSUMPTIONS FOR FINAL MODEL ONLY
+#             # ============================================================================
+#             cat("\\n", rep("=", 80), "\\n", sep = "")
+#             cat("CHECKING ASSUMPTIONS FOR FINAL MODEL\\n")
+#             cat(rep("=", 80), "\\n\\n")
 
-            # Get all diagnostic plots as a list of ggplot objects
-            diagnostic_plots <- plot(check_model(final_model, panel = FALSE))
+#             # Get all diagnostic plots as a list of ggplot objects
+#             diagnostic_plots <- plot(check_model(final_model, panel = FALSE))
 
-            # Define plot names for each position
-            plot_names <- c(
-            "posterior_predictive_check",
-            "linearity",
-            "homogeneity_of_variance",
-            "influential_outliers",
-            "multicollinearity",
-            "normal_residuals"
-            )
+#             # Define plot names for each position
+#             plot_names <- c(
+#             "posterior_predictive_check",
+#             "linearity",
+#             "homogeneity_of_variance",
+#             "influential_outliers",
+#             "multicollinearity",
+#             "normal_residuals"
+#             )
 
-            # Save each plot individually
-            for(i in seq_along(diagnostic_plots)) {
-            filename <- file.path(Phase_1_assumptions_plot_save_path, paste0("final_model_", plot_names[i], ".pdf"))
+#             # Save each plot individually
+#             for(i in seq_along(diagnostic_plots)) {
+#             filename <- file.path(Phase_1_assumptions_plot_save_path, paste0("final_model_", plot_names[i], ".pdf"))
             
-            tryCatch({
-                ggsave(filename, plot = diagnostic_plots[[i]], width = 8, height = 6, device = "pdf")
-                cat(paste("Check Saved:", filename, "\\n"))
-            }, error = function(e) {
-                cat(paste("X Could not create:", plot_names[i], "-", e$message, "\\n"))
-            })
-            }
+#             tryCatch({
+#                 ggsave(filename, plot = diagnostic_plots[[i]], width = 8, height = 6, device = "pdf")
+#                 cat(paste("Check Saved:", filename, "\\n"))
+#             }, error = function(e) {
+#                 cat(paste("X Could not create:", plot_names[i], "-", e$message, "\\n"))
+#             })
+#             }
 
-            # Also save the complete panel
-            pdf(file.path(Phase_1_assumptions_plot_save_path, "final_model_all_diagnostics.pdf"), width = 12, height = 10)
-            plot(check_model(final_model))
-            dev.off()
+#             # Also save the complete panel
+#             pdf(file.path(Phase_1_assumptions_plot_save_path, "final_model_all_diagnostics.pdf"), width = 12, height = 10)
+#             plot(check_model(final_model))
+#             dev.off()
 
-            cat("\\nCheck Final model diagnostic plots completed!\\n")
-            cat("Check Plots saved to:", Phase_1_assumptions_plot_save_path, "\\n")
+#             cat("\\nCheck Final model diagnostic plots completed!\\n")
+#             cat("Check Plots saved to:", Phase_1_assumptions_plot_save_path, "\\n")
 
-            cat("\\n", rep("=", 80), "\\n", sep = "")
-            cat("CHECKING INFLUENTIAL DATA POINTS FOR FINAL MODEL\\n")
-            cat(rep("=", 80), "\\n\\n")
+#             cat("\\n", rep("=", 80), "\\n", sep = "")
+#             cat("CHECKING INFLUENTIAL DATA POINTS FOR FINAL MODEL\\n")
+#             cat(rep("=", 80), "\\n\\n")
 
-            # Group-level influence analysis
-            infl <- influence(final_model, group = "ID")
+#             # Group-level influence analysis
+#             infl <- influence(final_model, group = "ID")
 
-            # Save Cook's distance plot
-            cook_plot_path <- file.path(Phase_2_assumptions_plot_save_path, "final_model_cooks_distance.pdf")
-            pdf(cook_plot_path, width = 8, height = 6)
-            plot(infl, which = "cook")
-            dev.off()
-            cat("Check Saved:", cook_plot_path, "\\n")
+#             # Save Cook's distance plot
+#             cook_plot_path <- file.path(Phase_2_assumptions_plot_save_path, "final_model_cooks_distance.pdf")
+#             pdf(cook_plot_path, width = 8, height = 6)
+#             plot(infl, which = "cook")
+#             dev.off()
+#             cat("Check Saved:", cook_plot_path, "\\n")
 
-            # Get Cook's distance values (one per ID group)
-            cooks_d <- cooks.distance(infl)
+#             # Get Cook's distance values (one per ID group)
+#             cooks_d <- cooks.distance(infl)
 
-            # Identify influential IDs
-            n_groups <- length(unique(rdf$ID))
-            threshold <- 4/n_groups
-            influential_id_names <- rownames(cooks_d)[cooks_d > threshold]
+#             # Identify influential IDs
+#             n_groups <- length(unique(rdf$ID))
+#             threshold <- 4/n_groups
+#             influential_id_names <- rownames(cooks_d)[cooks_d > threshold]
 
-            if(length(influential_id_names) > 0) {
-                cat("\nInfluential IDs (Cook's D >", round(threshold, 3), "):\n")
+#             if(length(influential_id_names) > 0) {
+#                 cat("\nInfluential IDs (Cook's D >", round(threshold, 3), "):\n")
                 
-                # Use the row names directly from cooks_d matrix
-                cat("ID(s):", influential_id_names, "\n")
-                cat("Cook's D value(s):", cooks_d[influential_id_names, ], "\n\n")
+#                 # Use the row names directly from cooks_d matrix
+#                 cat("ID(s):", influential_id_names, "\n")
+#                 cat("Cook's D value(s):", cooks_d[influential_id_names, ], "\n\n")
                 
-                # Show the data for influential IDs
-                cat("Data for influential IDs:\n")
-                influential_data <- rdf[rdf$ID %in% influential_id_names, ]
-                print(influential_data)
-            } else {
-                cat("\nNo influential IDs detected.\n")
-            }
-            cat("\nInfluence diagnostics completed.\n")
+#                 # Show the data for influential IDs
+#                 cat("Data for influential IDs:\n")
+#                 influential_data <- rdf[rdf$ID %in% influential_id_names, ]
+#                 print(influential_data)
+#             } else {
+#                 cat("\nNo influential IDs detected.\n")
+#             }
+#             cat("\nInfluence diagnostics completed.\n")
             
-            cat("\\n", rep("=", 80), "\\n", sep = "")
-            cat("ANALYSIS COMPLETE\\n")
-            cat(rep("=", 80), "\\n")
-            ''')
-        elif model == "Condition_Group":
-            r('''
-            library(lme4)
-            library(lmerTest)
-            library(performance)
-            library(see)
-            library(ggplot2)
-            library(patchwork)
-            library(influence.ME)
+#             cat("\\n", rep("=", 80), "\\n", sep = "")
+#             cat("ANALYSIS COMPLETE\\n")
+#             cat(rep("=", 80), "\\n")
+#             ''')
+#         elif model == "Condition_Group":
+#             r('''
+#             library(lme4)
+#             library(lmerTest)
+#             library(performance)
+#             library(see)
+#             library(ggplot2)
+#             library(patchwork)
+#             library(influence.ME)
 
-            ################################################################################################################
+#             ################################################################################################################
             
-            # ============================================================================
-            # HIERARCHICAL MODEL TESTING FOR GROUP MODEL
-            # ============================================================================
-            # Tests effects hierarchically: 2-way interaction → main effects
-            # Using proper model comparisons with likelihood ratio tests
+#             # ============================================================================
+#             # HIERARCHICAL MODEL TESTING FOR GROUP MODEL
+#             # ============================================================================
+#             # Tests effects hierarchically: 2-way interaction → main effects
+#             # Using proper model comparisons with likelihood ratio tests
 
-            # ============================================================================
-            # STEP 1: FIT THE FULL MODEL
-            # ============================================================================
-            cat("Fitting full model with 2-way interaction...\n")
-            model_full <- lmer(theta ~ Condition * Group + (1 | ID), 
-                            data = rdf, REML = FALSE)
+#             # ============================================================================
+#             # STEP 1: FIT THE FULL MODEL
+#             # ============================================================================
+#             cat("Fitting full model with 2-way interaction...\n")
+#             model_full <- lmer(theta ~ Condition * Group + (1 | ID), 
+#                             data = rdf, REML = FALSE)
 
-            # ============================================================================
-            # STEP 2: TEST 2-WAY INTERACTION
-            # ============================================================================
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("TESTING 2-WAY INTERACTION\n")
-            cat(rep("=", 80), "\n", sep = "")
+#             # ============================================================================
+#             # STEP 2: TEST 2-WAY INTERACTION
+#             # ============================================================================
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("TESTING 2-WAY INTERACTION\n")
+#             cat(rep("=", 80), "\n", sep = "")
 
-            # Model with main effects only (no interaction)
-            model_main <- lmer(theta ~ Condition + Group + (1 | ID), 
-                            data = rdf, REML = FALSE)
+#             # Model with main effects only (no interaction)
+#             model_main <- lmer(theta ~ Condition + Group + (1 | ID), 
+#                             data = rdf, REML = FALSE)
 
-            cat("\nComparing:\n")
-            cat("  Full model: Condition:Group interaction included\n")
-            cat("  Reduced:    Main effects only\n\n")
-            test_interaction <- anova(model_main, model_full)
-            print(test_interaction)
+#             cat("\nComparing:\n")
+#             cat("  Full model: Condition:Group interaction included\n")
+#             cat("  Reduced:    Main effects only\n\n")
+#             test_interaction <- anova(model_main, model_full)
+#             print(test_interaction)
 
-            # Store interaction result
-            interaction_sig <- test_interaction$`Pr(>Chisq)`[2] < 0.05
+#             # Store interaction result
+#             interaction_sig <- test_interaction$`Pr(>Chisq)`[2] < 0.05
 
-            if (interaction_sig) {
-            cat("\n→ Condition:Group interaction IS significant (p = ", 
-                format.pval(test_interaction$`Pr(>Chisq)`[2], digits = 4), ")\n", sep = "")
-            } else {
-            cat("\n→ Condition:Group interaction NOT significant (p = ", 
-                format.pval(test_interaction$`Pr(>Chisq)`[2], digits = 4), ")\n", sep = "")
-            }
+#             if (interaction_sig) {
+#             cat("\n→ Condition:Group interaction IS significant (p = ", 
+#                 format.pval(test_interaction$`Pr(>Chisq)`[2], digits = 4), ")\n", sep = "")
+#             } else {
+#             cat("\n→ Condition:Group interaction NOT significant (p = ", 
+#                 format.pval(test_interaction$`Pr(>Chisq)`[2], digits = 4), ")\n", sep = "")
+#             }
 
-            # ============================================================================
-            # STEP 3: TEST MAIN EFFECTS
-            # ============================================================================
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("TESTING MAIN EFFECTS\n")
-            cat(rep("=", 80), "\n", sep = "")
+#             # ============================================================================
+#             # STEP 3: TEST MAIN EFFECTS
+#             # ============================================================================
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("TESTING MAIN EFFECTS\n")
+#             cat(rep("=", 80), "\n", sep = "")
 
-            # Store results
-            main_results <- list()
+#             # Store results
+#             main_results <- list()
 
-            # Test main effect of Condition
-            cat("\n--- Testing main effect of Condition ---\n")
-            model_no_condition <- lmer(theta ~ Group + (1 | ID),
-                                    data = rdf, REML = FALSE)
-            test_condition <- anova(model_no_condition, model_main)
-            print(test_condition)
-            main_results$Condition <- test_condition$`Pr(>Chisq)`[2]
+#             # Test main effect of Condition
+#             cat("\n--- Testing main effect of Condition ---\n")
+#             model_no_condition <- lmer(theta ~ Group + (1 | ID),
+#                                     data = rdf, REML = FALSE)
+#             test_condition <- anova(model_no_condition, model_main)
+#             print(test_condition)
+#             main_results$Condition <- test_condition$`Pr(>Chisq)`[2]
 
-            # Test main effect of Group
-            cat("\n--- Testing main effect of Group ---\n")
-            model_no_group <- lmer(theta ~ Condition + (1 | ID),
-                                data = rdf, REML = FALSE)
-            test_group <- anova(model_no_group, model_main)
-            print(test_group)
-            main_results$Group <- test_group$`Pr(>Chisq)`[2]
+#             # Test main effect of Group
+#             cat("\n--- Testing main effect of Group ---\n")
+#             model_no_group <- lmer(theta ~ Condition + (1 | ID),
+#                                 data = rdf, REML = FALSE)
+#             test_group <- anova(model_no_group, model_main)
+#             print(test_group)
+#             main_results$Group <- test_group$`Pr(>Chisq)`[2]
 
-            # Determine which main effects are significant
-            sig_main <- names(main_results)[main_results < 0.05]
-            if (length(sig_main) > 0) {
-            cat("\n→ Significant main effects:", paste(sig_main, collapse = ", "), "\n")
-            } else {
-            cat("\n→ No significant main effects found.\n")
-            }
+#             # Determine which main effects are significant
+#             sig_main <- names(main_results)[main_results < 0.05]
+#             if (length(sig_main) > 0) {
+#             cat("\n→ Significant main effects:", paste(sig_main, collapse = ", "), "\n")
+#             } else {
+#             cat("\n→ No significant main effects found.\n")
+#             }
 
-            # ============================================================================
-            # STEP 4: SUMMARY OF ALL RESULTS
-            # ============================================================================
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("SUMMARY OF SIGNIFICANT EFFECTS (α = 0.05)\n")
-            cat(rep("=", 80), "\n\n")
+#             # ============================================================================
+#             # STEP 4: SUMMARY OF ALL RESULTS
+#             # ============================================================================
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("SUMMARY OF SIGNIFICANT EFFECTS (α = 0.05)\n")
+#             cat(rep("=", 80), "\n\n")
 
-            cat("2-way interaction:\n")
-            if (interaction_sig) {
-            cat("  ✓ Condition:Group (p = ", 
-                format.pval(test_interaction$`Pr(>Chisq)`[2], digits = 4), ")\n", sep = "")
-            } else {
-            cat("  (none significant)\n")
-            }
+#             cat("2-way interaction:\n")
+#             if (interaction_sig) {
+#             cat("  ✓ Condition:Group (p = ", 
+#                 format.pval(test_interaction$`Pr(>Chisq)`[2], digits = 4), ")\n", sep = "")
+#             } else {
+#             cat("  (none significant)\n")
+#             }
 
-            cat("\nMain effects:\n")
-            if (length(sig_main) > 0) {
-            for (effect in sig_main) {
-                cat("  ✓ ", effect, " (p = ", format.pval(main_results[[effect]], digits = 4), ")\n", sep = "")
-            }
-            } else {
-            cat("  (none significant)\n")
-            }
+#             cat("\nMain effects:\n")
+#             if (length(sig_main) > 0) {
+#             for (effect in sig_main) {
+#                 cat("  ✓ ", effect, " (p = ", format.pval(main_results[[effect]], digits = 4), ")\n", sep = "")
+#             }
+#             } else {
+#             cat("  (none significant)\n")
+#             }
 
-            # ============================================================================
-            # STEP 5: BUILD AND FIT FINAL MODEL
-            # ============================================================================
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("BUILDING FINAL MODEL\n")
-            cat(rep("=", 80), "\n\n")
+#             # ============================================================================
+#             # STEP 5: BUILD AND FIT FINAL MODEL
+#             # ============================================================================
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("BUILDING FINAL MODEL\n")
+#             cat(rep("=", 80), "\n\n")
 
-            # Build model formula based on significant effects
-            if (interaction_sig || length(sig_main) > 0) {
-            model_terms <- c("Condition", "Group")
+#             # Build model formula based on significant effects
+#             if (interaction_sig || length(sig_main) > 0) {
+#             model_terms <- c("Condition", "Group")
             
-            # Add interaction if significant
-            if (interaction_sig) {
-                model_terms <- c(model_terms, "Condition:Group")
-            }
+#             # Add interaction if significant
+#             if (interaction_sig) {
+#                 model_terms <- c(model_terms, "Condition:Group")
+#             }
             
-            formula_str <- paste("theta ~", paste(model_terms, collapse = " + "), "+ (1 | ID)")
-            } else {
-            formula_str <- "theta ~ 1 + (1 | ID)"
-            }
+#             formula_str <- paste("theta ~", paste(model_terms, collapse = " + "), "+ (1 | ID)")
+#             } else {
+#             formula_str <- "theta ~ 1 + (1 | ID)"
+#             }
 
-            cat("Based on significance testing, the final model is:\n\n")
-            cat(formula_str, "\n\n")
+#             cat("Based on significance testing, the final model is:\n\n")
+#             cat(formula_str, "\n\n")
 
-            # Fit the final model with REML = TRUE
-            cat("Fitting final model with REML = TRUE...\n")
-            final_model <- lmer(as.formula(formula_str), data = rdf, REML = TRUE)
+#             # Fit the final model with REML = TRUE
+#             cat("Fitting final model with REML = TRUE...\n")
+#             final_model <- lmer(as.formula(formula_str), data = rdf, REML = TRUE)
 
-            cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("\n", rep("=", 80), "\n", sep = "")
 
-            # ============================================================================
-            # STEP 6: CHECK ASSUMPTIONS FOR FINAL MODEL ONLY
-            # ============================================================================
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("CHECKING ASSUMPTIONS FOR FINAL MODEL\n")
-            cat(rep("=", 80), "\n\n")
+#             # ============================================================================
+#             # STEP 6: CHECK ASSUMPTIONS FOR FINAL MODEL ONLY
+#             # ============================================================================
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("CHECKING ASSUMPTIONS FOR FINAL MODEL\n")
+#             cat(rep("=", 80), "\n\n")
 
-            # Get all diagnostic plots as a list of ggplot objects
-            diagnostic_plots <- plot(check_model(final_model, panel = FALSE))
+#             # Get all diagnostic plots as a list of ggplot objects
+#             diagnostic_plots <- plot(check_model(final_model, panel = FALSE))
 
-            # Define plot names for each position
-            plot_names <- c(
-            "posterior_predictive_check",
-            "linearity",
-            "homogeneity_of_variance",
-            "influential_outliers",
-            "multicollinearity",
-            "normal_residuals"
-            )
+#             # Define plot names for each position
+#             plot_names <- c(
+#             "posterior_predictive_check",
+#             "linearity",
+#             "homogeneity_of_variance",
+#             "influential_outliers",
+#             "multicollinearity",
+#             "normal_residuals"
+#             )
 
-            # Save each plot individually
-            for(i in seq_along(diagnostic_plots)) {
-            filename <- file.path(Phase_2_assumptions_plot_save_path, paste0("final_model_", plot_names[i], ".pdf"))
+#             # Save each plot individually
+#             for(i in seq_along(diagnostic_plots)) {
+#             filename <- file.path(Phase_2_assumptions_plot_save_path, paste0("final_model_", plot_names[i], ".pdf"))
             
-            tryCatch({
-                ggsave(filename, plot = diagnostic_plots[[i]], width = 8, height = 6, device = "pdf")
-                cat(paste("✓ Saved:", filename, "\n"))
-            }, error = function(e) {
-                cat(paste("✗ Could not create:", plot_names[i], "-", e$message, "\n"))
-            })
-            }
+#             tryCatch({
+#                 ggsave(filename, plot = diagnostic_plots[[i]], width = 8, height = 6, device = "pdf")
+#                 cat(paste("✓ Saved:", filename, "\n"))
+#             }, error = function(e) {
+#                 cat(paste("✗ Could not create:", plot_names[i], "-", e$message, "\n"))
+#             })
+#             }
 
-            # Also save the complete panel
-            pdf(file.path(Phase_2_assumptions_plot_save_path, "final_model_all_diagnostics.pdf"), width = 12, height = 10)
-            plot(check_model(final_model))
-            dev.off()
+#             # Also save the complete panel
+#             pdf(file.path(Phase_2_assumptions_plot_save_path, "final_model_all_diagnostics.pdf"), width = 12, height = 10)
+#             plot(check_model(final_model))
+#             dev.off()
 
-            cat("\n✓ Final model diagnostic plots completed!\n")
-            cat("✓ Plots saved to:", Phase_2_assumptions_plot_save_path, "\n")
+#             cat("\n✓ Final model diagnostic plots completed!\n")
+#             cat("✓ Plots saved to:", Phase_2_assumptions_plot_save_path, "\n")
 
-            cat("\\n", rep("=", 80), "\\n", sep = "")
-            cat("CHECKING INFLUENTIAL DATA POINTS FOR FINAL MODEL\\n")
-            cat(rep("=", 80), "\\n\\n")
+#             cat("\\n", rep("=", 80), "\\n", sep = "")
+#             cat("CHECKING INFLUENTIAL DATA POINTS FOR FINAL MODEL\\n")
+#             cat(rep("=", 80), "\\n\\n")
 
-            # Group-level influence analysis
-            infl <- influence(final_model, group = "ID")
+#             # Group-level influence analysis
+#             infl <- influence(final_model, group = "ID")
 
-            # Save Cook's distance plot
-            cook_plot_path <- file.path(Phase_2_assumptions_plot_save_path, "final_model_cooks_distance.pdf")
-            pdf(cook_plot_path, width = 8, height = 6)
-            plot(infl, which = "cook")
-            dev.off()
-            cat("Check Saved:", cook_plot_path, "\\n")
+#             # Save Cook's distance plot
+#             cook_plot_path <- file.path(Phase_2_assumptions_plot_save_path, "final_model_cooks_distance.pdf")
+#             pdf(cook_plot_path, width = 8, height = 6)
+#             plot(infl, which = "cook")
+#             dev.off()
+#             cat("Check Saved:", cook_plot_path, "\\n")
 
-            # Get Cook's distance values (one per ID group)
-            cooks_d <- cooks.distance(infl)
+#             # Get Cook's distance values (one per ID group)
+#             cooks_d <- cooks.distance(infl)
 
-            # Identify influential IDs
-            n_groups <- length(unique(rdf$ID))
-            threshold <- 4/n_groups
-            influential_id_names <- rownames(cooks_d)[cooks_d > threshold]
+#             # Identify influential IDs
+#             n_groups <- length(unique(rdf$ID))
+#             threshold <- 4/n_groups
+#             influential_id_names <- rownames(cooks_d)[cooks_d > threshold]
 
-            if(length(influential_id_names) > 0) {
-                cat("\nInfluential IDs (Cook's D >", round(threshold, 3), "):\n")
+#             if(length(influential_id_names) > 0) {
+#                 cat("\nInfluential IDs (Cook's D >", round(threshold, 3), "):\n")
                 
-                # Use the row names directly from cooks_d matrix
-                cat("ID(s):", influential_id_names, "\n")
-                cat("Cook's D value(s):", cooks_d[influential_id_names, ], "\n\n")
+#                 # Use the row names directly from cooks_d matrix
+#                 cat("ID(s):", influential_id_names, "\n")
+#                 cat("Cook's D value(s):", cooks_d[influential_id_names, ], "\n\n")
                 
-                # Show the data for influential IDs
-                cat("Data for influential IDs:\n")
-                influential_data <- rdf[rdf$ID %in% influential_id_names, ]
-                print(influential_data)
-            } else {
-                cat("\nNo influential IDs detected.\n")
-            }
-            cat("\nInfluence diagnostics completed.\n")
+#                 # Show the data for influential IDs
+#                 cat("Data for influential IDs:\n")
+#                 influential_data <- rdf[rdf$ID %in% influential_id_names, ]
+#                 print(influential_data)
+#             } else {
+#                 cat("\nNo influential IDs detected.\n")
+#             }
+#             cat("\nInfluence diagnostics completed.\n")
             
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("ANALYSIS COMPLETE\n")
-            cat(rep("=", 80), "\n")
-            ''')
-        elif model == "Drug":
-            r('''
-            library(lme4)
-            library(lmerTest)
-            library(performance)
-            library(see)
-            library(ggplot2)
-            library(patchwork)
-            library(influence.ME)
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("ANALYSIS COMPLETE\n")
+#             cat(rep("=", 80), "\n")
+#             ''')
+#         elif model == "Drug":
+#             r('''
+#             library(lme4)
+#             library(lmerTest)
+#             library(performance)
+#             library(see)
+#             library(ggplot2)
+#             library(patchwork)
+#             library(influence.ME)
 
-            ################################################################################################################
+#             ################################################################################################################
 
-            # ============================================================================
-            # CORRECTED HIERARCHICAL MODEL TESTING FOR MIXED EFFECTS MODELS
-            # ============================================================================
-            # This script tests effects hierarchically from complex to simple:
-            # 4-way → 3-way → 2-way → main effects
-            # Using proper model comparisons with likelihood ratio tests
+#             # ============================================================================
+#             # CORRECTED HIERARCHICAL MODEL TESTING FOR MIXED EFFECTS MODELS
+#             # ============================================================================
+#             # This script tests effects hierarchically from complex to simple:
+#             # 4-way → 3-way → 2-way → main effects
+#             # Using proper model comparisons with likelihood ratio tests
 
-            # ============================================================================
-            # STEP 1: FIT THE FULL MODEL
-            # ============================================================================
-            cat("Fitting full model with 4-way interaction...\n")
-            model_full <- lmer(theta ~ Condition * Recording * Drug * Session_ID + (1 | ID_prefix), 
-                            data = rdf, REML = FALSE)
+#             # ============================================================================
+#             # STEP 1: FIT THE FULL MODEL
+#             # ============================================================================
+#             cat("Fitting full model with 4-way interaction...\n")
+#             model_full <- lmer(theta ~ Condition * Recording * Drug * Session_ID + (1 | ID_prefix), 
+#                             data = rdf, REML = FALSE)
 
-            # ============================================================================
-            # STEP 2: TEST 4-WAY INTERACTION
-            # ============================================================================
-            cat("\n" , rep("=", 80), "\n", sep = "")
-            cat("TESTING 4-WAY INTERACTION\n")
-            cat(rep("=", 80), "\n", sep = "")
+#             # ============================================================================
+#             # STEP 2: TEST 4-WAY INTERACTION
+#             # ============================================================================
+#             cat("\n" , rep("=", 80), "\n", sep = "")
+#             cat("TESTING 4-WAY INTERACTION\n")
+#             cat(rep("=", 80), "\n", sep = "")
 
-            # Model with all 3-way interactions but no 4-way
-            model_3way_all <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^3 + (1 | ID_prefix), 
-                                data = rdf, REML = FALSE)
+#             # Model with all 3-way interactions but no 4-way
+#             model_3way_all <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^3 + (1 | ID_prefix), 
+#                                 data = rdf, REML = FALSE)
 
-            cat("\nComparing:\n")
-            cat("  Full model: 4-way interaction included\n")
-            cat("  Reduced:    All 3-way interactions only\n\n")
-            test_4way <- anova(model_3way_all, model_full)
-            print(test_4way)
+#             cat("\nComparing:\n")
+#             cat("  Full model: 4-way interaction included\n")
+#             cat("  Reduced:    All 3-way interactions only\n\n")
+#             test_4way <- anova(model_3way_all, model_full)
+#             print(test_4way)
 
-            # Decide which model to use for next level
-            if (test_4way$`Pr(>Chisq)`[2] < 0.05) {
-            cat("\n→ 4-way interaction IS significant. Keeping full model.\n")
-            model_for_3way_tests <- model_full
-            } else {
-            cat("\n→ 4-way interaction NOT significant. Using model with 3-way interactions.\n")
-            model_for_3way_tests <- model_3way_all
-            }
+#             # Decide which model to use for next level
+#             if (test_4way$`Pr(>Chisq)`[2] < 0.05) {
+#             cat("\n→ 4-way interaction IS significant. Keeping full model.\n")
+#             model_for_3way_tests <- model_full
+#             } else {
+#             cat("\n→ 4-way interaction NOT significant. Using model with 3-way interactions.\n")
+#             model_for_3way_tests <- model_3way_all
+#             }
 
-            # ============================================================================
-            # STEP 3: TEST EACH 3-WAY INTERACTION INDIVIDUALLY
-            # ============================================================================
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("TESTING 3-WAY INTERACTIONS\n")
-            cat(rep("=", 80), "\n", sep = "")
+#             # ============================================================================
+#             # STEP 3: TEST EACH 3-WAY INTERACTION INDIVIDUALLY
+#             # ============================================================================
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("TESTING 3-WAY INTERACTIONS\n")
+#             cat(rep("=", 80), "\n", sep = "")
 
-            # Store results
-            three_way_results <- list()
+#             # Store results
+#             three_way_results <- list()
 
-            # Test Condition:Recording:Drug
-            cat("\n--- Testing Condition:Recording:Drug ---\n")
-            model_no_CRD <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^3 - 
-                                Condition:Recording:Drug + (1 | ID_prefix),
-                                data = rdf, REML = FALSE)
-            test_CRD <- anova(model_no_CRD, model_3way_all)
-            print(test_CRD)
-            three_way_results$CRD <- test_CRD$`Pr(>Chisq)`[2]
+#             # Test Condition:Recording:Drug
+#             cat("\n--- Testing Condition:Recording:Drug ---\n")
+#             model_no_CRD <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^3 - 
+#                                 Condition:Recording:Drug + (1 | ID_prefix),
+#                                 data = rdf, REML = FALSE)
+#             test_CRD <- anova(model_no_CRD, model_3way_all)
+#             print(test_CRD)
+#             three_way_results$CRD <- test_CRD$`Pr(>Chisq)`[2]
 
-            # Test Condition:Recording:Session_ID
-            cat("\n--- Testing Condition:Recording:Session_ID ---\n")
-            model_no_CRS <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^3 - 
-                                Condition:Recording:Session_ID + (1 | ID_prefix),
-                                data = rdf, REML = FALSE)
-            test_CRS <- anova(model_no_CRS, model_3way_all)
-            print(test_CRS)
-            three_way_results$CRS <- test_CRS$`Pr(>Chisq)`[2]
+#             # Test Condition:Recording:Session_ID
+#             cat("\n--- Testing Condition:Recording:Session_ID ---\n")
+#             model_no_CRS <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^3 - 
+#                                 Condition:Recording:Session_ID + (1 | ID_prefix),
+#                                 data = rdf, REML = FALSE)
+#             test_CRS <- anova(model_no_CRS, model_3way_all)
+#             print(test_CRS)
+#             three_way_results$CRS <- test_CRS$`Pr(>Chisq)`[2]
 
-            # Test Condition:Drug:Session_ID
-            cat("\n--- Testing Condition:Drug:Session_ID ---\n")
-            model_no_CDS <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^3 - 
-                                Condition:Drug:Session_ID + (1 | ID_prefix),
-                                data = rdf, REML = FALSE)
-            test_CDS <- anova(model_no_CDS, model_3way_all)
-            print(test_CDS)
-            three_way_results$CDS <- test_CDS$`Pr(>Chisq)`[2]
+#             # Test Condition:Drug:Session_ID
+#             cat("\n--- Testing Condition:Drug:Session_ID ---\n")
+#             model_no_CDS <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^3 - 
+#                                 Condition:Drug:Session_ID + (1 | ID_prefix),
+#                                 data = rdf, REML = FALSE)
+#             test_CDS <- anova(model_no_CDS, model_3way_all)
+#             print(test_CDS)
+#             three_way_results$CDS <- test_CDS$`Pr(>Chisq)`[2]
 
-            # Test Recording:Drug:Session_ID
-            cat("\n--- Testing Recording:Drug:Session_ID ---\n")
-            model_no_RDS <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^3 - 
-                                Recording:Drug:Session_ID + (1 | ID_prefix),
-                                data = rdf, REML = FALSE)
-            test_RDS <- anova(model_no_RDS, model_3way_all)
-            print(test_RDS)
-            three_way_results$RDS <- test_RDS$`Pr(>Chisq)`[2]
+#             # Test Recording:Drug:Session_ID
+#             cat("\n--- Testing Recording:Drug:Session_ID ---\n")
+#             model_no_RDS <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^3 - 
+#                                 Recording:Drug:Session_ID + (1 | ID_prefix),
+#                                 data = rdf, REML = FALSE)
+#             test_RDS <- anova(model_no_RDS, model_3way_all)
+#             print(test_RDS)
+#             three_way_results$RDS <- test_RDS$`Pr(>Chisq)`[2]
 
-            # Determine which 3-way interactions to keep
-            sig_3way <- names(three_way_results)[three_way_results < 0.05]
-            if (length(sig_3way) > 0) {
-            cat("\n→ Significant 3-way interactions:", paste(sig_3way, collapse = ", "), "\n")
-            } else {
-            cat("\n→ No significant 3-way interactions found.\n")
-            }
+#             # Determine which 3-way interactions to keep
+#             sig_3way <- names(three_way_results)[three_way_results < 0.05]
+#             if (length(sig_3way) > 0) {
+#             cat("\n→ Significant 3-way interactions:", paste(sig_3way, collapse = ", "), "\n")
+#             } else {
+#             cat("\n→ No significant 3-way interactions found.\n")
+#             }
 
-            # ============================================================================
-            # STEP 4: TEST EACH 2-WAY INTERACTION INDIVIDUALLY
-            # ============================================================================
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("TESTING 2-WAY INTERACTIONS\n")
-            cat(rep("=", 80), "\n", sep = "")
+#             # ============================================================================
+#             # STEP 4: TEST EACH 2-WAY INTERACTION INDIVIDUALLY
+#             # ============================================================================
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("TESTING 2-WAY INTERACTIONS\n")
+#             cat(rep("=", 80), "\n", sep = "")
 
-            # Model with all 2-way interactions but no 3-way or 4-way
-            model_2way_all <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^2 + (1 | ID_prefix), 
-                                data = rdf, REML = FALSE)
+#             # Model with all 2-way interactions but no 3-way or 4-way
+#             model_2way_all <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^2 + (1 | ID_prefix), 
+#                                 data = rdf, REML = FALSE)
 
-            # Store results
-            two_way_results <- list()
+#             # Store results
+#             two_way_results <- list()
 
-            # Test Condition:Recording
-            cat("\n--- Testing Condition:Recording ---\n")
-            model_no_CR <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^2 - 
-                                Condition:Recording + (1 | ID_prefix),
-                                data = rdf, REML = FALSE)
-            test_CR <- anova(model_no_CR, model_2way_all)
-            print(test_CR)
-            two_way_results$CR <- test_CR$`Pr(>Chisq)`[2]
+#             # Test Condition:Recording
+#             cat("\n--- Testing Condition:Recording ---\n")
+#             model_no_CR <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^2 - 
+#                                 Condition:Recording + (1 | ID_prefix),
+#                                 data = rdf, REML = FALSE)
+#             test_CR <- anova(model_no_CR, model_2way_all)
+#             print(test_CR)
+#             two_way_results$CR <- test_CR$`Pr(>Chisq)`[2]
 
-            # Test Condition:Drug
-            cat("\n--- Testing Condition:Drug ---\n")
-            model_no_CD <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^2 - 
-                                Condition:Drug + (1 | ID_prefix),
-                                data = rdf, REML = FALSE)
-            test_CD <- anova(model_no_CD, model_2way_all)
-            print(test_CD)
-            two_way_results$CD <- test_CD$`Pr(>Chisq)`[2]
+#             # Test Condition:Drug
+#             cat("\n--- Testing Condition:Drug ---\n")
+#             model_no_CD <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^2 - 
+#                                 Condition:Drug + (1 | ID_prefix),
+#                                 data = rdf, REML = FALSE)
+#             test_CD <- anova(model_no_CD, model_2way_all)
+#             print(test_CD)
+#             two_way_results$CD <- test_CD$`Pr(>Chisq)`[2]
 
-            # Test Condition:Session_ID
-            cat("\n--- Testing Condition:Session_ID ---\n")
-            model_no_CS <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^2 - 
-                                Condition:Session_ID + (1 | ID_prefix),
-                                data = rdf, REML = FALSE)
-            test_CS <- anova(model_no_CS, model_2way_all)
-            print(test_CS)
-            two_way_results$CS <- test_CS$`Pr(>Chisq)`[2]
+#             # Test Condition:Session_ID
+#             cat("\n--- Testing Condition:Session_ID ---\n")
+#             model_no_CS <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^2 - 
+#                                 Condition:Session_ID + (1 | ID_prefix),
+#                                 data = rdf, REML = FALSE)
+#             test_CS <- anova(model_no_CS, model_2way_all)
+#             print(test_CS)
+#             two_way_results$CS <- test_CS$`Pr(>Chisq)`[2]
 
-            # Test Recording:Drug
-            cat("\n--- Testing Recording:Drug ---\n")
-            model_no_RD <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^2 - 
-                                Recording:Drug + (1 | ID_prefix),
-                                data = rdf, REML = FALSE)
-            test_RD <- anova(model_no_RD, model_2way_all)
-            print(test_RD)
-            two_way_results$RD <- test_RD$`Pr(>Chisq)`[2]
+#             # Test Recording:Drug
+#             cat("\n--- Testing Recording:Drug ---\n")
+#             model_no_RD <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^2 - 
+#                                 Recording:Drug + (1 | ID_prefix),
+#                                 data = rdf, REML = FALSE)
+#             test_RD <- anova(model_no_RD, model_2way_all)
+#             print(test_RD)
+#             two_way_results$RD <- test_RD$`Pr(>Chisq)`[2]
 
-            # Test Recording:Session_ID
-            cat("\n--- Testing Recording:Session_ID ---\n")
-            model_no_RS <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^2 - 
-                                Recording:Session_ID + (1 | ID_prefix),
-                                data = rdf, REML = FALSE)
-            test_RS <- anova(model_no_RS, model_2way_all)
-            print(test_RS)
-            two_way_results$RS <- test_RS$`Pr(>Chisq)`[2]
+#             # Test Recording:Session_ID
+#             cat("\n--- Testing Recording:Session_ID ---\n")
+#             model_no_RS <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^2 - 
+#                                 Recording:Session_ID + (1 | ID_prefix),
+#                                 data = rdf, REML = FALSE)
+#             test_RS <- anova(model_no_RS, model_2way_all)
+#             print(test_RS)
+#             two_way_results$RS <- test_RS$`Pr(>Chisq)`[2]
 
-            # Test Drug:Session_ID
-            cat("\n--- Testing Drug:Session_ID ---\n")
-            model_no_DS <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^2 - 
-                                Drug:Session_ID + (1 | ID_prefix),
-                                data = rdf, REML = FALSE)
-            test_DS <- anova(model_no_DS, model_2way_all)
-            print(test_DS)
-            two_way_results$DS <- test_DS$`Pr(>Chisq)`[2]
+#             # Test Drug:Session_ID
+#             cat("\n--- Testing Drug:Session_ID ---\n")
+#             model_no_DS <- lmer(theta ~ (Condition + Recording + Drug + Session_ID)^2 - 
+#                                 Drug:Session_ID + (1 | ID_prefix),
+#                                 data = rdf, REML = FALSE)
+#             test_DS <- anova(model_no_DS, model_2way_all)
+#             print(test_DS)
+#             two_way_results$DS <- test_DS$`Pr(>Chisq)`[2]
 
-            # Determine which 2-way interactions to keep
-            sig_2way <- names(two_way_results)[two_way_results < 0.05]
-            if (length(sig_2way) > 0) {
-            cat("\n→ Significant 2-way interactions:", paste(sig_2way, collapse = ", "), "\n")
-            } else {
-            cat("\n→ No significant 2-way interactions found.\n")
-            }
+#             # Determine which 2-way interactions to keep
+#             sig_2way <- names(two_way_results)[two_way_results < 0.05]
+#             if (length(sig_2way) > 0) {
+#             cat("\n→ Significant 2-way interactions:", paste(sig_2way, collapse = ", "), "\n")
+#             } else {
+#             cat("\n→ No significant 2-way interactions found.\n")
+#             }
 
-            # ============================================================================
-            # STEP 5: TEST MAIN EFFECTS
-            # ============================================================================
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("TESTING MAIN EFFECTS\n")
-            cat(rep("=", 80), "\n", sep = "")
+#             # ============================================================================
+#             # STEP 5: TEST MAIN EFFECTS
+#             # ============================================================================
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("TESTING MAIN EFFECTS\n")
+#             cat(rep("=", 80), "\n", sep = "")
 
-            # Model with main effects only
-            model_main <- lmer(theta ~ Condition + Recording + Drug + Session_ID + (1 | ID_prefix), 
-                            data = rdf, REML = FALSE)
+#             # Model with main effects only
+#             model_main <- lmer(theta ~ Condition + Recording + Drug + Session_ID + (1 | ID_prefix), 
+#                             data = rdf, REML = FALSE)
 
-            # Store results
-            main_results <- list()
+#             # Store results
+#             main_results <- list()
 
-            # Test Condition
-            cat("\n--- Testing main effect of Condition ---\n")
-            model_no_C <- lmer(theta ~ Recording + Drug + Session_ID + (1 | ID_prefix),
-                            data = rdf, REML = FALSE)
-            test_C <- anova(model_no_C, model_main)
-            print(test_C)
-            main_results$Condition <- test_C$`Pr(>Chisq)`[2]
+#             # Test Condition
+#             cat("\n--- Testing main effect of Condition ---\n")
+#             model_no_C <- lmer(theta ~ Recording + Drug + Session_ID + (1 | ID_prefix),
+#                             data = rdf, REML = FALSE)
+#             test_C <- anova(model_no_C, model_main)
+#             print(test_C)
+#             main_results$Condition <- test_C$`Pr(>Chisq)`[2]
 
-            # Test Recording
-            cat("\n--- Testing main effect of Recording ---\n")
-            model_no_R <- lmer(theta ~ Condition + Drug + Session_ID + (1 | ID_prefix),
-                            data = rdf, REML = FALSE)
-            test_R <- anova(model_no_R, model_main)
-            print(test_R)
-            main_results$Recording <- test_R$`Pr(>Chisq)`[2]
+#             # Test Recording
+#             cat("\n--- Testing main effect of Recording ---\n")
+#             model_no_R <- lmer(theta ~ Condition + Drug + Session_ID + (1 | ID_prefix),
+#                             data = rdf, REML = FALSE)
+#             test_R <- anova(model_no_R, model_main)
+#             print(test_R)
+#             main_results$Recording <- test_R$`Pr(>Chisq)`[2]
 
-            # Test Drug
-            cat("\n--- Testing main effect of Drug ---\n")
-            model_no_D <- lmer(theta ~ Condition + Recording + Session_ID + (1 | ID_prefix),
-                            data = rdf, REML = FALSE)
-            test_D <- anova(model_no_D, model_main)
-            print(test_D)
-            main_results$Drug <- test_D$`Pr(>Chisq)`[2]
+#             # Test Drug
+#             cat("\n--- Testing main effect of Drug ---\n")
+#             model_no_D <- lmer(theta ~ Condition + Recording + Session_ID + (1 | ID_prefix),
+#                             data = rdf, REML = FALSE)
+#             test_D <- anova(model_no_D, model_main)
+#             print(test_D)
+#             main_results$Drug <- test_D$`Pr(>Chisq)`[2]
 
-            # Test Session_ID
-            cat("\n--- Testing main effect of Session_ID ---\n")
-            model_no_S <- lmer(theta ~ Condition + Recording + Drug + (1 | ID_prefix),
-                            data = rdf, REML = FALSE)
-            test_S <- anova(model_no_S, model_main)
-            print(test_S)
-            main_results$Session_ID <- test_S$`Pr(>Chisq)`[2]
+#             # Test Session_ID
+#             cat("\n--- Testing main effect of Session_ID ---\n")
+#             model_no_S <- lmer(theta ~ Condition + Recording + Drug + (1 | ID_prefix),
+#                             data = rdf, REML = FALSE)
+#             test_S <- anova(model_no_S, model_main)
+#             print(test_S)
+#             main_results$Session_ID <- test_S$`Pr(>Chisq)`[2]
 
-            # Determine which main effects are significant
-            sig_main <- names(main_results)[main_results < 0.05]
-            if (length(sig_main) > 0) {
-            cat("\n→ Significant main effects:", paste(sig_main, collapse = ", "), "\n")
-            } else {
-            cat("\n→ No significant main effects found.\n")
-            }
+#             # Determine which main effects are significant
+#             sig_main <- names(main_results)[main_results < 0.05]
+#             if (length(sig_main) > 0) {
+#             cat("\n→ Significant main effects:", paste(sig_main, collapse = ", "), "\n")
+#             } else {
+#             cat("\n→ No significant main effects found.\n")
+#             }
 
-            # ============================================================================
-            # STEP 6: SUMMARY OF ALL RESULTS
-            # ============================================================================
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("SUMMARY OF SIGNIFICANT EFFECTS (α = 0.05)\n")
-            cat(rep("=", 80), "\n\n")
+#             # ============================================================================
+#             # STEP 6: SUMMARY OF ALL RESULTS
+#             # ============================================================================
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("SUMMARY OF SIGNIFICANT EFFECTS (α = 0.05)\n")
+#             cat(rep("=", 80), "\n\n")
 
-            cat("4-way interaction:\n")
-            if (test_4way$`Pr(>Chisq)`[2] < 0.05) {
-            cat("  ✓ Condition:Recording:Drug:Session_ID (p = ", 
-                format.pval(test_4way$`Pr(>Chisq)`[2], digits = 4), ")\n", sep = "")
-            } else {
-            cat("  (none significant)\n")
-            }
+#             cat("4-way interaction:\n")
+#             if (test_4way$`Pr(>Chisq)`[2] < 0.05) {
+#             cat("  ✓ Condition:Recording:Drug:Session_ID (p = ", 
+#                 format.pval(test_4way$`Pr(>Chisq)`[2], digits = 4), ")\n", sep = "")
+#             } else {
+#             cat("  (none significant)\n")
+#             }
 
-            cat("\n3-way interactions:\n")
-            if (length(sig_3way) > 0) {
-            for (effect in sig_3way) {
-                cat("  ✓ ", effect, " (p = ", format.pval(three_way_results[[effect]], digits = 4), ")\n", sep = "")
-            }
-            } else {
-            cat("  (none significant)\n")
-            }
+#             cat("\n3-way interactions:\n")
+#             if (length(sig_3way) > 0) {
+#             for (effect in sig_3way) {
+#                 cat("  ✓ ", effect, " (p = ", format.pval(three_way_results[[effect]], digits = 4), ")\n", sep = "")
+#             }
+#             } else {
+#             cat("  (none significant)\n")
+#             }
 
-            cat("\n2-way interactions:\n")
-            if (length(sig_2way) > 0) {
-            for (effect in sig_2way) {
-                cat("  ✓ ", effect, " (p = ", format.pval(two_way_results[[effect]], digits = 4), ")\n", sep = "")
-            }
-            } else {
-            cat("  (none significant)\n")
-            }
+#             cat("\n2-way interactions:\n")
+#             if (length(sig_2way) > 0) {
+#             for (effect in sig_2way) {
+#                 cat("  ✓ ", effect, " (p = ", format.pval(two_way_results[[effect]], digits = 4), ")\n", sep = "")
+#             }
+#             } else {
+#             cat("  (none significant)\n")
+#             }
 
-            cat("\nMain effects:\n")
-            if (length(sig_main) > 0) {
-            for (effect in sig_main) {
-                cat("  ✓ ", effect, " (p = ", format.pval(main_results[[effect]], digits = 4), ")\n", sep = "")
-            }
-            } else {
-            cat("  (none significant)\n")
-            }
+#             cat("\nMain effects:\n")
+#             if (length(sig_main) > 0) {
+#             for (effect in sig_main) {
+#                 cat("  ✓ ", effect, " (p = ", format.pval(main_results[[effect]], digits = 4), ")\n", sep = "")
+#             }
+#             } else {
+#             cat("  (none significant)\n")
+#             }
 
-            # ============================================================================
-            # STEP 7: BUILD AND FIT FINAL MODEL (HIERARCHICAL PRINCIPLE)
-            # ============================================================================
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("BUILDING FINAL MODEL\n")
-            cat(rep("=", 80), "\n\n")
+#             # ============================================================================
+#             # STEP 7: BUILD AND FIT FINAL MODEL (HIERARCHICAL PRINCIPLE)
+#             # ============================================================================
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("BUILDING FINAL MODEL\n")
+#             cat(rep("=", 80), "\n\n")
 
-            # Initialize sets for terms to include
-            terms_to_include <- list(
-            main = character(0),
-            two_way = character(0),
-            three_way = character(0),
-            four_way = character(0)
-            )
+#             # Initialize sets for terms to include
+#             terms_to_include <- list(
+#             main = character(0),
+#             two_way = character(0),
+#             three_way = character(0),
+#             four_way = character(0)
+#             )
 
-            all_vars <- c("Condition", "Recording", "Drug", "Session_ID")
+#             all_vars <- c("Condition", "Recording", "Drug", "Session_ID")
 
-            # Check 4-way interaction
-            if (test_4way$`Pr(>Chisq)`[2] < 0.05) {
-            cat("4-way interaction is significant - including ALL lower-order terms\n")
-            terms_to_include$four_way <- "Condition:Recording:Drug:Session_ID"
+#             # Check 4-way interaction
+#             if (test_4way$`Pr(>Chisq)`[2] < 0.05) {
+#             cat("4-way interaction is significant - including ALL lower-order terms\n")
+#             terms_to_include$four_way <- "Condition:Recording:Drug:Session_ID"
             
-            # Add all 3-way interactions
-            terms_to_include$three_way <- c("Condition:Recording:Drug", 
-                                            "Condition:Recording:Session_ID",
-                                            "Condition:Drug:Session_ID", 
-                                            "Recording:Drug:Session_ID")
+#             # Add all 3-way interactions
+#             terms_to_include$three_way <- c("Condition:Recording:Drug", 
+#                                             "Condition:Recording:Session_ID",
+#                                             "Condition:Drug:Session_ID", 
+#                                             "Recording:Drug:Session_ID")
             
-            # Add all 2-way interactions
-            terms_to_include$two_way <- c("Condition:Recording", "Condition:Drug", 
-                                            "Condition:Session_ID", "Recording:Drug",
-                                            "Recording:Session_ID", "Drug:Session_ID")
+#             # Add all 2-way interactions
+#             terms_to_include$two_way <- c("Condition:Recording", "Condition:Drug", 
+#                                             "Condition:Session_ID", "Recording:Drug",
+#                                             "Recording:Session_ID", "Drug:Session_ID")
             
-            # Add all main effects
-            terms_to_include$main <- all_vars
+#             # Add all main effects
+#             terms_to_include$main <- all_vars
             
-            } else {
-            # No 4-way, check 3-way interactions
-            if (length(sig_3way) > 0) {
-                cat("Significant 3-way interaction(s) found - including constituent 2-way interactions\n")
+#             } else {
+#             # No 4-way, check 3-way interactions
+#             if (length(sig_3way) > 0) {
+#                 cat("Significant 3-way interaction(s) found - including constituent 2-way interactions\n")
                 
-                # Add significant 3-way interactions
-                if ("CRD" %in% sig_3way) {
-                terms_to_include$three_way <- c(terms_to_include$three_way, "Condition:Recording:Drug")
-                # Add constituent 2-way interactions
-                terms_to_include$two_way <- unique(c(terms_to_include$two_way, 
-                                                        "Condition:Recording", "Condition:Drug", "Recording:Drug"))
-                terms_to_include$main <- unique(c(terms_to_include$main, "Condition", "Recording", "Drug"))
-                }
-                if ("CRS" %in% sig_3way) {
-                terms_to_include$three_way <- c(terms_to_include$three_way, "Condition:Recording:Session_ID")
-                terms_to_include$two_way <- unique(c(terms_to_include$two_way,
-                                                        "Condition:Recording", "Condition:Session_ID", "Recording:Session_ID"))
-                terms_to_include$main <- unique(c(terms_to_include$main, "Condition", "Recording", "Session_ID"))
-                }
-                if ("CDS" %in% sig_3way) {
-                terms_to_include$three_way <- c(terms_to_include$three_way, "Condition:Drug:Session_ID")
-                terms_to_include$two_way <- unique(c(terms_to_include$two_way,
-                                                        "Condition:Drug", "Condition:Session_ID", "Drug:Session_ID"))
-                terms_to_include$main <- unique(c(terms_to_include$main, "Condition", "Drug", "Session_ID"))
-                }
-                if ("RDS" %in% sig_3way) {
-                terms_to_include$three_way <- c(terms_to_include$three_way, "Recording:Drug:Session_ID")
-                terms_to_include$two_way <- unique(c(terms_to_include$two_way,
-                                                        "Recording:Drug", "Recording:Session_ID", "Drug:Session_ID"))
-                terms_to_include$main <- unique(c(terms_to_include$main, "Recording", "Drug", "Session_ID"))
-                }
-            }
+#                 # Add significant 3-way interactions
+#                 if ("CRD" %in% sig_3way) {
+#                 terms_to_include$three_way <- c(terms_to_include$three_way, "Condition:Recording:Drug")
+#                 # Add constituent 2-way interactions
+#                 terms_to_include$two_way <- unique(c(terms_to_include$two_way, 
+#                                                         "Condition:Recording", "Condition:Drug", "Recording:Drug"))
+#                 terms_to_include$main <- unique(c(terms_to_include$main, "Condition", "Recording", "Drug"))
+#                 }
+#                 if ("CRS" %in% sig_3way) {
+#                 terms_to_include$three_way <- c(terms_to_include$three_way, "Condition:Recording:Session_ID")
+#                 terms_to_include$two_way <- unique(c(terms_to_include$two_way,
+#                                                         "Condition:Recording", "Condition:Session_ID", "Recording:Session_ID"))
+#                 terms_to_include$main <- unique(c(terms_to_include$main, "Condition", "Recording", "Session_ID"))
+#                 }
+#                 if ("CDS" %in% sig_3way) {
+#                 terms_to_include$three_way <- c(terms_to_include$three_way, "Condition:Drug:Session_ID")
+#                 terms_to_include$two_way <- unique(c(terms_to_include$two_way,
+#                                                         "Condition:Drug", "Condition:Session_ID", "Drug:Session_ID"))
+#                 terms_to_include$main <- unique(c(terms_to_include$main, "Condition", "Drug", "Session_ID"))
+#                 }
+#                 if ("RDS" %in% sig_3way) {
+#                 terms_to_include$three_way <- c(terms_to_include$three_way, "Recording:Drug:Session_ID")
+#                 terms_to_include$two_way <- unique(c(terms_to_include$two_way,
+#                                                         "Recording:Drug", "Recording:Session_ID", "Drug:Session_ID"))
+#                 terms_to_include$main <- unique(c(terms_to_include$main, "Recording", "Drug", "Session_ID"))
+#                 }
+#             }
             
-            # Add significant 2-way interactions (and their constituent main effects)
-            if (length(sig_2way) > 0) {
-                cat("Significant 2-way interaction(s) found - including constituent main effects\n")
+#             # Add significant 2-way interactions (and their constituent main effects)
+#             if (length(sig_2way) > 0) {
+#                 cat("Significant 2-way interaction(s) found - including constituent main effects\n")
                 
-                if ("CR" %in% sig_2way) {
-                terms_to_include$two_way <- unique(c(terms_to_include$two_way, "Condition:Recording"))
-                terms_to_include$main <- unique(c(terms_to_include$main, "Condition", "Recording"))
-                }
-                if ("CD" %in% sig_2way) {
-                terms_to_include$two_way <- unique(c(terms_to_include$two_way, "Condition:Drug"))
-                terms_to_include$main <- unique(c(terms_to_include$main, "Condition", "Drug"))
-                }
-                if ("CS" %in% sig_2way) {
-                terms_to_include$two_way <- unique(c(terms_to_include$two_way, "Condition:Session_ID"))
-                terms_to_include$main <- unique(c(terms_to_include$main, "Condition", "Session_ID"))
-                }
-                if ("RD" %in% sig_2way) {
-                terms_to_include$two_way <- unique(c(terms_to_include$two_way, "Recording:Drug"))
-                terms_to_include$main <- unique(c(terms_to_include$main, "Recording", "Drug"))
-                }
-                if ("RS" %in% sig_2way) {
-                terms_to_include$two_way <- unique(c(terms_to_include$two_way, "Recording:Session_ID"))
-                terms_to_include$main <- unique(c(terms_to_include$main, "Recording", "Session_ID"))
-                }
-                if ("DS" %in% sig_2way) {
-                terms_to_include$two_way <- unique(c(terms_to_include$two_way, "Drug:Session_ID"))
-                terms_to_include$main <- unique(c(terms_to_include$main, "Drug", "Session_ID"))
-                }
-            }
+#                 if ("CR" %in% sig_2way) {
+#                 terms_to_include$two_way <- unique(c(terms_to_include$two_way, "Condition:Recording"))
+#                 terms_to_include$main <- unique(c(terms_to_include$main, "Condition", "Recording"))
+#                 }
+#                 if ("CD" %in% sig_2way) {
+#                 terms_to_include$two_way <- unique(c(terms_to_include$two_way, "Condition:Drug"))
+#                 terms_to_include$main <- unique(c(terms_to_include$main, "Condition", "Drug"))
+#                 }
+#                 if ("CS" %in% sig_2way) {
+#                 terms_to_include$two_way <- unique(c(terms_to_include$two_way, "Condition:Session_ID"))
+#                 terms_to_include$main <- unique(c(terms_to_include$main, "Condition", "Session_ID"))
+#                 }
+#                 if ("RD" %in% sig_2way) {
+#                 terms_to_include$two_way <- unique(c(terms_to_include$two_way, "Recording:Drug"))
+#                 terms_to_include$main <- unique(c(terms_to_include$main, "Recording", "Drug"))
+#                 }
+#                 if ("RS" %in% sig_2way) {
+#                 terms_to_include$two_way <- unique(c(terms_to_include$two_way, "Recording:Session_ID"))
+#                 terms_to_include$main <- unique(c(terms_to_include$main, "Recording", "Session_ID"))
+#                 }
+#                 if ("DS" %in% sig_2way) {
+#                 terms_to_include$two_way <- unique(c(terms_to_include$two_way, "Drug:Session_ID"))
+#                 terms_to_include$main <- unique(c(terms_to_include$main, "Drug", "Session_ID"))
+#                 }
+#             }
             
-            # Add significant main effects (only if not already included via interactions)
-            if (length(sig_main) > 0) {
-                terms_to_include$main <- unique(c(terms_to_include$main, sig_main))
-            }
-            }
+#             # Add significant main effects (only if not already included via interactions)
+#             if (length(sig_main) > 0) {
+#                 terms_to_include$main <- unique(c(terms_to_include$main, sig_main))
+#             }
+#             }
 
-            # Build the formula
-            if (length(c(terms_to_include$main, terms_to_include$two_way, 
-                        terms_to_include$three_way, terms_to_include$four_way)) > 0) {
+#             # Build the formula
+#             if (length(c(terms_to_include$main, terms_to_include$two_way, 
+#                         terms_to_include$three_way, terms_to_include$four_way)) > 0) {
             
-            all_terms <- c(terms_to_include$main, terms_to_include$two_way,
-                            terms_to_include$three_way, terms_to_include$four_way)
-            formula_str <- paste("theta ~", paste(all_terms, collapse = " + "), "+ (1 | ID_prefix)")
-            } else {
-            formula_str <- "theta ~ 1 + (1 | ID_prefix)"
-            }
+#             all_terms <- c(terms_to_include$main, terms_to_include$two_way,
+#                             terms_to_include$three_way, terms_to_include$four_way)
+#             formula_str <- paste("theta ~", paste(all_terms, collapse = " + "), "+ (1 | ID_prefix)")
+#             } else {
+#             formula_str <- "theta ~ 1 + (1 | ID_prefix)"
+#             }
 
-            cat("\nBased on hierarchical testing principles, the final model is:\n\n")
-            cat(formula_str, "\n\n")
+#             cat("\nBased on hierarchical testing principles, the final model is:\n\n")
+#             cat(formula_str, "\n\n")
 
-            cat("Terms included:\n")
-            cat("  Main effects:", paste(terms_to_include$main, collapse = ", "), "\n")
-            if (length(terms_to_include$two_way) > 0) 
-            cat("  2-way interactions:", paste(terms_to_include$two_way, collapse = ", "), "\n")
-            if (length(terms_to_include$three_way) > 0) 
-            cat("  3-way interactions:", paste(terms_to_include$three_way, collapse = ", "), "\n")
-            if (length(terms_to_include$four_way) > 0) 
-            cat("  4-way interaction:", paste(terms_to_include$four_way, collapse = ", "), "\n")
+#             cat("Terms included:\n")
+#             cat("  Main effects:", paste(terms_to_include$main, collapse = ", "), "\n")
+#             if (length(terms_to_include$two_way) > 0) 
+#             cat("  2-way interactions:", paste(terms_to_include$two_way, collapse = ", "), "\n")
+#             if (length(terms_to_include$three_way) > 0) 
+#             cat("  3-way interactions:", paste(terms_to_include$three_way, collapse = ", "), "\n")
+#             if (length(terms_to_include$four_way) > 0) 
+#             cat("  4-way interaction:", paste(terms_to_include$four_way, collapse = ", "), "\n")
 
-            # Fit the final model with REML = TRUE
-            cat("\nFitting final model with REML = TRUE...\n")
-            final_model <- lmer(as.formula(formula_str), data = rdf, REML = TRUE)
+#             # Fit the final model with REML = TRUE
+#             cat("\nFitting final model with REML = TRUE...\n")
+#             final_model <- lmer(as.formula(formula_str), data = rdf, REML = TRUE)
 
-            cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("\n", rep("=", 80), "\n", sep = "")
 
-            # ============================================================================
-            # STEP 8: CHECK ASSUMPTIONS FOR FINAL MODEL ONLY
-            # ============================================================================
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("CHECKING ASSUMPTIONS FOR FINAL MODEL\n")
-            cat(rep("=", 80), "\n\n")
+#             # ============================================================================
+#             # STEP 8: CHECK ASSUMPTIONS FOR FINAL MODEL ONLY
+#             # ============================================================================
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("CHECKING ASSUMPTIONS FOR FINAL MODEL\n")
+#             cat(rep("=", 80), "\n\n")
 
-            # Get all diagnostic plots as a list of ggplot objects
-            diagnostic_plots <- plot(check_model(final_model, panel = FALSE))
+#             # Get all diagnostic plots as a list of ggplot objects
+#             diagnostic_plots <- plot(check_model(final_model, panel = FALSE))
 
-            # Define plot names for each position
-            plot_names <- c(
-                "posterior_predictive_check",
-                "linearity",
-                "homogeneity_of_variance",
-                "influential_outliers",
-                "multicollinearity",
-                "normal_residuals"
-            )
+#             # Define plot names for each position
+#             plot_names <- c(
+#                 "posterior_predictive_check",
+#                 "linearity",
+#                 "homogeneity_of_variance",
+#                 "influential_outliers",
+#                 "multicollinearity",
+#                 "normal_residuals"
+#             )
 
-            # Save each plot individually
-            for(i in seq_along(diagnostic_plots)) {
-                filename <- file.path(Phase_3_assumptions_plot_save_path, paste0("final_model_", plot_names[i], ".pdf"))
+#             # Save each plot individually
+#             for(i in seq_along(diagnostic_plots)) {
+#                 filename <- file.path(Phase_3_assumptions_plot_save_path, paste0("final_model_", plot_names[i], ".pdf"))
                 
-                tryCatch({
-                    ggsave(filename, plot = diagnostic_plots[[i]], width = 8, height = 6, device = "pdf")
-                    cat(paste("✓ Saved:", filename, "\n"))
-                }, error = function(e) {
-                    cat(paste("✗ Could not create:", plot_names[i], "-", e$message, "\n"))
-                })
-            }
+#                 tryCatch({
+#                     ggsave(filename, plot = diagnostic_plots[[i]], width = 8, height = 6, device = "pdf")
+#                     cat(paste("✓ Saved:", filename, "\n"))
+#                 }, error = function(e) {
+#                     cat(paste("✗ Could not create:", plot_names[i], "-", e$message, "\n"))
+#                 })
+#             }
 
-            # Also save the complete panel
-            pdf(file.path(Phase_3_assumptions_plot_save_path, "final_model_all_diagnostics.pdf"), width = 12, height = 10)
-            plot(check_model(final_model))
-            dev.off()
+#             # Also save the complete panel
+#             pdf(file.path(Phase_3_assumptions_plot_save_path, "final_model_all_diagnostics.pdf"), width = 12, height = 10)
+#             plot(check_model(final_model))
+#             dev.off()
 
-            cat("\n✓ Final model diagnostic plots completed!\n")
-            cat("✓ Plots saved to:", Phase_3_assumptions_plot_save_path, "\n")
+#             cat("\n✓ Final model diagnostic plots completed!\n")
+#             cat("✓ Plots saved to:", Phase_3_assumptions_plot_save_path, "\n")
 
-            cat("\\n", rep("=", 80), "\\n", sep = "")
-            cat("CHECKING INFLUENTIAL DATA POINTS FOR FINAL MODEL\\n")
-            cat(rep("=", 80), "\\n\\n")
+#             cat("\\n", rep("=", 80), "\\n", sep = "")
+#             cat("CHECKING INFLUENTIAL DATA POINTS FOR FINAL MODEL\\n")
+#             cat(rep("=", 80), "\\n\\n")
 
-            # Group-level influence analysis
-            infl <- influence(final_model, group = "ID_prefix")
+#             # Group-level influence analysis
+#             infl <- influence(final_model, group = "ID_prefix")
 
-            # Save Cook's distance plot
-            cook_plot_path <- file.path(Phase_2_assumptions_plot_save_path, "final_model_cooks_distance.pdf")
-            pdf(cook_plot_path, width = 8, height = 6)
-            plot(infl, which = "cook")
-            dev.off()
-            cat("Check Saved:", cook_plot_path, "\\n")
+#             # Save Cook's distance plot
+#             cook_plot_path <- file.path(Phase_2_assumptions_plot_save_path, "final_model_cooks_distance.pdf")
+#             pdf(cook_plot_path, width = 8, height = 6)
+#             plot(infl, which = "cook")
+#             dev.off()
+#             cat("Check Saved:", cook_plot_path, "\\n")
 
-            # Get Cook's distance values (one per ID_prefix group)
-            cooks_d <- cooks.distance(infl)
+#             # Get Cook's distance values (one per ID_prefix group)
+#             cooks_d <- cooks.distance(infl)
 
-            # Identify influential IDs
-            n_groups <- length(unique(rdf$ID_prefix))
-            threshold <- 4/n_groups
-            influential_id_names <- rownames(cooks_d)[cooks_d > threshold]
+#             # Identify influential IDs
+#             n_groups <- length(unique(rdf$ID_prefix))
+#             threshold <- 4/n_groups
+#             influential_id_names <- rownames(cooks_d)[cooks_d > threshold]
 
-            if(length(influential_id_names) > 0) {
-                cat("\nInfluential IDs (Cook's D >", round(threshold, 3), "):\n")
+#             if(length(influential_id_names) > 0) {
+#                 cat("\nInfluential IDs (Cook's D >", round(threshold, 3), "):\n")
                 
-                # Use the row names directly from cooks_d matrix
-                cat("ID(s):", influential_id_names, "\n")
-                cat("Cook's D value(s):", cooks_d[influential_id_names, ], "\n\n")
+#                 # Use the row names directly from cooks_d matrix
+#                 cat("ID(s):", influential_id_names, "\n")
+#                 cat("Cook's D value(s):", cooks_d[influential_id_names, ], "\n\n")
                 
-                # Show the data for influential IDs
-                cat("Data for influential IDs:\n")
-                influential_data <- rdf[rdf$ID_prefix %in% influential_id_names, ]
-                print(influential_data)
-            } else {
-                cat("\nNo influential IDs detected.\n")
-            }
-            cat("\nInfluence diagnostics completed.\n")
+#                 # Show the data for influential IDs
+#                 cat("Data for influential IDs:\n")
+#                 influential_data <- rdf[rdf$ID_prefix %in% influential_id_names, ]
+#                 print(influential_data)
+#             } else {
+#                 cat("\nNo influential IDs detected.\n")
+#             }
+#             cat("\nInfluence diagnostics completed.\n")
 
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("ANALYSIS COMPLETE\n")
-            cat(rep("=", 80), "\n")
-            ''')
-        if model == "Drug2":
-            r('''
-            library(lme4)
-            library(lmerTest)
-            library(performance)
-            library(see)
-            library(ggplot2)
-            library(patchwork)
-            library(influence.ME)
-            ################################################################################################################
-            # ============================================================================
-            # CORRECTED HIERARCHICAL MODEL TESTING FOR MIXED EFFECTS MODELS
-            # ============================================================================
-            # This script tests effects hierarchically from complex to simple:
-            # 3-way → 2-way → main effects
-            # Using proper model comparisons with likelihood ratio tests
-            # ============================================================================
-            # STEP 1: FIT THE FULL MODEL
-            # ============================================================================
-            cat("Fitting full model with 3-way interaction...\n")
-            model_full <- lmer(theta ~ Condition * Recording * Drug + (1 | ID_prefix), 
-                            data = rdf, REML = FALSE)
-            # ============================================================================
-            # STEP 2: TEST 3-WAY INTERACTION
-            # ============================================================================
-            cat("\n" , rep("=", 80), "\n", sep = "")
-            cat("TESTING 3-WAY INTERACTION\n")
-            cat(rep("=", 80), "\n", sep = "")
-            # Model with all 2-way interactions but no 3-way
-            model_2way_all <- lmer(theta ~ (Condition + Recording + Drug)^2 + (1 | ID_prefix), 
-                                data = rdf, REML = FALSE)
-            cat("\nComparing:\n")
-            cat("  Full model: 3-way interaction included\n")
-            cat("  Reduced:    All 2-way interactions only\n\n")
-            test_3way <- anova(model_2way_all, model_full)
-            print(test_3way)
-            # Decide which model to use for next level
-            if (test_3way$`Pr(>Chisq)`[2] < 0.05) {
-                cat("\n→ 3-way interaction IS significant. Keeping full model.\n")
-                sig_3way <- "CRD"
-            } else {
-                cat("\n→ 3-way interaction NOT significant. Using model with 2-way interactions.\n")
-                sig_3way <- character(0)
-            }
-            # ============================================================================
-            # STEP 3: TEST EACH 2-WAY INTERACTION INDIVIDUALLY
-            # ============================================================================
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("TESTING 2-WAY INTERACTIONS\n")
-            cat(rep("=", 80), "\n", sep = "")
-            # Store results
-            two_way_results <- list()
-            # Test Condition:Recording
-            cat("\n--- Testing Condition:Recording ---\n")
-            model_no_CR <- lmer(theta ~ (Condition + Recording + Drug)^2 - 
-                                Condition:Recording + (1 | ID_prefix),
-                                data = rdf, REML = FALSE)
-            test_CR <- anova(model_no_CR, model_2way_all)
-            print(test_CR)
-            two_way_results$CR <- test_CR$`Pr(>Chisq)`[2]
-            # Test Condition:Drug
-            cat("\n--- Testing Condition:Drug ---\n")
-            model_no_CD <- lmer(theta ~ (Condition + Recording + Drug)^2 - 
-                                Condition:Drug + (1 | ID_prefix),
-                                data = rdf, REML = FALSE)
-            test_CD <- anova(model_no_CD, model_2way_all)
-            print(test_CD)
-            two_way_results$CD <- test_CD$`Pr(>Chisq)`[2]
-            # Test Recording:Drug
-            cat("\n--- Testing Recording:Drug ---\n")
-            model_no_RD <- lmer(theta ~ (Condition + Recording + Drug)^2 - 
-                                Recording:Drug + (1 | ID_prefix),
-                                data = rdf, REML = FALSE)
-            test_RD <- anova(model_no_RD, model_2way_all)
-            print(test_RD)
-            two_way_results$RD <- test_RD$`Pr(>Chisq)`[2]
-            # Determine which 2-way interactions to keep
-            sig_2way <- names(two_way_results)[two_way_results < 0.05]
-            if (length(sig_2way) > 0) {
-                cat("\n→ Significant 2-way interactions:", paste(sig_2way, collapse = ", "), "\n")
-            } else {
-                cat("\n→ No significant 2-way interactions found.\n")
-            }
-            # ============================================================================
-            # STEP 4: TEST MAIN EFFECTS
-            # ============================================================================
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("TESTING MAIN EFFECTS\n")
-            cat(rep("=", 80), "\n", sep = "")
-            # Model with main effects only
-            model_main <- lmer(theta ~ Condition + Recording + Drug + (1 | ID_prefix), 
-                            data = rdf, REML = FALSE)
-            # Store results
-            main_results <- list()
-            # Test Condition
-            cat("\n--- Testing main effect of Condition ---\n")
-            model_no_C <- lmer(theta ~ Recording + Drug + (1 | ID_prefix),
-                            data = rdf, REML = FALSE)
-            test_C <- anova(model_no_C, model_main)
-            print(test_C)
-            main_results$Condition <- test_C$`Pr(>Chisq)`[2]
-            # Test Recording
-            cat("\n--- Testing main effect of Recording ---\n")
-            model_no_R <- lmer(theta ~ Condition + Drug + (1 | ID_prefix),
-                            data = rdf, REML = FALSE)
-            test_R <- anova(model_no_R, model_main)
-            print(test_R)
-            main_results$Recording <- test_R$`Pr(>Chisq)`[2]
-            # Test Drug
-            cat("\n--- Testing main effect of Drug ---\n")
-            model_no_D <- lmer(theta ~ Condition + Recording + (1 | ID_prefix),
-                            data = rdf, REML = FALSE)
-            test_D <- anova(model_no_D, model_main)
-            print(test_D)
-            main_results$Drug <- test_D$`Pr(>Chisq)`[2]
-            # Determine which main effects are significant
-            sig_main <- names(main_results)[main_results < 0.05]
-            if (length(sig_main) > 0) {
-                cat("\n→ Significant main effects:", paste(sig_main, collapse = ", "), "\n")
-            } else {
-                cat("\n→ No significant main effects found.\n")
-            }
-            # ============================================================================
-            # STEP 5: SUMMARY OF ALL RESULTS
-            # ============================================================================
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("SUMMARY OF SIGNIFICANT EFFECTS (α = 0.05)\n")
-            cat(rep("=", 80), "\n\n")
-            cat("3-way interaction:\n")
-            if (length(sig_3way) > 0) {
-                cat("  ✓ Condition:Recording:Drug (p = ", 
-                    format.pval(test_3way$`Pr(>Chisq)`[2], digits = 4), ")\n", sep = "")
-            } else {
-                cat("  (none significant)\n")
-            }
-            cat("\n2-way interactions:\n")
-            if (length(sig_2way) > 0) {
-                for (effect in sig_2way) {
-                    cat("  ✓ ", effect, " (p = ", format.pval(two_way_results[[effect]], digits = 4), ")\n", sep = "")
-                }
-            } else {
-                cat("  (none significant)\n")
-            }
-            cat("\nMain effects:\n")
-            if (length(sig_main) > 0) {
-                for (effect in sig_main) {
-                    cat("  ✓ ", effect, " (p = ", format.pval(main_results[[effect]], digits = 4), ")\n", sep = "")
-                }
-            } else {
-                cat("  (none significant)\n")
-            }
-            # ============================================================================
-            # STEP 6: BUILD AND FIT FINAL MODEL (HIERARCHICAL PRINCIPLE)
-            # ============================================================================
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("BUILDING FINAL MODEL\n")
-            cat(rep("=", 80), "\n\n")
-            # Initialize sets for terms to include
-            terms_to_include <- list(
-            main = character(0),
-            two_way = character(0),
-            three_way = character(0)
-            )
-            all_vars <- c("Condition", "Recording", "Drug")
-            # Check 3-way interaction
-            if (length(sig_3way) > 0) {
-            cat("3-way interaction is significant - including ALL lower-order terms\n")
-            terms_to_include$three_way <- "Condition:Recording:Drug"
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("ANALYSIS COMPLETE\n")
+#             cat(rep("=", 80), "\n")
+#             ''')
+#         if model == "Drug2":
+#             r('''
+#             library(lme4)
+#             library(lmerTest)
+#             library(performance)
+#             library(see)
+#             library(ggplot2)
+#             library(patchwork)
+#             library(influence.ME)
+#             ################################################################################################################
+#             # ============================================================================
+#             # CORRECTED HIERARCHICAL MODEL TESTING FOR MIXED EFFECTS MODELS
+#             # ============================================================================
+#             # This script tests effects hierarchically from complex to simple:
+#             # 3-way → 2-way → main effects
+#             # Using proper model comparisons with likelihood ratio tests
+#             # ============================================================================
+#             # STEP 1: FIT THE FULL MODEL
+#             # ============================================================================
+#             cat("Fitting full model with 3-way interaction...\n")
+#             model_full <- lmer(theta ~ Condition * Recording * Drug + (1 | ID_prefix), 
+#                             data = rdf, REML = FALSE)
+#             # ============================================================================
+#             # STEP 2: TEST 3-WAY INTERACTION
+#             # ============================================================================
+#             cat("\n" , rep("=", 80), "\n", sep = "")
+#             cat("TESTING 3-WAY INTERACTION\n")
+#             cat(rep("=", 80), "\n", sep = "")
+#             # Model with all 2-way interactions but no 3-way
+#             model_2way_all <- lmer(theta ~ (Condition + Recording + Drug)^2 + (1 | ID_prefix), 
+#                                 data = rdf, REML = FALSE)
+#             cat("\nComparing:\n")
+#             cat("  Full model: 3-way interaction included\n")
+#             cat("  Reduced:    All 2-way interactions only\n\n")
+#             test_3way <- anova(model_2way_all, model_full)
+#             print(test_3way)
+#             # Decide which model to use for next level
+#             if (test_3way$`Pr(>Chisq)`[2] < 0.05) {
+#                 cat("\n→ 3-way interaction IS significant. Keeping full model.\n")
+#                 sig_3way <- "CRD"
+#             } else {
+#                 cat("\n→ 3-way interaction NOT significant. Using model with 2-way interactions.\n")
+#                 sig_3way <- character(0)
+#             }
+#             # ============================================================================
+#             # STEP 3: TEST EACH 2-WAY INTERACTION INDIVIDUALLY
+#             # ============================================================================
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("TESTING 2-WAY INTERACTIONS\n")
+#             cat(rep("=", 80), "\n", sep = "")
+#             # Store results
+#             two_way_results <- list()
+#             # Test Condition:Recording
+#             cat("\n--- Testing Condition:Recording ---\n")
+#             model_no_CR <- lmer(theta ~ (Condition + Recording + Drug)^2 - 
+#                                 Condition:Recording + (1 | ID_prefix),
+#                                 data = rdf, REML = FALSE)
+#             test_CR <- anova(model_no_CR, model_2way_all)
+#             print(test_CR)
+#             two_way_results$CR <- test_CR$`Pr(>Chisq)`[2]
+#             # Test Condition:Drug
+#             cat("\n--- Testing Condition:Drug ---\n")
+#             model_no_CD <- lmer(theta ~ (Condition + Recording + Drug)^2 - 
+#                                 Condition:Drug + (1 | ID_prefix),
+#                                 data = rdf, REML = FALSE)
+#             test_CD <- anova(model_no_CD, model_2way_all)
+#             print(test_CD)
+#             two_way_results$CD <- test_CD$`Pr(>Chisq)`[2]
+#             # Test Recording:Drug
+#             cat("\n--- Testing Recording:Drug ---\n")
+#             model_no_RD <- lmer(theta ~ (Condition + Recording + Drug)^2 - 
+#                                 Recording:Drug + (1 | ID_prefix),
+#                                 data = rdf, REML = FALSE)
+#             test_RD <- anova(model_no_RD, model_2way_all)
+#             print(test_RD)
+#             two_way_results$RD <- test_RD$`Pr(>Chisq)`[2]
+#             # Determine which 2-way interactions to keep
+#             sig_2way <- names(two_way_results)[two_way_results < 0.05]
+#             if (length(sig_2way) > 0) {
+#                 cat("\n→ Significant 2-way interactions:", paste(sig_2way, collapse = ", "), "\n")
+#             } else {
+#                 cat("\n→ No significant 2-way interactions found.\n")
+#             }
+#             # ============================================================================
+#             # STEP 4: TEST MAIN EFFECTS
+#             # ============================================================================
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("TESTING MAIN EFFECTS\n")
+#             cat(rep("=", 80), "\n", sep = "")
+#             # Model with main effects only
+#             model_main <- lmer(theta ~ Condition + Recording + Drug + (1 | ID_prefix), 
+#                             data = rdf, REML = FALSE)
+#             # Store results
+#             main_results <- list()
+#             # Test Condition
+#             cat("\n--- Testing main effect of Condition ---\n")
+#             model_no_C <- lmer(theta ~ Recording + Drug + (1 | ID_prefix),
+#                             data = rdf, REML = FALSE)
+#             test_C <- anova(model_no_C, model_main)
+#             print(test_C)
+#             main_results$Condition <- test_C$`Pr(>Chisq)`[2]
+#             # Test Recording
+#             cat("\n--- Testing main effect of Recording ---\n")
+#             model_no_R <- lmer(theta ~ Condition + Drug + (1 | ID_prefix),
+#                             data = rdf, REML = FALSE)
+#             test_R <- anova(model_no_R, model_main)
+#             print(test_R)
+#             main_results$Recording <- test_R$`Pr(>Chisq)`[2]
+#             # Test Drug
+#             cat("\n--- Testing main effect of Drug ---\n")
+#             model_no_D <- lmer(theta ~ Condition + Recording + (1 | ID_prefix),
+#                             data = rdf, REML = FALSE)
+#             test_D <- anova(model_no_D, model_main)
+#             print(test_D)
+#             main_results$Drug <- test_D$`Pr(>Chisq)`[2]
+#             # Determine which main effects are significant
+#             sig_main <- names(main_results)[main_results < 0.05]
+#             if (length(sig_main) > 0) {
+#                 cat("\n→ Significant main effects:", paste(sig_main, collapse = ", "), "\n")
+#             } else {
+#                 cat("\n→ No significant main effects found.\n")
+#             }
+#             # ============================================================================
+#             # STEP 5: SUMMARY OF ALL RESULTS
+#             # ============================================================================
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("SUMMARY OF SIGNIFICANT EFFECTS (α = 0.05)\n")
+#             cat(rep("=", 80), "\n\n")
+#             cat("3-way interaction:\n")
+#             if (length(sig_3way) > 0) {
+#                 cat("  ✓ Condition:Recording:Drug (p = ", 
+#                     format.pval(test_3way$`Pr(>Chisq)`[2], digits = 4), ")\n", sep = "")
+#             } else {
+#                 cat("  (none significant)\n")
+#             }
+#             cat("\n2-way interactions:\n")
+#             if (length(sig_2way) > 0) {
+#                 for (effect in sig_2way) {
+#                     cat("  ✓ ", effect, " (p = ", format.pval(two_way_results[[effect]], digits = 4), ")\n", sep = "")
+#                 }
+#             } else {
+#                 cat("  (none significant)\n")
+#             }
+#             cat("\nMain effects:\n")
+#             if (length(sig_main) > 0) {
+#                 for (effect in sig_main) {
+#                     cat("  ✓ ", effect, " (p = ", format.pval(main_results[[effect]], digits = 4), ")\n", sep = "")
+#                 }
+#             } else {
+#                 cat("  (none significant)\n")
+#             }
+#             # ============================================================================
+#             # STEP 6: BUILD AND FIT FINAL MODEL (HIERARCHICAL PRINCIPLE)
+#             # ============================================================================
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("BUILDING FINAL MODEL\n")
+#             cat(rep("=", 80), "\n\n")
+#             # Initialize sets for terms to include
+#             terms_to_include <- list(
+#             main = character(0),
+#             two_way = character(0),
+#             three_way = character(0)
+#             )
+#             all_vars <- c("Condition", "Recording", "Drug")
+#             # Check 3-way interaction
+#             if (length(sig_3way) > 0) {
+#             cat("3-way interaction is significant - including ALL lower-order terms\n")
+#             terms_to_include$three_way <- "Condition:Recording:Drug"
             
-            # Add all 2-way interactions
-            terms_to_include$two_way <- c("Condition:Recording", "Condition:Drug", "Recording:Drug")
+#             # Add all 2-way interactions
+#             terms_to_include$two_way <- c("Condition:Recording", "Condition:Drug", "Recording:Drug")
             
-            # Add all main effects
-            terms_to_include$main <- all_vars
+#             # Add all main effects
+#             terms_to_include$main <- all_vars
             
-            } else {
-            # No 3-way, add significant 2-way interactions (and their constituent main effects)
-            if (length(sig_2way) > 0) {
-                cat("Significant 2-way interaction(s) found - including constituent main effects\n")
+#             } else {
+#             # No 3-way, add significant 2-way interactions (and their constituent main effects)
+#             if (length(sig_2way) > 0) {
+#                 cat("Significant 2-way interaction(s) found - including constituent main effects\n")
                 
-                if ("CR" %in% sig_2way) {
-                terms_to_include$two_way <- unique(c(terms_to_include$two_way, "Condition:Recording"))
-                terms_to_include$main <- unique(c(terms_to_include$main, "Condition", "Recording"))
-                }
-                if ("CD" %in% sig_2way) {
-                terms_to_include$two_way <- unique(c(terms_to_include$two_way, "Condition:Drug"))
-                terms_to_include$main <- unique(c(terms_to_include$main, "Condition", "Drug"))
-                }
-                if ("RD" %in% sig_2way) {
-                terms_to_include$two_way <- unique(c(terms_to_include$two_way, "Recording:Drug"))
-                terms_to_include$main <- unique(c(terms_to_include$main, "Recording", "Drug"))
-                }
-            }
+#                 if ("CR" %in% sig_2way) {
+#                 terms_to_include$two_way <- unique(c(terms_to_include$two_way, "Condition:Recording"))
+#                 terms_to_include$main <- unique(c(terms_to_include$main, "Condition", "Recording"))
+#                 }
+#                 if ("CD" %in% sig_2way) {
+#                 terms_to_include$two_way <- unique(c(terms_to_include$two_way, "Condition:Drug"))
+#                 terms_to_include$main <- unique(c(terms_to_include$main, "Condition", "Drug"))
+#                 }
+#                 if ("RD" %in% sig_2way) {
+#                 terms_to_include$two_way <- unique(c(terms_to_include$two_way, "Recording:Drug"))
+#                 terms_to_include$main <- unique(c(terms_to_include$main, "Recording", "Drug"))
+#                 }
+#             }
             
-            # Add significant main effects (only if not already included via interactions)
-            if (length(sig_main) > 0) {
-                terms_to_include$main <- unique(c(terms_to_include$main, sig_main))
-            }
-            }
-            # Build the formula
-            if (length(c(terms_to_include$main, terms_to_include$two_way, 
-                        terms_to_include$three_way)) > 0) {
+#             # Add significant main effects (only if not already included via interactions)
+#             if (length(sig_main) > 0) {
+#                 terms_to_include$main <- unique(c(terms_to_include$main, sig_main))
+#             }
+#             }
+#             # Build the formula
+#             if (length(c(terms_to_include$main, terms_to_include$two_way, 
+#                         terms_to_include$three_way)) > 0) {
             
-            all_terms <- c(terms_to_include$main, terms_to_include$two_way,
-                            terms_to_include$three_way)
-            formula_str <- paste("theta ~", paste(all_terms, collapse = " + "), "+ (1 | ID_prefix)")
-            } else {
-            formula_str <- "theta ~ 1 + (1 | ID_prefix)"
-            }
-            cat("\nBased on hierarchical testing principles, the final model is:\n\n")
-            cat(formula_str, "\n\n")
-            cat("Terms included:\n")
-            cat("  Main effects:", paste(terms_to_include$main, collapse = ", "), "\n")
-            if (length(terms_to_include$two_way) > 0) 
-            cat("  2-way interactions:", paste(terms_to_include$two_way, collapse = ", "), "\n")
-            if (length(terms_to_include$three_way) > 0) 
-            cat("  3-way interaction:", paste(terms_to_include$three_way, collapse = ", "), "\n")
-            # Fit the final model with REML = TRUE
-            cat("\nFitting final model with REML = TRUE...\n")
-            final_model <- lmer(as.formula(formula_str), data = rdf, REML = TRUE)
-            cat("\n", rep("=", 80), "\n", sep = "")
-            # ============================================================================
-            # STEP 7: CHECK ASSUMPTIONS FOR FINAL MODEL ONLY
-            # ============================================================================
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("CHECKING ASSUMPTIONS FOR FINAL MODEL\n")
-            cat(rep("=", 80), "\n\n")
-            # Get all diagnostic plots as a list of ggplot objects
-            diagnostic_plots <- plot(check_model(final_model, panel = FALSE))
-            # Define plot names for each position
-            plot_names <- c(
-                "posterior_predictive_check",
-                "linearity",
-                "homogeneity_of_variance",
-                "influential_outliers",
-                "multicollinearity",
-                "normal_residuals"
-            )
-            # Save each plot individually
-            for(i in seq_along(diagnostic_plots)) {
-                filename <- file.path(Phase_3_assumptions_plot_save_path, paste0("final_model_", plot_names[i], ".pdf"))
+#             all_terms <- c(terms_to_include$main, terms_to_include$two_way,
+#                             terms_to_include$three_way)
+#             formula_str <- paste("theta ~", paste(all_terms, collapse = " + "), "+ (1 | ID_prefix)")
+#             } else {
+#             formula_str <- "theta ~ 1 + (1 | ID_prefix)"
+#             }
+#             cat("\nBased on hierarchical testing principles, the final model is:\n\n")
+#             cat(formula_str, "\n\n")
+#             cat("Terms included:\n")
+#             cat("  Main effects:", paste(terms_to_include$main, collapse = ", "), "\n")
+#             if (length(terms_to_include$two_way) > 0) 
+#             cat("  2-way interactions:", paste(terms_to_include$two_way, collapse = ", "), "\n")
+#             if (length(terms_to_include$three_way) > 0) 
+#             cat("  3-way interaction:", paste(terms_to_include$three_way, collapse = ", "), "\n")
+#             # Fit the final model with REML = TRUE
+#             cat("\nFitting final model with REML = TRUE...\n")
+#             final_model <- lmer(as.formula(formula_str), data = rdf, REML = TRUE)
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             # ============================================================================
+#             # STEP 7: CHECK ASSUMPTIONS FOR FINAL MODEL ONLY
+#             # ============================================================================
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("CHECKING ASSUMPTIONS FOR FINAL MODEL\n")
+#             cat(rep("=", 80), "\n\n")
+#             # Get all diagnostic plots as a list of ggplot objects
+#             diagnostic_plots <- plot(check_model(final_model, panel = FALSE))
+#             # Define plot names for each position
+#             plot_names <- c(
+#                 "posterior_predictive_check",
+#                 "linearity",
+#                 "homogeneity_of_variance",
+#                 "influential_outliers",
+#                 "multicollinearity",
+#                 "normal_residuals"
+#             )
+#             # Save each plot individually
+#             for(i in seq_along(diagnostic_plots)) {
+#                 filename <- file.path(Phase_3_assumptions_plot_save_path, paste0("final_model_", plot_names[i], ".pdf"))
                 
-                tryCatch({
-                    ggsave(filename, plot = diagnostic_plots[[i]], width = 8, height = 6, device = "pdf")
-                    cat(paste("✓ Saved:", filename, "\n"))
-                }, error = function(e) {
-                    cat(paste("✗ Could not create:", plot_names[i], "-", e$message, "\n"))
-                })
-            }
-            # Also save the complete panel
-            pdf(file.path(Phase_3_assumptions_plot_save_path, "final_model_all_diagnostics.pdf"), width = 12, height = 10)
-            plot(check_model(final_model))
-            dev.off()
-            cat("\n✓ Final model diagnostic plots completed!\n")
-            cat("✓ Plots saved to:", Phase_3_assumptions_plot_save_path, "\n")
-            # ============================================================================
-            # STEP 8: CHECK INFLUENTIAL DATA POINTS FOR FINAL MODEL
-            # ============================================================================
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("CHECKING INFLUENTIAL DATA POINTS FOR FINAL MODEL\n")
-            cat(rep("=", 80), "\n\n")
-            # Group-level influence analysis
-            infl <- influence(final_model, group = "ID_prefix")
-            # Save Cook's distance plot
-            cook_plot_path <- file.path(Phase_2_assumptions_plot_save_path, "final_model_cooks_distance.pdf")
-            pdf(cook_plot_path, width = 8, height = 6)
-            plot(infl, which = "cook")
-            dev.off()
-            cat("Check Saved:", cook_plot_path, "\n")
-            # Get Cook's distance values (one per ID_prefix group)
-            cooks_d <- cooks.distance(infl)
-            # Identify influential IDs
-            n_groups <- length(unique(rdf$ID_prefix))
-            threshold <- 4/n_groups
-            influential_id_names <- rownames(cooks_d)[cooks_d > threshold]
-            if(length(influential_id_names) > 0) {
-                cat("\nInfluential IDs (Cook's D >", round(threshold, 3), "):\n")
+#                 tryCatch({
+#                     ggsave(filename, plot = diagnostic_plots[[i]], width = 8, height = 6, device = "pdf")
+#                     cat(paste("✓ Saved:", filename, "\n"))
+#                 }, error = function(e) {
+#                     cat(paste("✗ Could not create:", plot_names[i], "-", e$message, "\n"))
+#                 })
+#             }
+#             # Also save the complete panel
+#             pdf(file.path(Phase_3_assumptions_plot_save_path, "final_model_all_diagnostics.pdf"), width = 12, height = 10)
+#             plot(check_model(final_model))
+#             dev.off()
+#             cat("\n✓ Final model diagnostic plots completed!\n")
+#             cat("✓ Plots saved to:", Phase_3_assumptions_plot_save_path, "\n")
+#             # ============================================================================
+#             # STEP 8: CHECK INFLUENTIAL DATA POINTS FOR FINAL MODEL
+#             # ============================================================================
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("CHECKING INFLUENTIAL DATA POINTS FOR FINAL MODEL\n")
+#             cat(rep("=", 80), "\n\n")
+#             # Group-level influence analysis
+#             infl <- influence(final_model, group = "ID_prefix")
+#             # Save Cook's distance plot
+#             cook_plot_path <- file.path(Phase_2_assumptions_plot_save_path, "final_model_cooks_distance.pdf")
+#             pdf(cook_plot_path, width = 8, height = 6)
+#             plot(infl, which = "cook")
+#             dev.off()
+#             cat("Check Saved:", cook_plot_path, "\n")
+#             # Get Cook's distance values (one per ID_prefix group)
+#             cooks_d <- cooks.distance(infl)
+#             # Identify influential IDs
+#             n_groups <- length(unique(rdf$ID_prefix))
+#             threshold <- 4/n_groups
+#             influential_id_names <- rownames(cooks_d)[cooks_d > threshold]
+#             if(length(influential_id_names) > 0) {
+#                 cat("\nInfluential IDs (Cook's D >", round(threshold, 3), "):\n")
                 
-                # Use the row names directly from cooks_d matrix
-                cat("ID(s):", influential_id_names, "\n")
-                cat("Cook's D value(s):", cooks_d[influential_id_names, ], "\n\n")
+#                 # Use the row names directly from cooks_d matrix
+#                 cat("ID(s):", influential_id_names, "\n")
+#                 cat("Cook's D value(s):", cooks_d[influential_id_names, ], "\n\n")
                 
-                # Show the data for influential IDs
-                cat("Data for influential IDs:\n")
-                influential_data <- rdf[rdf$ID_prefix %in% influential_id_names, ]
-                print(influential_data)
-            } else {
-                cat("\nNo influential IDs detected.\n")
-            }
-            cat("\nInfluence diagnostics completed.\n")
-            cat("\n", rep("=", 80), "\n", sep = "")
-            cat("ANALYSIS COMPLETE\n")
-            cat(rep("=", 80), "\n")
-            ''')
-"""
+#                 # Show the data for influential IDs
+#                 cat("Data for influential IDs:\n")
+#                 influential_data <- rdf[rdf$ID_prefix %in% influential_id_names, ]
+#                 print(influential_data)
+#             } else {
+#                 cat("\nNo influential IDs detected.\n")
+#             }
+#             cat("\nInfluence diagnostics completed.\n")
+#             cat("\n", rep("=", 80), "\n", sep = "")
+#             cat("ANALYSIS COMPLETE\n")
+#             cat(rep("=", 80), "\n")
+#             ''')
+# """
 
-        ''')
+#         ''')
 
-        # modelConch <- lmer(theta ~ Condition + ch_name + Condition:ch_name + (1 | ID), data=rdf, REML=FALSE)
-        # nullModelConch <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
-        # anova_result_Condch <- anova(modelConch, nullModelConch)
-        # anova_Condch_df <- as.data.frame(anova_result_Condch)
-        # print(anova_result_Condch)
-        # # print(isSingular(modelConch, tol = 1e-4))
-        # # print(summary(modelConch)$varcor)
-        # X <- model.matrix(~ Condition * ch_name, data = rdf)
-        # # print(qr(X)$rank)
-        # # print(ncol(X))
+#         # modelConch <- lmer(theta ~ Condition + ch_name + Condition:ch_name + (1 | ID), data=rdf, REML=FALSE)
+#         # nullModelConch <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
+#         # anova_result_Condch <- anova(modelConch, nullModelConch)
+#         # anova_Condch_df <- as.data.frame(anova_result_Condch)
+#         # print(anova_result_Condch)
+#         # # print(isSingular(modelConch, tol = 1e-4))
+#         # # print(summary(modelConch)$varcor)
+#         # X <- model.matrix(~ Condition * ch_name, data = rdf)
+#         # # print(qr(X)$rank)
+#         # # print(ncol(X))
         
-        # #Extract coefficents as dataframe:
-        # coef_summary_modelConch <- as.data.frame(summary(modelConch)$coefficients)
-        # coef_summary_modelConch$Parameter <- rownames(coef_summary_modelConch)
-        # colnames(coef_summary_modelConch) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+#         # #Extract coefficents as dataframe:
+#         # coef_summary_modelConch <- as.data.frame(summary(modelConch)$coefficients)
+#         # coef_summary_modelConch$Parameter <- rownames(coef_summary_modelConch)
+#         # colnames(coef_summary_modelConch) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
 
-        # #Extract coefficents for plotting:
-        # coef_summary_nullModelConch <- as.data.frame(summary(nullModelConch)$coefficients)
-        # coef_summary_nullModelConch$Parameter <- rownames(coef_summary_nullModelConch)
-        # colnames(coef_summary_nullModelConch) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+#         # #Extract coefficents for plotting:
+#         # coef_summary_nullModelConch <- as.data.frame(summary(nullModelConch)$coefficients)
+#         # coef_summary_nullModelConch$Parameter <- rownames(coef_summary_nullModelConch)
+#         # colnames(coef_summary_nullModelConch) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
         
-        # # ################################################################################################################
+#         # # ################################################################################################################
         
-        # modelchannel <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
-        # nullModelchannel <- lmer(theta ~ Condition + (1 | ID), data=rdf, REML=FALSE)
-        # anova_result_channel <- anova(modelchannel, nullModelchannel)
-        # anova_channel_df <- as.data.frame(anova_result_channel)
-        # print(anova_result_channel)
+#         # modelchannel <- lmer(theta ~ Condition + ch_name + (1 | ID), data=rdf, REML=FALSE)
+#         # nullModelchannel <- lmer(theta ~ Condition + (1 | ID), data=rdf, REML=FALSE)
+#         # anova_result_channel <- anova(modelchannel, nullModelchannel)
+#         # anova_channel_df <- as.data.frame(anova_result_channel)
+#         # print(anova_result_channel)
         
-        # #Extract coefficents as dataframe:
-        # coef_summary_modelchannel <- as.data.frame(summary(modelchannel)$coefficients)
-        # coef_summary_modelchannel$Parameter <- rownames(coef_summary_modelchannel)
-        # colnames(coef_summary_modelchannel) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+#         # #Extract coefficents as dataframe:
+#         # coef_summary_modelchannel <- as.data.frame(summary(modelchannel)$coefficients)
+#         # coef_summary_modelchannel$Parameter <- rownames(coef_summary_modelchannel)
+#         # colnames(coef_summary_modelchannel) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
         
-        # #Extract coefficents for plotting:
-        # coef_summary_nullModelchannel <- as.data.frame(summary(nullModelchannel)$coefficients)
-        # coef_summary_nullModelchannel$Parameter <- rownames(coef_summary_nullModelchannel)
-        # colnames(coef_summary_nullModelchannel) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
+#         # #Extract coefficents for plotting:
+#         # coef_summary_nullModelchannel <- as.data.frame(summary(nullModelchannel)$coefficients)
+#         # coef_summary_nullModelchannel$Parameter <- rownames(coef_summary_nullModelchannel)
+#         # colnames(coef_summary_nullModelchannel) <- c("Estimate", "Std_Error", "df", "t_value", "p_value", "Parameter")
         
-        # ################################################################################################################
+#         # ################################################################################################################
 
-        ''')
-"""
+#         ''')
+# """
         
         # with localconverter(pandas2ri.converter):
             # anova_Condch_df = globalenv["anova_Condch_df"]
@@ -1716,62 +1716,62 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         # anova_Group_df.to_csv(os.path.join(save_path, f"anova_group_df.csv"))
         # anova_Group_df.to_csv(os.path.join(save_path, f"anova_group_df.csv"))
 
-# import sys
-# parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-# sys.path.append(parent_dir)
-# from collections import defaultdict
-# from preprocessing_toolbox.load_data_function import data_loaders
+import sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(parent_dir)
+from collections import defaultdict
+from preprocessing_toolbox.load_data_function import data_loaders
 
-# dataSetList = list(data_loaders.keys())
-# dataLoaders = [dataSetList[15]] #, dataSetList[17]]
-# datasets = defaultdict(defaultdict)
+dataSetList = list(data_loaders.keys())
+dataLoaders = [dataSetList[19]] #, dataSetList[17]]
+datasets = defaultdict(defaultdict)
 
-# for data_loader in dataLoaders:
-#     settings = {
-#         "data_set": data_loader,  # Default to first dataset
-#         "epoch_type": "TongueMI",
-#         "individual": "All Individuals",
-#         "short_channel_correction": True,
-#         "negative_correlation_enhancement": False,
-#         "haemo_type": "hbo",
-#         "baseline_correction": "Previous rest period",
-#         "tmin": 0,
-#         "stimulus_duration": 5,
-#         "scalp_coupling_threshold": 0.8,
-#         "reject_criteria": dict(hbo=80e-6),
-#         "unwanted": ["15.0"],
-#         "filter_lower_value": 0.01,
-#         "filter_upper_value": 0.5,
-#         "h_trans_bandwidth": 0.2,           
-#         "l_trans_bandwidth": 0.01,
-#         "snr_rejection": "SNR",  # Default to None, can be set to "SNR" or "CV"
-#         "snr_threshold": 8,  # Default threshold for SNR
-#         "Apply_TDDR": True,
-#         "interpolate_bad_channels": True,
-#     }
-#     current_loader = data_loaders[data_loader](
-#                     data_name = data_loader,
-#                     file_path = data_loader,
-#                     short_channel_correction=settings["short_channel_correction"],
-#                     negative_correlation_enhancement=settings["negative_correlation_enhancement"],
-#                     interpolate_bad_channels=settings["interpolate_bad_channels"],
-#                     baseline_correction=settings["baseline_correction"],
-#                     tmin=settings["tmin"],
-#                     filter_lower_value=settings["filter_lower_value"],
-#                     filter_upper_value=settings["filter_upper_value"],
-#                     l_trans_bandwidth=settings["l_trans_bandwidth"],
-#                     h_trans_bandwidth=settings["h_trans_bandwidth"],
-#                     scalp_coupling_threshold=settings["scalp_coupling_threshold"],
-#                     reject_criteria=settings["reject_criteria"],
-#                     snr_rejection=settings["snr_rejection"],
-#                     snr_threshold=settings["snr_threshold"],
-#                     apply_tddr=settings["Apply_TDDR"]
-#                 )
-#     data = current_loader.load_data()
-#     variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
-#     datasets[data_loader] = {key: value for key, value in zip(variables, data)}
+for data_loader in dataLoaders:
+    settings = {
+        "data_set": data_loader,  # Default to first dataset
+        "epoch_type": "TongueMI",
+        "individual": "All Individuals",
+        "short_channel_correction": True,
+        "negative_correlation_enhancement": False,
+        "haemo_type": "hbo",
+        "baseline_correction": "Previous rest period",
+        "tmin": 0,
+        "stimulus_duration": 5,
+        "scalp_coupling_threshold": 0.8,
+        "reject_criteria": dict(hbo=80e-6),
+        "unwanted": ["15.0"],
+        "filter_lower_value": 0.01,
+        "filter_upper_value": 0.5,
+        "h_trans_bandwidth": 0.2,           
+        "l_trans_bandwidth": 0.01,
+        "snr_rejection": "SNR",  # Default to None, can be set to "SNR" or "CV"
+        "snr_threshold": 8,  # Default threshold for SNR
+        "Apply_TDDR": True,  
+        "interpolate_bad_channels": True,
+    }
+    current_loader = data_loaders[data_loader](
+                    data_name = data_loader,
+                    file_path = data_loader,
+                    short_channel_correction=settings["short_channel_correction"],
+                    negative_correlation_enhancement=settings["negative_correlation_enhancement"],
+                    interpolate_bad_channels=settings["interpolate_bad_channels"],
+                    baseline_correction=settings["baseline_correction"],
+                    tmin=settings["tmin"],
+                    filter_lower_value=settings["filter_lower_value"],
+                    filter_upper_value=settings["filter_upper_value"],
+                    l_trans_bandwidth=settings["l_trans_bandwidth"],
+                    h_trans_bandwidth=settings["h_trans_bandwidth"],
+                    scalp_coupling_threshold=settings["scalp_coupling_threshold"],
+                    reject_criteria=settings["reject_criteria"],
+                    snr_rejection=settings["snr_rejection"],
+                    snr_threshold=settings["snr_threshold"],
+                    apply_tddr=settings["Apply_TDDR"]
+                )
+    data = current_loader.load_data()
+    variables = ("all_epochs", "data_name", "all_data", "freq", "data_types", "all_individuals")
+    datasets[data_loader] = {key: value for key, value in zip(variables, data)}
 
-# all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
-# number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])]#, len((datasets[dataLoaders[1]]["all_individuals"]))]
+all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
+number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])]#, len((datasets[dataLoaders[1]]["all_individuals"]))]
 
-# run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)
+run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)

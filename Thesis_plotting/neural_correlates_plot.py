@@ -110,6 +110,7 @@ for data_loader in dataLoaders:
 
 all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
 number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])] #, len((datasets[dataLoaders[1]]["all_individuals"]))]
+Only_responders = True
 
 if "Marwan" in dataLoaders[0]:
     study = 2
@@ -147,7 +148,7 @@ elif study == 2:
     relevant_data_types = list(np.unique([condition for condition in all_conditions if "Math" in condition]))
     picks_ =  [ch for ch in long_channels]
     
-Only_responders = True
+
 all_n_back_ = ["0"] #, "n_back", "0""n_back""Control"
 for n_back_ in all_n_back_:
     

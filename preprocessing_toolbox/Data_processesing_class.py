@@ -3648,7 +3648,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
-        self.subjects_to_exclude = {"fNIRS EEG Marwan data load": [], #"P20", "P29", "P9"
+        self.subjects_to_exclude = {"fNIRS EEG Marwan data load": ["P20", "P29", "P9"], 
                                     }
         self.folder_errors = []
         self.age_file = Path(os.getenv("demographic_data_path_Marwan".replace(" ", "_").replace("-", "_")))
@@ -3996,7 +3996,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                     ch["kind"] = info_channel["kind"]                    
 
                 # # Now add it to raw_haemo
-                # raw_haemo = raw_haemo.add_channels([hbt_raw], force_update_info=True)
+                raw_haemo = raw_haemo.add_channels([hbt_raw], force_update_info=True)
                 names = [ind.name for ind in self.Individual_participants]
                 if f"{patient_name}".replace("-", "") in names:
                     print("debug")

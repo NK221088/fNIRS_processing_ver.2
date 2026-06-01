@@ -63,7 +63,17 @@ from preprocessing_toolbox.load_data_function import data_loaders
 
 from Thesis_plotting.Significant_responders_plot import covert_responders
 
-covert_responders = ["P3", "P9", "P20", "P29", "P30", "P39", "P43", "P34"]
+load_dotenv()
+responders_count_path = Path(os.getenv("Marwan_responders_count"))
+df = pd.read_csv(rf"{responders_count_path}", index_col=0)
+data = df['count'].to_dict()
+total_number_of_patients = 50
+threshold = 7
+print("Responders:")
+all_responders = [f"P{str(ID)}" for ID in range(1, total_number_of_patients + 1)]
+covert_responders = [ID for ID, count in data.items() if count >= threshold]
+non_covert_responders = [ID for ID, count in data.items() if count < threshold]
+non_responders = [ID for ID in all_responders if ID not in covert_responders and ID not in non_covert_responders]
 
 dataSetList = list(data_loaders.keys())
 dataLoaders = [dataSetList[19]] #, dataSetList[17]]
@@ -117,73 +127,29 @@ for data_loader in dataLoaders:
 all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
 number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])] #, len((datasets[dataLoaders[1]]["all_individuals"]))]
 
-if "Marwan" in dataLoaders[0]:
-    study = 2
-    phase = 2
-else:
-    study = 1
-    if len(number_of_subjects) > 1:
-        phase = 2
-    else:
-        phase = 1
-
 long_channels = mne_nirs.channels.get_long_channels(datasets[dataLoaders[0]]["all_individuals"][0].raw_haemo.copy()).ch_names
 
-if study == 1 and phase == 2:
-    if len(number_of_subjects) > 1:
-        all_conditions = list(np.unique(datasets[dataLoaders[1]]["all_epochs"][0].annotations.description))
-    else:
-        all_conditions = list(np.unique(datasets[dataLoaders[0]]["all_epochs"][0].annotations.description))
-else:
-    all_conditions = list(np.unique(datasets[dataLoaders[0]]["all_epochs"][0].annotations.description))
-if study == 1:
-    if phase == 1:
-        _epochs = datasets[dataLoaders[0]]["all_epochs"]
-    elif phase == 2:
-        if len(number_of_subjects) > 1:
-            all_epochs = [datasets[dataLoaders[0]]["all_epochs"], datasets[dataLoaders[1]]["all_epochs"]]
-            _epochs = []
-        else:
-            _epochs = datasets[dataLoaders[0]]["all_epochs"]
-    tmax = 50
-    times = np.arange(0, tmax+1, 10.0)
-    relevant_data_types = list(np.unique([condition for condition in all_conditions if "n_back" in condition]))
-    picks_ =  [ch for ch in long_channels if ("S1" in ch) or ("S2" in ch) or ("S3" in ch) or ("S4" in ch)] + [ch for ch in datasets[dataLoaders[0]]["all_individuals"][0].raw_haemo.copy().ch_names if (("S1" in ch) or ("S2" in ch) or ("S3" in ch) or ("S4" in ch)) and "hbt" in ch]
-    all_n_back_ = ["single", "Control", "0_back", "1_back", "2_back", "3_back"]
-elif study == 2:
-    _epochs = [ind.epochs for ind in datasets[dataLoaders[0]]["all_individuals"]]
-    names = [ind.name for ind in datasets[dataLoaders[0]]["all_individuals"]]
-    tmax = 26
-    times = np.arange(0, tmax, 5)
+all_conditions = list(np.unique(datasets[dataLoaders[0]]["all_epochs"][0].annotations.description))
 
-    relevant_data_types = list(np.unique([condition for condition in all_conditions if "Math" in condition]))
-    picks_ =  [ch for ch in long_channels]
-    all_n_back_ = ["Math", "Hard_Math", "Control"] #"single", 
+_epochs = [ind.epochs for ind in datasets[dataLoaders[0]]["all_individuals"]]
+names = [ind.name for ind in datasets[dataLoaders[0]]["all_individuals"]]
+tmax = 26
+times = np.arange(0, tmax, 5)
+
+relevant_data_types = list(np.unique([condition for condition in all_conditions if "Math" in condition]))
+picks_ =  [ch for ch in long_channels]
+all_n_back_ = ["Math", "Hard_Math", "Control"] #"single", 
 
 first_time = True
 for n_back_ in all_n_back_:
     epochs = _epochs.copy()
     if first_time:
         for data_number in range(len(number_of_subjects)):
-            if study == 1:
-                if data_number == 0:
-                    if len(epochs) == 1:
-                        end = "Pa"
-                    else:
-                        end = "HC"
-                elif data_number == 1:
-                    end = "Pa"
-            if study == 1 and phase == 2:
-                epochs = all_epochs[data_number]
             for index, ep in enumerate(epochs):
-                if study == 2:
-                    group = "Covert" if names[index].split("_")[0] in covert_responders else "Non-Covert"
+                group = "Covert" if names[index].split("_")[0] in covert_responders else "Non-Covert"
                 new_descriptions = []
                 for i, idx in enumerate(ep.annotations.description):
-                    if study == 1:
-                        new_desc = end + "/" + ep.annotations.description[i]
-                    elif study == 2:
-                        new_desc = group + "/" + ep.annotations.description[i]
+                    new_desc = group + "/" + ep.annotations.description[i]
                     new_descriptions.append(new_desc)
                 
                 new_annotations = Annotations(onset=ep.annotations.onset,
@@ -195,78 +161,24 @@ for n_back_ in all_n_back_:
                 old_event_id = ep.event_id.copy()
                 new_event_id = {}
                 for old_name, event_code in old_event_id.items():
-                    if study == 1:
-                        new_name = end + "/" + old_name
-                    elif study == 2:
-                        new_name = group + "/" + old_name
+                    new_name = group + "/" + old_name
                     new_event_id[new_name] = event_code
                 
                 ep.event_id = new_event_id
                 
-            if study == 1 and phase == 2:
-                _epochs.extend(epochs)
         first_time = False
-        if study == 1 and phase == 2:
-            epochs = _epochs.copy()
-    if study == 1:
-        if phase == 1:
-            if n_back_ == "single":
-                n_backs = ["Pa/n_back"]
-            elif n_back_ == "Control":
-                n_backs = ["Pa/Control"]
-            elif n_back_ == "0_back":
-                n_backs = ['Pa/n_back/0_back']
-            elif n_back_ == "1_back":
-                n_backs = ['Pa/n_back/1_back']
-            elif n_back_ == "2_back":
-                n_backs = ['Pa/n_back/2_back']
-            elif n_back_ == "3_back":
-                n_backs = ['Pa/n_back/3_back']
-                
-                
-            # if n_back_ == "single":
-            #     n_backs = ["HC/n_back"]
-            # elif n_back_ == "Control":
-            #     n_backs = ["HC/Control"]
-            # elif n_back_ == "0_back":
-            #     n_backs = ['HC/n_back/0_back']
-            # elif n_back_ == "1_back":
-            #     n_backs = ['HC/n_back/1_back']
-            # elif n_back_ == "2_back":
-            #     n_backs = ['HC/n_back/2_back']
-            # elif n_back_ == "3_back":
-            #     n_backs = ['HC/n_back/3_back']
-        elif phase == 2:
-            if n_back_ == "single":
-                n_backs = ["HC/n_back", "Pa/n_back"]
-            elif n_back_ == "Control":
-                n_backs = ["HC/Control", "Pa/Control"]
-            elif n_back_ == "0_back":
-                n_backs = ['HC/n_back/0_back', "Pa/n_back/0_back"]
-            elif n_back_ == "1_back":
-                n_backs = ['HC/n_back/1_back', "Pa/n_back/1_back"]
-            elif n_back_ == "2_back":
-                n_backs = ['HC/n_back/2_back', "Pa/n_back/2_back"]
-            elif n_back_ == "3_back":
-                n_backs = ['HC/n_back/3_back', "Pa/n_back/3_back"]
-        control_time = 16
-        tmax = 61
-    else:
-        if n_back_ == "single":
-            n_backs = ["Covert/Arithmetic", "Non-Covert/Arithmetic"] # 
-        elif n_back_ == "Control":
-            n_backs = ["Covert/Control"] #, "Non-Covert/Control"
-        elif n_back_ == "Math":
-            n_backs = ['Covert/Math'] #, 'Non-Covert/Arithmetic/Math'
-        elif n_back_ == "Hard_Math":
-            n_backs = ['Covert/Hard_Math'] #, 'Non-Covert/Arithmetic/Hard_Math'
-        control_time = 20.005
-        tmax = 24.9
+    if n_back_ == "single":
+        n_backs = ["Covert/Arithmetic", "Non-Covert/Arithmetic"] # 
+    elif n_back_ == "Control":
+        n_backs = ["Covert/Control"] #, "Non-Covert/Control"
+    elif n_back_ == "Math":
+        n_backs = ['Covert/Math'] #, 'Non-Covert/Arithmetic/Math'
+    elif n_back_ == "Hard_Math":
+        n_backs = ['Covert/Hard_Math'] #, 'Non-Covert/Arithmetic/Hard_Math'
+    control_time = 20.005
+    tmax = 24.9
 
-    if study == 1:
-        picks_ =  [ch for ch in long_channels if ("S1" in ch) or ("S2" in ch) or ("S3" in ch) or ("S4" in ch)] + [ch for ch in datasets[dataLoaders[0]]["all_individuals"][0].raw_haemo.copy().ch_names if (("S1" in ch) or ("S2" in ch) or ("S3" in ch) or ("S4" in ch)) and "hbt" in ch]
-    else:
-        picks_ =  [ch for ch in long_channels] + [ch for ch in datasets[dataLoaders[0]]["all_individuals"][0].raw_haemo.copy().ch_names if "hbt" in ch]
+    picks_ =  [ch for ch in long_channels] + [ch for ch in datasets[dataLoaders[0]]["all_individuals"][0].raw_haemo.copy().ch_names if "hbt" in ch]
 
     bad_channels = list(set(channel for epoch in epochs for channel in epoch.info['bads']))
     for epoch in epochs:
@@ -276,29 +188,14 @@ for n_back_ in all_n_back_:
     evoked_dict = {}
     for data_type in n_backs:
         for hemoglobin in ("HbO", "HbR", "HbT"):
-            if hemoglobin == "HbO":
-                picks = [ch for ch in picks_ if "hbo" in ch]
-            elif hemoglobin == "HbR":
-                picks = [ch for ch in picks_ if "hbr" in ch]
-            else:
-                picks = [ch for ch in picks_ if "hbt" in ch]
+            picks = [ch for ch in picks_ if hemoglobin.lower() in ch]
             # Compute evoked responses per subject
-            if study == 1:
-                if n_back_ == "single":
-                    evoked_list = [epoch.copy()[data_type].copy().pick(picks).crop(tmin=0 , tmax=50).average(picks=picks) for epoch in epochs if data_type in [id.split("/")[0] + "/" + id.split("/")[1] for id in epoch.event_id]]
-                elif n_back_ in ['0_back', '1_back', '3_back']:
-                    evoked_list = [epoch.copy()[data_type].copy().pick(picks).crop(tmin=0 , tmax=tmax).average(picks=picks) for epoch in epochs if data_type in epoch.event_id]
-                elif n_back_ == '2_back':
-                    evoked_list = [epoch.copy()[data_type].copy().pick(picks).crop(tmin=0 , tmax=50).average(picks=picks) for epoch in epochs if data_type in epoch.event_id]
-                elif n_back_ == "Control":
-                    evoked_list = [epoch.copy()[data_type].copy().pick(picks).crop(tmin=0 , tmax=control_time).average(picks=picks) for epoch in epochs if data_type in epoch.event_id]
-            if study == 2:
-                if n_back_ == "single":
-                    evoked_list = [epoch.copy()[data_type].copy().pick(picks).crop(tmin=0 , tmax=tmax).average(picks=picks) for epoch in epochs if data_type in [id.split("/")[0] + "/" + id.split("/")[1] for id in epoch.event_id]]
-                elif n_back_ == "Math" or n_back_ == "Hard_Math":
-                    evoked_list = [epoch.copy()[data_type].copy().pick(picks).crop(tmin=0 , tmax=tmax).average(picks=picks) for epoch in epochs if data_type in epoch.event_id]
-                elif n_back_ == "Control":
-                    evoked_list = [epoch.copy()[data_type].copy().pick(picks).crop(tmin=0 , tmax=control_time).average(picks=picks) for epoch in epochs if data_type in epoch.event_id]
+            if n_back_ == "single":
+                evoked_list = [epoch.copy()[data_type].copy().pick(picks).crop(tmin=0 , tmax=tmax).average(picks=picks) for epoch in epochs if data_type in [id.split("/")[0] + "/" + id.split("/")[1] for id in epoch.event_id]]
+            elif n_back_ == "Math" or n_back_ == "Hard_Math":
+                evoked_list = [epoch.copy()[data_type].copy().pick(picks).crop(tmin=0 , tmax=tmax).average(picks=picks) for epoch in epochs if data_type in epoch.event_id]
+            elif n_back_ == "Control":
+                evoked_list = [epoch.copy()[data_type].copy().pick(picks).crop(tmin=0 , tmax=control_time).average(picks=picks) for epoch in epochs if data_type in epoch.event_id]
 
             # Rename channels inside each evoked object
             for evoked in evoked_list:
@@ -354,29 +251,17 @@ for n_back_ in all_n_back_:
         color_dict = color_dicts[i]
         chromo = list(evoked_dict.keys())[0].split('/')[-1]
         # Plot evoked data
-        if study == 1:
-            ylim = dict(hbo=(-0.075, 0.16), hbr=(-0.075, 0.16)) if chromo != "HbT" else dict(hbo=(-0.3, 0.3))
-            plot = mne.viz.plot_compare_evokeds(
-                evoked_dict, combine=combine_strategy, ci=0.95, colors=color_dict, styles=styles_dict, show_sensors=True, show=False, picks=plotting_picks_, title="", ylim=ylim) #
-            if n_back_ == "single":
-                filename = os.path.join(follow_up_results_save_path, f"standard_fNIRS_response_plot_patient_only_n_back_{chromo}.pdf")
-            elif n_back_ == "Control":
-                filename = os.path.join(follow_up_results_save_path, f"standard_fNIRS_response_plot_patient_only_control_{chromo}.pdf")
-            else:
-                n_back_file_name = data_type.split("/")[-1]
-                filename = os.path.join(follow_up_results_save_path, f"standard_fNIRS_response_plot_patient_only_{n_back_file_name}_{chromo}.pdf")
 
-        elif study == 2:
-            ylim = dict(hbo=(-0.02, 0.02), hbr=(-0.01, 0.01)) if chromo != "HbT" else dict(hbo=(-0.06, 0.1))
-            plot = mne.viz.plot_compare_evokeds(
-                evoked_dict, combine=combine_strategy, ci=0.95, colors=color_dict, styles=styles_dict, show_sensors=True, show=False, picks=plotting_picks_, title="", ylim=ylim)
-            if n_back_ == "single":
-                filename = os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_{study}\Phase_{phase}\Neural_correlates", f"standard_fNIRS_response_plot_arithmetic_{chromo}.pdf")
-            elif n_back_ == "Control":
-                filename = os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_{study}\Phase_{phase}\Neural_correlates", f"standard_fNIRS_response_plot_control_{chromo}.pdf")
-            else:
-                n_back_file_name = data_type.split("/")[-1]
-                filename = os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_{study}\Phase_{phase}\Neural_correlates", f"standard_fNIRS_response_plot_{n_back_file_name}_{chromo}.pdf")
+        ylim = dict(hbo=(-0.02, 0.02), hbr=(-0.01, 0.01)) if chromo != "HbT" else dict(hbo=(-0.06, 0.1))
+        plot = mne.viz.plot_compare_evokeds(
+            evoked_dict, combine=combine_strategy, ci=0.95, colors=color_dict, styles=styles_dict, show_sensors=True, show=False, picks=plotting_picks_, title="", ylim=ylim)
+        if n_back_ == "single":
+            filename = os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Arbejde_Rigshospitalet\fNIRS\Test_plots", f"standard_fNIRS_response_plot_arithmetic_{chromo}.pdf")
+        elif n_back_ == "Control":
+            filename = os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Arbejde_Rigshospitalet\fNIRS\Test_plots", f"standard_fNIRS_response_plot_control_{chromo}.pdf")
+        else:
+            n_back_file_name = data_type.split("/")[-1]
+            filename = os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Arbejde_Rigshospitalet\fNIRS\Test_plots", f"standard_fNIRS_response_plot_{n_back_file_name}_{chromo}.pdf")
         if chromo != "HbT":
             # Get the figure and axes
             fig = plot[0]
