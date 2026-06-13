@@ -133,8 +133,6 @@ all_conditions = list(np.unique(datasets[dataLoaders[0]]["all_epochs"][0].annota
 
 _epochs = [ind.epochs for ind in datasets[dataLoaders[0]]["all_individuals"]]
 names = [ind.name for ind in datasets[dataLoaders[0]]["all_individuals"]]
-tmax = 26
-times = np.arange(0, tmax, 5)
 
 relevant_data_types = list(np.unique([condition for condition in all_conditions if "Math" in condition]))
 picks_ =  [ch for ch in long_channels]

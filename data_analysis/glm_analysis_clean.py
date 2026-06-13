@@ -32,6 +32,14 @@ from collections import Counter
 
 import mne_nirs
 
+from mne.io.pick import _picks_to_idx
+from nilearn.glm.first_level import run_glm as nilearn_glm
+from mne_nirs.statistics import RegressionResults
+
+from nilearn.glm.first_level.hemodynamic_models import _calculate_tr
+from nilearn.glm.first_level.hemodynamic_models import _gamma_difference_hrf
+from functools import partial
+
 load_dotenv()
 save_path = Path(os.getenv(rf"data_save_path"))
 
@@ -46,9 +54,6 @@ save_path = Path(os.getenv(rf"data_save_path"))
 
 drug_path = Path(os.getenv(rf"Marwan_drug_data"))
 
-from mne.io.pick import _picks_to_idx
-from nilearn.glm.first_level import run_glm as nilearn_glm
-from mne_nirs.statistics import RegressionResults
 
 def _run_glm(method, raw, design_matrix, noise_model="ar1", bins=0, n_jobs=1, verbose=0):
     """
@@ -266,9 +271,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         drift_order = 1 # When we use the cosine drift model this parameter doesn't really matter, as the drift order is then actually determined by the high_pass argument
         add_reg_names = short_channel_haemo.ch_names
         fir_delays = range(21) # Default when we don't use a FIR model
-        from nilearn.glm.first_level.hemodynamic_models import _calculate_tr
-        from nilearn.glm.first_level.hemodynamic_models import _gamma_difference_hrf
-        from functools import partial
+
         t_r = _calculate_tr(frame_times)    
         hrf_model_ = partial(
         _gamma_difference_hrf,
@@ -325,36 +328,36 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         cha["Group"] = "HC" if idx < number_of_subjects[0] else "Patient"
     
         contrast_results = {}
-        # if "Marwan" in class_instance.data_name:
-        #     # Get column names for reference
-        #     cols = conditions.tolist()
-        #     cols = [col.replace(hrf_model_suffix, "") for col in cols]
+        if "Marwan" in class_instance.data_name:
+            # Get column names for reference
+            cols = conditions.tolist()
+            cols = [col.replace(hrf_model_suffix, "") for col in cols]
 
-        #     # Find indices of your conditions
-        #     condition_indices = {}
-        #     types = np.unique(haemo.annotations.description)
-        #     for type_name in types:
-        #         condition_indices[type_name] = cols.index(type_name)
-        #     # Create contrast vectors
-        #     contrasts = {}
-        #     for key in condition_indices.keys():
-        #         if key == "Control":
-        #             continue
-        #         contrast_array = np.zeros(len(cols))
-        #         contrast_array[condition_indices["Control"]] = -1
-        #         contrast_array[condition_indices[key]] = 1
-        #         contrasts[f"{key}_vs_Control"] = contrast_array
-        #     # Store all contrast results
-        #     for name, expr in contrasts.items():
-        #         print(f"{name} => contrast vector")
-        #         result = glm_estimates.compute_contrast(expr)
-        #         # Convert to DataFrame
-        #         df = result.to_dataframe()
-        #         df['contrast'] = name
-        #         df['ID'] = subject.name + "_" + ("HC" if idx < number_of_subjects[0] else "Patient")
-        #         df['Group'] = "HC" if idx < number_of_subjects[0] else "Patient"
+            # Find indices of your conditions
+            condition_indices = {}
+            types = np.unique(haemo.annotations.description)
+            for type_name in types:
+                condition_indices[type_name] = cols.index(type_name)
+            # Create contrast vectors
+            contrasts = {}
+            for key in condition_indices.keys():
+                if key == "Control":
+                    continue
+                contrast_array = np.zeros(len(cols))
+                contrast_array[condition_indices["Control"]] = -1
+                contrast_array[condition_indices[key]] = 1
+                contrasts[f"{key}_vs_Control"] = contrast_array
+            # Store all contrast results
+            for name, expr in contrasts.items():
+                print(f"{name} => contrast vector")
+                result = glm_estimates.compute_contrast(expr)
+                # Convert to DataFrame
+                df = result.to_dataframe()
+                df['contrast'] = name
+                df['ID'] = subject.name + "_" + ("HC" if idx < number_of_subjects[0] else "Patient")
+                df['Group'] = "HC" if idx < number_of_subjects[0] else "Patient"
                 
-        #         contrast_results[name] = df
+                contrast_results[name] = df
         
         return haemo, design_matrix, cha, contrast_results, isis
     
@@ -438,12 +441,12 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
                                         )
             ch_summary.loc[ch_summary['Recording'] == 0, 'Drug'] = 'No_Drug'
         
-#         with localconverter(pandas2ri.converter):
-#             globalenv["rdf"] = ch_summary
+        with localconverter(pandas2ri.converter):
+            globalenv["rdf"] = ch_summary
 #         globalenv["Phase_1_assumptions_plot_save_path"] = str(Phase_1_assumptions_plot_save_path).replace("\\", "/")
 #         globalenv["Phase_2_assumptions_plot_save_path"] = str(Phase_2_assumptions_plot_save_path).replace("\\", "/")
 #         globalenv["Phase_3_assumptions_plot_save_path"] = str(Phase_3_assumptions_plot_save_path).replace("\\", "/")
-#         ch_summary.to_csv(os.path.join(save_path, f'glm_betas_summary.csv'), index=False)
+        ch_summary.to_csv(os.path.join(save_path, f'glm_betas_summary.csv'), index=False)
 #         lme4 = importr("lme4")
         
 #         model = "Condition_Group" #"Condition" #"Drug2" #  "Drug" #
@@ -1728,7 +1731,7 @@ from collections import defaultdict
 from preprocessing_toolbox.load_data_function import data_loaders
 
 dataSetList = list(data_loaders.keys())
-dataLoaders = [dataSetList[19]] #, dataSetList[17]]
+dataLoaders = [dataSetList[-1]] #, dataSetList[17]]
 datasets = defaultdict(defaultdict)
 
 for data_loader in dataLoaders:
@@ -1778,15 +1781,13 @@ for data_loader in dataLoaders:
 
 all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
 number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])]#, len((datasets[dataLoaders[1]]["all_individuals"]))]
-all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
-number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])]#, len((datasets[dataLoaders[1]]["all_individuals"]))]
 
-names = {}
-for participant in all_participants:
-    names.setdefault(participant.name[:2], []).append(participant)
+# names = {}
+# for participant in all_participants:
+#     names.setdefault(participant.name[:2], []).append(participant)
 
-standardize = lambda ch: (ch - ch.mean()) / ch.std()
-for key, value in names.items():
-  names[key] = [val.raw_haemo.apply_function(standardize, "all", channel_wise=True) for val in value]
+# standardize = lambda ch: (ch - ch.mean()) / ch.std()
+# for key, value in names.items():
+#   names[key] = [val.raw_haemo.apply_function(standardize, "all", channel_wise=True) for val in value]
 
 run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)
