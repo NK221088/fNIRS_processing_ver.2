@@ -40,6 +40,8 @@ from nilearn.glm.first_level.hemodynamic_models import _calculate_tr
 from nilearn.glm.first_level.hemodynamic_models import _gamma_difference_hrf
 from functools import partial
 
+from construct_PCA_components import construct_PCA_components
+
 load_dotenv()
 save_path = Path(os.getenv(rf"data_save_path"))
 
@@ -1789,5 +1791,7 @@ number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])]#, len((d
 # standardize = lambda ch: (ch - ch.mean()) / ch.std()
 # for key, value in names.items():
 #   names[key] = [val.raw_haemo.apply_function(standardize, "all", channel_wise=True) for val in value]
+
+PCA_components = construct_PCA_components(datasets[dataLoaders[0]]["all_individuals"])
 
 run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)
