@@ -66,13 +66,13 @@ from Thesis_plotting.Significant_responders_plot import covert_responders
 load_dotenv()
 responders_count_path = Path(os.getenv("Marwan_responders_count"))
 df = pd.read_csv(rf"{responders_count_path}", index_col=0)
-data = df['count'].to_dict()
+count_data = df['count'].to_dict()
 total_number_of_patients = 50
 threshold = 7
 print("Responders:")
 all_responders = [f"P{str(ID)}" for ID in range(1, total_number_of_patients + 1)]
-covert_responders = [ID for ID, count in data.items() if count >= threshold]
-non_covert_responders = [ID for ID, count in data.items() if count < threshold]
+covert_responders = [ID for ID, count in count_data.items() if count >= threshold]
+non_covert_responders = [ID for ID, count in count_data.items() if count < threshold]
 non_responders = [ID for ID in all_responders if ID not in covert_responders and ID not in non_covert_responders]
 
 dataSetList = list(data_loaders.keys())
@@ -138,7 +138,16 @@ relevant_data_types = list(np.unique([condition for condition in all_conditions 
 picks_ =  [ch for ch in long_channels]
 all_n_back_ = ["Math", "Hard_Math", "Control"] #"single", 
 
+max_plot = True
 first_time = True
+
+if max_plot:
+    max_ind = [list(count_data.keys())[np.array([list(count_data.values())]).flatten().argmax()], list(count_data.keys())[np.array([list(count_data.values())]).flatten().argmin()]]
+    max_idx = [idx for idx, name in enumerate(names) if name.split("_")[0] in max_ind]
+    _epochs = [_epochs[i] for i in max_idx]
+    names = [names[i] for i in max_idx]
+    
+
 for n_back_ in all_n_back_:
     epochs = _epochs.copy()
     if first_time:
@@ -168,11 +177,11 @@ for n_back_ in all_n_back_:
     if n_back_ == "single":
         n_backs = ["Covert/Arithmetic", "Non-Covert/Arithmetic"] # 
     elif n_back_ == "Control":
-        n_backs = ["Covert/Control"] #, "Non-Covert/Control"
+        n_backs = ["Covert/Control", "Non-Covert/Control"]
     elif n_back_ == "Math":
-        n_backs = ['Covert/Math'] #, 'Non-Covert/Arithmetic/Math'
+        n_backs = ['Covert/Math', 'Non-Covert/Math']
     elif n_back_ == "Hard_Math":
-        n_backs = ['Covert/Hard_Math'] #, 'Non-Covert/Arithmetic/Hard_Math'
+        n_backs = ['Covert/Hard_Math', 'Non-Covert/Hard_Math']
     control_time = 20.005
     tmax = 24.9
 

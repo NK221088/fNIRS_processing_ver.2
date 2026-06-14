@@ -3855,8 +3855,6 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 print("ERROR")
             if patient_name[:3] in self.subjects_to_exclude[self.data_name]:
                 continue
-            if patient_name[:3] not in ["P5", "P10", "P28"]:
-                continue
             try:
                 raw_intensity = self.define_raw_intensity(folder_name)
                 if len(raw_intensity.annotations.description) < 13:
