@@ -57,7 +57,7 @@ save_path = Path(os.getenv(rf"data_save_path"))
 drug_path = Path(os.getenv(rf"Marwan_drug_data"))
 
 
-def _run_glm(method, raw, design_matrix, noise_model="ar1", bins=0, n_jobs=1, verbose=0):
+def _run_glm(method, subject, raw, design_matrix, noise_model="ar1", bins=0, n_jobs=1, verbose=0):
     """
     GLM fit for an MNE structure containing fNIRS data.
 
@@ -153,7 +153,20 @@ def _run_glm(method, raw, design_matrix, noise_model="ar1", bins=0, n_jobs=1, ve
         glm_raw = mne.io.RawArray(pca_data, info)
         picks = _picks_to_idx(glm_raw.info, "fnirs", exclude=[], allow_empty=True)
         ch_names = list(groups.keys())
-    
+        
+    elif method == "PCA_HbO":
+        raw_copy = raw.copy()
+        pca_data = PCA_components[subject.name.split("_")[0]] @ mne_nirs.channels.get_long_channels(raw_copy).pick("hbo").get_data()
+        ch_names=[f"PC{i+1}_hbo" for i in range(len(pca_data))]
+        info = mne.create_info(
+        ch_names=ch_names,
+        sfreq=raw_copy.info["sfreq"],
+        ch_types= ["hbo"] * len(ch_names)
+        )
+        
+        glm_raw = mne.io.RawArray(pca_data, info)
+        picks = _picks_to_idx(glm_raw.info, "fnirs", exclude=[], allow_empty=True)        
+        
     elif method == "ICA":
         raw_copy = raw.copy()
         raw_copy_hbo = raw_copy.copy().pick("hbo")
@@ -299,7 +312,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
                                             oversampling=oversampling,
                                             add_reg_names=add_reg_names,
                                             ) 
-            glm_estimates = _run_glm("mean_HbT", haemo, design_matrix, n_jobs=1)
+            glm_estimates = _run_glm("PCA_HbO", subject, haemo, design_matrix, n_jobs=1)
 
         except Exception as e:
             print(f"Error type: {type(e).__name__}")
@@ -417,13 +430,15 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
             ch_ids = combined_contrasts_df["ID"].to_list()
             ch_ids = [id_[:3].replace("_", "") for id_ in ch_ids]
             ind_counts = Counter(ch_ids)
-            threshold = 9/18
+            threshold = 0.4
             significant_responders = [int(ID.split("P")[1]) for ID, count in responders_count.items() if (count / ind_counts[ID]) > threshold]
             print("Responders:")
             print(responders_count)
-            print(f"Significant responders with counts greater than or equal to {threshold}:")
+            print(f"Significant responders with counts greater than {threshold}:")
             responders_df = pd.DataFrame.from_dict(dict(responders_count), orient='index', columns=['count'])
-            responders_df.to_csv(os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_2\Phase_2", f'responders_counts.csv'))
+            df_total = pd.DataFrame.from_dict(dict(ind_counts), orient='index', columns=['Total count'])
+            df_together = df_total.join(responders_df)
+            df_together.to_csv(os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_2\Phase_2", f'responders_counts.csv'))
             print(significant_responders)
             ch_summary["ID_prefix"] = ch_summary["ID"].str.split("_").str[0].str.split("P").str[1].astype(int)
             ch_summary = ch_summary[ch_summary["ID_prefix"].isin(significant_responders)]

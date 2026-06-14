@@ -67,12 +67,13 @@ load_dotenv()
 responders_count_path = Path(os.getenv("Marwan_responders_count"))
 df = pd.read_csv(rf"{responders_count_path}", index_col=0)
 count_data = df['count'].to_dict()
+total_data = df['Total count'].to_dict()
 total_number_of_patients = 50
-threshold = 7
+threshold = 0.4
 print("Responders:")
 all_responders = [f"P{str(ID)}" for ID in range(1, total_number_of_patients + 1)]
-covert_responders = [ID for ID, count in count_data.items() if count >= threshold]
-non_covert_responders = [ID for ID, count in count_data.items() if count < threshold]
+covert_responders = [ID for ID, count in count_data.items() if count / total_data[ID] >= threshold]
+non_covert_responders = [ID for ID, count in count_data.items() if count / total_data[ID] < threshold]
 non_responders = [ID for ID in all_responders if ID not in covert_responders and ID not in non_covert_responders]
 
 dataSetList = list(data_loaders.keys())
