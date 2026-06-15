@@ -430,8 +430,8 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
             ch_ids = combined_contrasts_df["ID"].to_list()
             ch_ids = [id_[:3].replace("_", "") for id_ in ch_ids]
             ind_counts = Counter(ch_ids)
-            threshold = 0.4
-            significant_responders = [int(ID.split("P")[1]) for ID, count in responders_count.items() if (count / ind_counts[ID]) > threshold]
+            threshold = 0.44
+            significant_responders = [int(ID.split("P")[1]) for ID, count in responders_count.items() if (count / ind_counts[ID]) >= threshold]
             print("Responders:")
             print(responders_count)
             print(f"Significant responders with counts greater than {threshold}:")

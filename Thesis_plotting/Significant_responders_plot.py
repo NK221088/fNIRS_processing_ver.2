@@ -12,7 +12,7 @@ df = pd.read_csv(rf"{responders_count_path}", index_col=0)
 data = df['count'].to_dict()
 total_data = df['Total count'].to_dict()
 total_number_of_patients = 50
-threshold = 0.4
+threshold = 0.44
 print("Responders:")
 all_responders = [f"P{str(ID)}" for ID in range(1, total_number_of_patients + 1)]
 covert_responders = [ID for ID, count in data.items() if count / total_data[ID] >= threshold]
@@ -69,3 +69,34 @@ ax.spines["right"].set_visible(False)
 
 plt.tight_layout()
 plt.savefig("significant_responders_plot.png", dpi=600)
+
+participant_counts = np.array([list(data.values())]) / np.array([list(total_data.values())])
+# Add zeros for non-responders
+participant_counts = list(participant_counts.flatten()) + [0] * (total_number_of_patients - len(data))
+
+
+threshold_abs = threshold * 180  # absolute threshold on new scale
+
+# Histogram
+fig, ax = plt.subplots(figsize=(3.5, 3))
+ax.hist(participant_counts, bins=20, edgecolor="black", linewidth=0.6, color="0.75")
+# ax.axvline(threshold_abs, linestyle="--", color="0.4", linewidth=0.8, label=f"Threshold ({int(threshold*100)}%)")
+ax.set_xlabel("Number of significant contrasts")
+ax.set_ylabel("Number of subjects")
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+plt.tight_layout()
+plt.savefig("significant_responders_hist.png", dpi=600)
+
+# ECDF
+fig, ax = plt.subplots(figsize=(3.5, 3))
+sorted_counts = np.sort(participant_counts)
+ecdf = np.arange(1, len(sorted_counts)+1) / len(sorted_counts)
+ax.plot(sorted_counts, ecdf)
+# ax.axvline(threshold_abs, linestyle="--", color="0.4", linewidth=0.8, label=f"Threshold ({int(threshold*100)}%)")
+ax.set_xlabel("Number of significant contrasts")
+ax.set_ylabel("Cumulative proportion of subjects")
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+plt.tight_layout()
+plt.savefig("significant_responders_ecdf.png", dpi=600)
