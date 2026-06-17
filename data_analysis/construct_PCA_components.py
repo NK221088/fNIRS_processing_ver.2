@@ -49,6 +49,20 @@ def construct_PCA_components(patient_data):
         # Project
         loadings = pca.components_[:n_components]  # (n_components, 15)
         PCA_components[name] = loadings   
+
+        # pca is your fitted PCA object for a given patient
+        channel_names = mne_nirs.channels.get_long_channels(patient_data[0].raw_haemo.copy()).pick("hbo").ch_names
+
+        fig, axes = plt.subplots(n_components, 1, figsize=(10, 3*n_components))
+        for i, ax in enumerate(axes):
+            ax.bar(range(len(channel_names)), pca.components_[i])
+            ax.set_xticks(range(len(channel_names)))
+            ax.set_xticklabels(channel_names, rotation=90, fontsize=7)
+            ax.set_title(f"PC{i+1} loadings ({pca.explained_variance_ratio_[i]*100:.1f}% variance)")
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_path, f"{name}_PCA_components.pdf"))
+        plt.close()
+
     
     return PCA_components
 
