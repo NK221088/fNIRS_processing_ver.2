@@ -393,19 +393,27 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         combined_contrasts_df = pd.concat(all_contrasts, ignore_index=True)
         # Save to CSV
         combined_contrasts_df["ID_prefix"] = combined_contrasts_df["ID"].str.split("_").str[0].str.split("P").str[1].astype(int)
-        from statsmodels.stats.multitest import fdrcorrection
+        # from statsmodels.stats.multitest import fdrcorrection
 
-        # Apply FDR correction within each ID
-        combined_contrasts_df['p_value_fdr'] = (
+        # # Apply FDR correction within each ID
+        # combined_contrasts_df['p_value_fdr'] = (
+        #     combined_contrasts_df.groupby('ID_prefix')['p_value']
+        #     .transform(lambda x: fdrcorrection(x)[1])
+        # )
+
+        # # Update significance based on FDR-corrected p-values
+        # combined_contrasts_df['Significant_FDR'] = combined_contrasts_df['p_value_fdr'] < 0.05
+
+        from statsmodels.stats.multitest import multipletests
+
+        combined_contrasts_df['p_value_corrected'] = (
             combined_contrasts_df.groupby('ID_prefix')['p_value']
-            .transform(lambda x: fdrcorrection(x)[1])
+            .transform(lambda x: multipletests(x, method='bonferroni')[1])
         )
-
-        # Update significance based on FDR-corrected p-values
-        combined_contrasts_df['Significant_FDR'] = combined_contrasts_df['p_value_fdr'] < 0.05
+        combined_contrasts_df['Significant_corrected'] = combined_contrasts_df['p_value_corrected'] < 0.05
         combined_contrasts_df.to_csv(os.path.join(save_path, f'glm_contrast_results.csv'), index=False)
         print(f"Saved contrast results to glm_contrast_results.csv")
-        significant_results = combined_contrasts_df[combined_contrasts_df["Significant_FDR"] == True]
+        significant_results = combined_contrasts_df[combined_contrasts_df["Significant_corrected"] == True]
         significant_results.to_csv(os.path.join(save_path, f'significant_glm_contrast_results.csv'), index=False)
         print(f"Saved contrast results to glm_contrast_results.csv")
 

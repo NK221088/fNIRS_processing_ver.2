@@ -4,6 +4,12 @@ import mne_nirs
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 
+import os
+from dotenv import load_dotenv
+from pathlib import Path
+load_dotenv()
+save_path = Path(os.getenv(rf"PCA_component_visualizations_path"))
+
 def extract_data(patient_data):
     names = [ind.name for ind in patient_data]
     first_names = {name.split("_")[0] for name in names}
@@ -34,7 +40,7 @@ def construct_PCA_components(patient_data):
         plt.title(f"PCA elbow plot — {name}")
         plt.legend()
         plt.tight_layout()
-        plt.savefig(f"C:/Users/NTres/OneDrive - Danmarks Tekniske Universitet/Arbejde_Rigshospitalet/fNIRS/PCA_explained_plots/{name}_PCA_explained.pdf")
+        plt.savefig(os.path.join(save_path, f"{name}_PCA_explained.pdf"))
         plt.close()
         
         # Components for 95% variance
