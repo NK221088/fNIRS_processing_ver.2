@@ -142,8 +142,9 @@ all_n_back_ = ["Math", "Hard_Math", "Control"] #"single",
 max_plot = True
 first_time = True
 
+ratio_data = {name: count_data[name] / total_data[name] for name in list(count_data.keys())}
 if max_plot:
-    max_ind = [list(count_data.keys())[np.array([list(count_data.values())]).flatten().argmax()], list(count_data.keys())[np.array([list(count_data.values())]).flatten().argmin()]]
+    max_ind = [list(ratio_data.keys())[np.array([list(ratio_data.values())]).flatten().argmax()], list(ratio_data.keys())[np.array([list(ratio_data.values())]).flatten().argmin()]]
     max_idx = [idx for idx, name in enumerate(names) if name.split("_")[0] in max_ind]
     _epochs = [_epochs[i] for i in max_idx]
     names = [names[i] for i in max_idx]
@@ -260,7 +261,7 @@ for n_back_ in all_n_back_:
         chromo = list(evoked_dict.keys())[0].split('/')[-1]
         # Plot evoked data
 
-        ylim = dict(hbo=(-0.02, 0.02), hbr=(-0.01, 0.01)) if chromo != "HbT" else dict(hbo=(-0.06, 0.1))
+        ylim = dict(hbo=(-0.015, 0.015), hbr=(-0.01, 0.01)) if chromo != "HbT" else dict(hbo=(-0.06, 0.1))
         plot = mne.viz.plot_compare_evokeds(
             evoked_dict, combine=combine_strategy, ci=0.95, colors=color_dict, styles=styles_dict, show_sensors=True, show=False, picks=plotting_picks_, title="", ylim=ylim)
         if n_back_ == "single":
