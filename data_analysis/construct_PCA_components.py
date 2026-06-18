@@ -4,6 +4,7 @@ import mne_nirs
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 
+import pandas as pd
 import os
 from dotenv import load_dotenv
 from pathlib import Path
@@ -25,9 +26,10 @@ def extract_data(patient_data):
 def construct_PCA_components(patient_data):
     patient_raw_haemo = extract_data(patient_data)
     PCA_components = {}
+    top_channels = {}
     
-    for name, raw in patient_raw_haemo.items():
-        raw -= raw.mean(axis=1, keepdims=True)
+    for idx, (name, raw) in enumerate(patient_raw_haemo.items()):
+        raw = raw - raw.mean(axis=1, keepdims=True)
         pca = PCA()
         pca.fit(raw.T)
         
@@ -51,7 +53,14 @@ def construct_PCA_components(patient_data):
         PCA_components[name] = loadings   
 
         # pca is your fitted PCA object for a given patient
-        channel_names = mne_nirs.channels.get_long_channels(patient_data[0].raw_haemo.copy()).pick("hbo").ch_names
+        channel_names = mne_nirs.channels.get_long_channels(patient_data[idx].raw_haemo.copy()).pick("hbo").ch_names
+        
+        top_channels[name] = {}
+        for i, component in enumerate(loadings):
+            top3_idx = np.argsort(np.abs(component))[-3:][::-1]  # descending
+            top_channels[name][f"PC{i+1}"] = [channel_names[j] for j in top3_idx]
+        
+        
 
         fig, axes = plt.subplots(n_components, 1, figsize=(10, 3*n_components))
         for i, ax in enumerate(axes):
@@ -63,8 +72,34 @@ def construct_PCA_components(patient_data):
         plt.savefig(os.path.join(save_path, f"{name}_PCA_components.pdf"))
         plt.close()
 
-    
-    return PCA_components
+    rows = [
+        {"patient": patient, "PC": pc, "rank1": chs[0], "rank2": chs[1], "rank3": chs[2]}
+        for patient, pcs in top_channels.items()
+        for pc, chs in pcs.items()
+    ]
+    df = pd.DataFrame(rows)
+    df.to_csv(os.path.join(save_path, "top_channels.csv"), index=False)
 
-        
-        
+
+    fig, axes = plt.subplots(n_components, 3, figsize=(10, 3))
+    PC_names = [f"PC{i+1}" for i in range(n_components)]
+
+    for PC_i, PC in enumerate(PC_names):
+
+        ranks = ["rank1", "rank2", "rank3"]
+
+        for idx, rank in enumerate(ranks):
+            df[df["PC"] == PC][rank].value_counts().plot(
+                kind="bar",
+                ax=axes[PC_i, idx]
+            )
+            if PC_i == 0:
+                axes[PC_i, idx].set_title(rank)
+                axes[PC_i, idx].set_xlabel("Category")
+                axes[PC_i, idx].set_ylabel("Count")
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_path, "top_3_contributors.pdf"))
+    plt.close()
+
+    return PCA_components
