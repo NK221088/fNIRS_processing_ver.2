@@ -56,7 +56,6 @@ save_path = Path(os.getenv(rf"data_save_path"))
 
 drug_path = Path(os.getenv(rf"Marwan_drug_data"))
 
-
 def _run_glm(method, subject, raw, design_matrix, noise_model="ar1", bins=0, n_jobs=1, verbose=0):
     """
     GLM fit for an MNE structure containing fNIRS data.
@@ -446,7 +445,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
             responders_df = pd.DataFrame.from_dict(dict(responders_count), orient='index', columns=['count'])
             df_total = pd.DataFrame.from_dict(dict(ind_counts), orient='index', columns=['Total count'])
             df_together = df_total.join(responders_df)
-            df_together.to_csv(os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Bachelor_projekt\Results\Study_2\Phase_2", f'responders_counts.csv'))
+            df_together.to_csv(os.path.join(save_path, f'responders_counts.csv'))
             print(significant_responders)
             ch_summary["ID_prefix"] = ch_summary["ID"].str.split("_").str[0].str.split("P").str[1].astype(int)
             ch_summary = ch_summary[ch_summary["ID_prefix"].isin(significant_responders)]

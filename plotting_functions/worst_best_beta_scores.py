@@ -36,18 +36,18 @@ from mne import Annotations
 
 load_dotenv()
 save_path = Path(os.getenv(rf"data_save_path"))
-Study_1_phase_1_neural_correlates_save_path = Path(os.getenv(rf"Study_1_phase_1_neural_correlates_save_path"))
-Phase_1_assumptions_plot_save_path = Path(os.getenv(rf"Phase_1_assumptions_plot_save_path"))
-Phase_1_ANOVA_save_path = Path(os.getenv(rf"Phase_1_ANOVA_save_path"))
-Phase_2_assumptions_plot_save_path = Path(os.getenv(rf"Phase_2_assumptions_plot_save_path"))
+# Study_1_phase_1_neural_correlates_save_path = Path(os.getenv(rf"Study_1_phase_1_neural_correlates_save_path"))
+# Phase_1_assumptions_plot_save_path = Path(os.getenv(rf"S1RQ1_assumptions_plot_save_path"))
+# Phase_1_ANOVA_save_path = Path(os.getenv(rf"S1RQ1_ANOVA_save_path"))
+# Phase_2_assumptions_plot_save_path = Path(os.getenv(rf"Phase_2_assumptions_plot_save_path"))
 
-Phase_2_ANOVA_save_path = Path(os.getenv(rf"Phase_2_ANOVA_save_path"))
-Phase_3_assumptions_plot_save_path = Path(os.getenv(rf"Study_2_Phase_2_assumptions_plot_save_path"))
-Phase_3_ANOVA_save_path = Path(os.getenv(rf"Study_2_Phase_2_ANOVA_save_path"))
+# Phase_2_ANOVA_save_path = Path(os.getenv(rf"Phase_2_ANOVA_save_path"))
+# Phase_3_assumptions_plot_save_path = Path(os.getenv(rf"Study_2_Phase_2_assumptions_plot_save_path"))
+# Phase_3_ANOVA_save_path = Path(os.getenv(rf"Study_2_Phase_2_ANOVA_save_path"))
 drug_path = Path(os.getenv(rf"Marwan_drug_data"))
 
 
-follow_up_results_save_path = Path(os.getenv(rf"follow_up_results_save_path"))
+# follow_up_results_save_path = Path(os.getenv(rf"follow_up_results_save_path"))
 
 from mne.io.pick import _picks_to_idx
 from nilearn.glm.first_level import run_glm as nilearn_glm
