@@ -11,7 +11,7 @@ from pathlib import Path
 load_dotenv()
 save_path = Path(os.getenv(rf"PCA_component_visualizations_path"))
 
-def extract_data(patient_data):
+def extract_data(patient_data, type):
     names = [ind.name for ind in patient_data]
     first_names = {name.split("_")[0] for name in names}
     name_idx = {first_name: [idx for idx, n in enumerate(names) if n.split("_")[0] == first_name] for first_name in first_names}
@@ -20,13 +20,25 @@ def extract_data(patient_data):
         bad_channels = list(set(channel for haemo in haemos for channel in haemo.info['bads']))
         for haemo in haemos:
             haemo.info['bads'] = bad_channels
-        patient_raw_haemo[name] = mne_nirs.channels.get_long_channels(mne.concatenate_raws(haemos).copy()).pick("hbo").get_data()
+        if type == "long":
+            patient_raw_haemo[name] = mne_nirs.channels.get_long_channels(mne.concatenate_raws(haemos).copy()).pick("hbo").get_data()
+        elif type == "short":
+            patient_raw_haemo[name] = mne_nirs.channels.get_short_channels(mne.concatenate_raws(haemos).copy()).get_data()
     return patient_raw_haemo
 
 def construct_PCA_components(patient_data):
-    patient_raw_haemo = extract_data(patient_data)
-    PCA_components = {}
-    top_channels = {}
+    patient_long_raw_haemo = extract_data(patient_data, "long")
+    patient_short_raw_haemo = extract_data(patient_data, "short")
+    
+    PCA_long_components = {}
+    top_long_channels = {}
+    PCA_short_components = {}
+    top_long_channels = {}
+    
+    for i in range 2:
+        if i == 0:
+            patient_raw_haemo = patient_long_raw_haemo
+            PCA
     
     for idx, (name, raw) in enumerate(patient_raw_haemo.items()):
         raw = raw - raw.mean(axis=1, keepdims=True)

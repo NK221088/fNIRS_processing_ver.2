@@ -144,7 +144,8 @@ first_time = True
 
 ratio_data = {name: count_data[name] / total_data[name] for name in list(count_data.keys())}
 if max_plot:
-    max_ind = [list(ratio_data.keys())[np.array([list(ratio_data.values())]).flatten().argmax()], list(ratio_data.keys())[np.array([list(ratio_data.values())]).flatten().argmin()]]
+    indices_sorted = np.array([list(ratio_data.values())]).flatten().argsort()
+    max_ind = [list(ratio_data.keys())[indices_sorted[2]], list(ratio_data.keys())[indices_sorted[-3]]]
     max_idx = [idx for idx, name in enumerate(names) if name.split("_")[0] in max_ind]
     _epochs = [_epochs[i] for i in max_idx]
     names = [names[i] for i in max_idx]
