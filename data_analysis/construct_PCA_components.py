@@ -16,7 +16,10 @@ def extract_data(patient_data, channel_type):
     names = [ind.name for ind in patient_data]
     first_names = {name.split("_")[0] for name in names}
     name_idx = {first_name: [idx for idx, n in enumerate(names) if n.split("_")[0] == first_name] for first_name in first_names}
-    patient_raw_haemo = {name: [patient_data[i].raw_haemo.copy() for i in idxs] for name, idxs in name_idx.items()}
+    if channel_type == "long":
+        patient_raw_haemo = {name: [patient_data[i].raw_haemo.copy() for i in idxs] for name, idxs in name_idx.items()}
+    elif channel_type == "short":
+        patient_raw_haemo = {name: [patient_data[i].raw_haemo_unfiltered.copy() for i in idxs] for name, idxs in name_idx.items()}
     for name, haemos in patient_raw_haemo.items():
         bad_channels = list(set(channel for haemo in haemos for channel in haemo.info['bads']))
         for haemo in haemos:
@@ -52,8 +55,13 @@ def construct_PCA_components(patient_data):
             plt.savefig(os.path.join(os.path.join(save_path, channel_type), f"{name}_PCA_explained.pdf"))
             plt.close()
             
-
-            n_components = 9 # is chosen as the average number of components
+            # Components for 95% variance
+            if channel_type == "long":
+                # n_components = np.searchsorted(cumvar, 0.95) + 1 #; 
+                n_components = 9 # is chosen as the average number of components
+            elif channel_type == "short":
+                # n_components = np.searchsorted(cumvar, 0.95) + 1 #; 
+                n_components = 7 # is chosen as the average number of components
             
             # Project
             loadings = pca.components_[:n_components]  # (n_components, 15)
