@@ -280,7 +280,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         hrf_model = hrf_model
         min_onset = 0 # Normally used for fMRI in case events are coded relative to a trigger that happens before scanning. Not relevant here.
         high_pass = high_pass_value #high_pass_value
-        add_regs = PCA_short_channel_haemo # Old method: short_channel_haemo.get_data().T
+        add_regs = PCA_short_channel_haemo.T # Old method: short_channel_haemo.get_data().T
         oversampling = 10
         drift_order = 1 # When we use the cosine drift model this parameter doesn't really matter, as the drift order is then actually determined by the high_pass argument
         add_reg_names = [f"short_PC{i+1}" for i in range(len(PCA_short_channel_haemo))] # Old method: short_channel_haemo.ch_names
