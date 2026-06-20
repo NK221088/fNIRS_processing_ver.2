@@ -4,7 +4,7 @@ import mne_nirs
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-
+import seaborn as sns
 import pandas as pd
 import os
 from dotenv import load_dotenv
@@ -29,11 +29,19 @@ def extract_data(patient_data, channel_type):
         elif channel_type == "short":
             patient_raw_haemo[name] = mne_nirs.channels.get_short_channels(mne.concatenate_raws(haemos).copy()).get_data()
     return patient_raw_haemo
+def channel_importance(loadings, explained_variance_ratio, n_components):
+    """Weighted sum of |loading| across kept components, weighted by each
+    component's explained variance ratio. Collapses all PCs into one
+    per-channel score — no PC-identity matching needed."""
+    weights = explained_variance_ratio[:n_components]
+    importance = (np.abs(loadings) * weights[:, None]).sum(axis=0)
+    return importance / importance.sum()
 
 def construct_PCA_components(patient_data):
     types = ["long", "short"]
     PCA_components = {"long": {}, "short": {}}
     top_channels = {"long": {}, "short": {}}
+    importance_scores = {"long": {}, "short": {}}
     for channel_type in tqdm(types, position=0, desc="Channel types"):
         patient_raw_haemo = extract_data(patient_data, channel_type)
         pbar = tqdm(patient_raw_haemo.items(), position=1, leave=False, desc=f"{channel_type}")
@@ -42,7 +50,10 @@ def construct_PCA_components(patient_data):
             raw = raw - raw.mean(axis=1, keepdims=True)
             pca = PCA()
             pca.fit(raw.T)
-            
+            for i in range(pca.components_.shape[0]):
+                if pca.components_[i, np.argmax(np.abs(pca.components_[i]))] < 0:
+                    pca.components_[i] *= -1
+
             cumvar = np.cumsum(pca.explained_variance_ratio_)
             plt.figure(figsize=(7, 4))
             plt.plot(range(1, len(cumvar) + 1), cumvar, marker="o")
@@ -62,7 +73,7 @@ def construct_PCA_components(patient_data):
             elif channel_type == "short":
                 # n_components = np.searchsorted(cumvar, 0.95) + 1 #; 
                 n_components = 7 # is chosen as the average number of components
-            
+
             # Project
             loadings = pca.components_[:n_components]  # (n_components, 15)
             PCA_components[channel_type][name] = loadings   
@@ -72,6 +83,9 @@ def construct_PCA_components(patient_data):
                 channel_names = mne_nirs.channels.get_long_channels(patient_data[idx].raw_haemo.copy()).pick("hbo").ch_names
             elif channel_type == "short":
                 channel_names = mne_nirs.channels.get_short_channels(patient_data[idx].raw_haemo.copy()).ch_names
+
+            importance = channel_importance(loadings, pca.explained_variance_ratio_, n_components)
+            importance_scores[channel_type][name] = dict(zip(channel_names, importance))
             
             top_channels[channel_type][name] = {}
             for i, component in enumerate(loadings):
@@ -87,6 +101,19 @@ def construct_PCA_components(patient_data):
             plt.tight_layout()
             plt.savefig(os.path.join(os.path.join(save_path, channel_type), f"{name}_PCA_components.pdf"))
             plt.close()
+        
+            importance_df = pd.DataFrame.from_dict(importance_scores[channel_type], orient="index")
+            importance_df = importance_df[sorted(importance_df.columns)]  # consistent channel order
+
+            plt.figure(figsize=(max(8, 0.4 * len(importance_df.columns)),
+                                max(4, 0.3 * len(importance_df))))
+        sns.heatmap(importance_df, cmap="viridis", cbar_kws={"label": "Relative importance"})
+        plt.xlabel("Channel")
+        plt.ylabel("Patient")
+        plt.title(f"Channel importance across patients — {channel_type}")
+        plt.tight_layout()
+        plt.savefig(os.path.join(os.path.join(save_path, channel_type), "channel_importance_heatmap.pdf"))
+        plt.close()
 
         rows = [
             {"patient": patient, "PC": pc, "rank1": chs[0], "rank2": chs[1], "rank3": chs[2]}
