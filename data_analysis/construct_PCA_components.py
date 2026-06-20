@@ -3,6 +3,7 @@ import mne
 import mne_nirs
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 import pandas as pd
 import os
@@ -30,10 +31,11 @@ def construct_PCA_components(patient_data):
     types = ["long", "short"]
     PCA_components = {"long": {}, "short": {}}
     top_channels = {"long": {}, "short": {}}
-    for channel_type in types:
+    for channel_type in tqdm(types, position=0, desc="Channel types"):
         patient_raw_haemo = extract_data(patient_data, channel_type)
-    
-        for idx, (name, raw) in enumerate(patient_raw_haemo.items()):
+        pbar = tqdm(patient_raw_haemo.items(), position=1, leave=False, desc=f"{channel_type}")
+        for idx, (name, raw) in enumerate(pbar):
+            pbar.set_description(f"Processing {name}")
             raw = raw - raw.mean(axis=1, keepdims=True)
             pca = PCA()
             pca.fit(raw.T)
@@ -50,8 +52,8 @@ def construct_PCA_components(patient_data):
             plt.savefig(os.path.join(os.path.join(save_path, channel_type), f"{name}_PCA_explained.pdf"))
             plt.close()
             
-            # Components for 95% variance
-            n_components = np.searchsorted(cumvar, 0.95) + 1 #; 9 is chosen as the average number of components
+
+            n_components = 9 # is chosen as the average number of components
             
             # Project
             loadings = pca.components_[:n_components]  # (n_components, 15)

@@ -155,7 +155,7 @@ def _run_glm(method, subject, raw, design_matrix, noise_model="ar1", bins=0, n_j
         
     elif method == "PCA_HbO":
         raw_copy = raw.copy()
-        pca_data = PCA_components[subject.name.split("_")[0]] @ mne_nirs.channels.get_long_channels(raw_copy).pick("hbo").get_data()
+        pca_data = PCA_long_components[subject.name.split("_")[0]] @ mne_nirs.channels.get_long_channels(raw_copy).pick("hbo").get_data()
         ch_names=[f"PC{i+1}_hbo" for i in range(len(pca_data))]
         info = mne.create_info(
         ch_names=ch_names,
@@ -1815,5 +1815,7 @@ number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])]#, len((d
 #   names[key] = [val.raw_haemo.apply_function(standardize, "all", channel_wise=True) for val in value]
 
 PCA_components = construct_PCA_components(datasets[dataLoaders[0]]["all_individuals"])
+PCA_long_components = PCA_components["long"]
+PCA_short_components = PCA_components["short"]
 
 run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)
