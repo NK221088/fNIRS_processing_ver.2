@@ -36,6 +36,7 @@ from mne import Annotations
 
 load_dotenv()
 save_path = Path(os.getenv(rf"data_save_path"))
+best_worst_plots_path = Path(os.getenv(rf"best_worst_plots_path"))
 # Study_1_phase_1_neural_correlates_save_path = Path(os.getenv(rf"Study_1_phase_1_neural_correlates_save_path"))
 # Phase_1_assumptions_plot_save_path = Path(os.getenv(rf"S1RQ1_assumptions_plot_save_path"))
 # Phase_1_ANOVA_save_path = Path(os.getenv(rf"S1RQ1_ANOVA_save_path"))
@@ -69,12 +70,20 @@ df = pd.read_csv(rf"{responders_count_path}", index_col=0)
 count_data = df['count'].to_dict()
 total_data = df['Total count'].to_dict()
 total_number_of_patients = 50
-threshold = 0.4
+threshold = 0.35
 print("Responders:")
 all_responders = list(count_data.keys())
-covert_responders = [ID for ID, count in count_data.items() if count / total_data[ID] >= threshold]
-non_covert_responders = [ID for ID, count in count_data.items() if count / total_data[ID] < threshold]
-non_responders = [ID for ID in all_responders if ID not in covert_responders and ID not in non_covert_responders]
+
+Marwan_plot = True
+
+if Marwan_plot:
+    covert_responders = ["P4", "P16", "P23", "P29", "P32", "P35", "P36"]
+    non_covert_responders = [ID for ID in count_data.keys() if ID not in covert_responders]
+    non_responders = []
+else:
+    covert_responders = [ID for ID, count in count_data.items() if count / total_data[ID] >= threshold]
+    non_covert_responders = [ID for ID, count in count_data.items() if count / total_data[ID] < threshold]
+    non_responders = [ID for ID in all_responders if ID not in covert_responders and ID not in non_covert_responders]
 
 dataSetList = list(data_loaders.keys())
 dataLoaders = [dataSetList[19]] #, dataSetList[17]]
@@ -143,9 +152,9 @@ max_plot = True
 first_time = True
 
 ratio_data = {name: count_data[name] / total_data[name] for name in list(count_data.keys())}
-if max_plot:
+if max_plot and not Marwan_plot:
     indices_sorted = np.array([list(ratio_data.values())]).flatten().argsort()
-    max_ind = [list(ratio_data.keys())[indices_sorted[0]], list(ratio_data.keys())[indices_sorted[-1]]]
+    max_ind = [list(ratio_data.keys())[indices_sorted[2]], list(ratio_data.keys())[indices_sorted[-3]]]
     max_idx = [idx for idx, name in enumerate(names) if name.split("_")[0] in max_ind]
     _epochs = [_epochs[i] for i in max_idx]
     names = [names[i] for i in max_idx]
@@ -262,16 +271,16 @@ for n_back_ in all_n_back_:
         chromo = list(evoked_dict.keys())[0].split('/')[-1]
         # Plot evoked data
 
-        ylim = dict(hbo=(-0.015, 0.015), hbr=(-0.01, 0.01)) if chromo != "HbT" else dict(hbo=(-0.06, 0.1))
+        ylim = dict(hbo=(-0.03, 0.03), hbr=(-0.015, 0.015)) if chromo != "HbT" else dict(hbo=(-0.2, 0.2))
         plot = mne.viz.plot_compare_evokeds(
             evoked_dict, combine=combine_strategy, ci=0.95, colors=color_dict, styles=styles_dict, show_sensors=True, show=False, picks=plotting_picks_, title="", ylim=ylim)
         if n_back_ == "single":
-            filename = os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Arbejde_Rigshospitalet\fNIRS\Test_plots", f"standard_fNIRS_response_plot_arithmetic_{chromo}.pdf")
+            filename = os.path.join(best_worst_plots_path, f"standard_fNIRS_response_plot_arithmetic_{chromo}.pdf")
         elif n_back_ == "Control":
-            filename = os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Arbejde_Rigshospitalet\fNIRS\Test_plots", f"standard_fNIRS_response_plot_control_{chromo}.pdf")
+            filename = os.path.join(best_worst_plots_path, f"standard_fNIRS_response_plot_control_{chromo}.pdf")
         else:
             n_back_file_name = data_type.split("/")[-1]
-            filename = os.path.join(rf"C:\Users\NTres\OneDrive - Danmarks Tekniske Universitet\Arbejde_Rigshospitalet\fNIRS\Test_plots", f"standard_fNIRS_response_plot_{n_back_file_name}_{chromo}.pdf")
+            filename = os.path.join(best_worst_plots_path, f"standard_fNIRS_response_plot_{n_back_file_name}_{chromo}.pdf")
         if chromo != "HbT":
             # Get the figure and axes
             fig = plot[0]
