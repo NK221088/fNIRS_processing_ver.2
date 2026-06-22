@@ -260,7 +260,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         haemo_isis = haemo.copy()
         haemo_isis.annotations.rename(renames_isis)
         haemo.annotations.rename(renames_isis)
-        short_channel_haemo = mne_nirs.channels.get_short_channels(subject.raw_haemo_unfiltered)
+        short_channel_haemo = mne_nirs.channels.get_short_channels(subject.raw_haemo_unfiltered).copy().pick("hbo")
         
         # haemo.resample(2.5, npad="auto")
         # short_channel_haemo.resample(2.5, npad="auto")

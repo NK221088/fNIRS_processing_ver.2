@@ -27,7 +27,7 @@ def extract_data(patient_data, channel_type):
         if channel_type == "long":
             patient_raw_haemo[name] = mne_nirs.channels.get_long_channels(mne.concatenate_raws(haemos).copy()).pick("hbo").get_data()
         elif channel_type == "short":
-            patient_raw_haemo[name] = mne_nirs.channels.get_short_channels(mne.concatenate_raws(haemos).copy()).get_data()
+            patient_raw_haemo[name] = mne_nirs.channels.get_short_channels(mne.concatenate_raws(haemos).copy()).pick("hbo").get_data()
     return patient_raw_haemo
 def channel_importance(loadings, explained_variance_ratio, n_components):
     """Weighted sum of |loading| across kept components, weighted by each
@@ -39,6 +39,7 @@ def channel_importance(loadings, explained_variance_ratio, n_components):
 
 def construct_PCA_components(patient_data):
     types = ["long", "short"]
+    n_short_components = []
     PCA_components = {"long": {}, "short": {}}
     top_channels = {"long": {}, "short": {}}
     importance_scores = {"long": {}, "short": {}}
@@ -71,8 +72,9 @@ def construct_PCA_components(patient_data):
                 # n_components = np.searchsorted(cumvar, 0.95) + 1 #; 
                 n_components = 9 # is chosen as the average number of components
             elif channel_type == "short":
-                # n_components = np.searchsorted(cumvar, 0.95) + 1 #; 
-                n_components = 7 # is chosen as the average number of components
+                n_components = np.searchsorted(cumvar, 0.95) + 1 #; 
+                n_short_components.append(n_components)
+                # n_components = 7 # is chosen as the average number of components
 
             # Project
             loadings = pca.components_[:n_components]  # (n_components, 15)
@@ -82,7 +84,7 @@ def construct_PCA_components(patient_data):
             if channel_type == "long":
                 channel_names = mne_nirs.channels.get_long_channels(patient_data[idx].raw_haemo.copy()).pick("hbo").ch_names
             elif channel_type == "short":
-                channel_names = mne_nirs.channels.get_short_channels(patient_data[idx].raw_haemo.copy()).ch_names
+                channel_names = mne_nirs.channels.get_short_channels(patient_data[idx].raw_haemo.copy()).pick("hbo").ch_names
 
             importance = channel_importance(loadings, pca.explained_variance_ratio_, n_components)
             importance_scores[channel_type][name] = dict(zip(channel_names, importance))
@@ -92,8 +94,8 @@ def construct_PCA_components(patient_data):
                 top3_idx = np.argsort(np.abs(component))[-3:][::-1]  # descending
                 top_channels[channel_type][name][f"PC{i+1}"] = [channel_names[j] for j in top3_idx]
 
-            fig, axes = plt.subplots(n_components, 1, figsize=(10, 3*n_components))
-            for i, ax in enumerate(axes):
+            fig, axes = plt.subplots(n_components, 1, figsize=(10, 3*n_components), squeeze=False)
+            for i, ax in enumerate(axes[:, 0]):
                 ax.bar(range(len(channel_names)), pca.components_[i])
                 ax.set_xticks(range(len(channel_names)))
                 ax.set_xticklabels(channel_names, rotation=90, fontsize=7)
