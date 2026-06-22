@@ -39,7 +39,6 @@ def channel_importance(loadings, explained_variance_ratio, n_components):
 
 def construct_PCA_components(patient_data):
     types = ["long", "short"]
-    n_short_components = []
     PCA_components = {"long": {}, "short": {}}
     top_channels = {"long": {}, "short": {}}
     importance_scores = {"long": {}, "short": {}}
@@ -72,9 +71,9 @@ def construct_PCA_components(patient_data):
                 # n_components = np.searchsorted(cumvar, 0.95) + 1 #; 
                 n_components = 9 # is chosen as the average number of components
             elif channel_type == "short":
-                n_components = np.searchsorted(cumvar, 0.95) + 1 #; 
-                n_short_components.append(n_components)
-                # n_components = 7 # is chosen as the average number of components
+                # n_components = np.searchsorted(cumvar, 0.95) + 1 #; 
+                n_components = 5 # is chosen as the average number of components
+
 
             # Project
             loadings = pca.components_[:n_components]  # (n_components, 15)
