@@ -281,7 +281,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         min_onset = 0 # Normally used for fMRI in case events are coded relative to a trigger that happens before scanning. Not relevant here.
         high_pass = high_pass_value #high_pass_value
         add_regs = PCA_short_channel_haemo.T # Old method: short_channel_haemo.get_data().T
-        oversampling = 10
+        oversampling = 1
         drift_order = 1 # When we use the cosine drift model this parameter doesn't really matter, as the drift order is then actually determined by the high_pass argument
         add_reg_names = [f"short_PC{i+1}" for i in range(len(PCA_short_channel_haemo))] # Old method: short_channel_haemo.ch_names
         fir_delays = range(21) # Default when we don't use a FIR model
@@ -334,14 +334,6 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
             import traceback
             traceback.print_exc()
             raise
-        
-        # Create a single ROI that includes all channels for example
-        # rois = dict(AllChannels=range(len(haemo.ch_names)))
-        rois = dict(AllChannels=[i for i, ch in enumerate(haemo.ch_names) if ("S2" in ch) or ("S10" in ch)])
-        # rois = dict(
-        # Left=[i for i, ch in enumerate(haemo.ch_names) if "S2" in ch],
-        # Right=[i for i, ch in enumerate(haemo.ch_names) if "S12" in ch]
-        # )
 
         # Calculate ROI for all conditions
         conditions = design_matrix.columns
@@ -361,6 +353,19 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
             # Get column names for reference
             cols = conditions.tolist()
             cols = [col.replace(hrf_model_suffix, "") for col in cols]
+            # cols = [col.split("_")[0] for col in cols]
+            # types = np.unique(haemo.annotations.description)
+            # types = types[types != "Control"]
+            # condition_indices = [True if col in types else False for col in cols] #condition_indices = {Type: [True if col == Type else False for col in cols] for Type in types}
+            # control_indices = [True if col == "Control" else False for col in cols]
+            
+            # # Build contrast matrix: one row per delay
+            # n_delays = len(fir_delays)  # 21
+            # n_cols = len(cols)
+
+            # contrast_matrix = np.zeros((n_delays, n_cols))
+
+
 
             # Find indices of your conditions
             condition_indices = {}
@@ -1825,4 +1830,4 @@ PCA_components = construct_PCA_components(datasets[dataLoaders[0]]["all_individu
 PCA_long_components = PCA_components["long"]
 PCA_short_components = PCA_components["short"]
 
-run_glm_analysis(all_participants, current_loader, "cosine", "fir", number_of_subjects)
+run_glm_analysis(all_participants, current_loader, "cosine", "glover + derivative", number_of_subjects)

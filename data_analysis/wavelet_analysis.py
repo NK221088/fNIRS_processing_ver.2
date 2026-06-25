@@ -1,6 +1,7 @@
 import sys
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 import mne
 import mne_nirs
 import pandas as pd
@@ -14,6 +15,8 @@ from collections import defaultdict
 from preprocessing_toolbox.load_data_function import data_loaders
 
 load_dotenv()
+save_path = Path(os.getenv(rf"Evoked_plots_path"))
+
 
 dataSetList = list(data_loaders.keys())
 dataLoaders = [dataSetList[-1]] #, dataSetList[17]]
@@ -77,6 +80,12 @@ individual_epochs = {first_name: [all_epochs[i] for i in name_indices[first_name
 
 df = pd.DataFrame(columns=["ID", "Mean_Math_HbO", "Mean_Hard_Math_HbO", "Mean_Control_HbO", "Math_Control_p-value", "Hard_Math_Control_p-value"])
 
+color_dict = {
+    "Math": "#AA3377",
+    "Hard Math": "g",
+    "Control": "b"
+}
+
 for ind, epochs in individual_epochs.items():
     bad_channels = list(set(channel for epoch in epochs for channel in epoch.info['bads']))
     for epoch in epochs:
@@ -84,17 +93,18 @@ for ind, epochs in individual_epochs.items():
     individual_epochs[ind] = mne.concatenate_epochs(epochs)
     
     
-    math_HbO = individual_epochs[ind].copy()["Math"].pick(long_channels).get_data().mean(axis=2).mean(axis=1)
-    Hard_math_HbO = individual_epochs[ind].copy()["Hard_Math"].pick(long_channels).get_data().mean(axis=2).mean(axis=1)
-    Control_HbO = individual_epochs[ind].copy()["Control"].pick(long_channels).get_data().mean(axis=2).mean(axis=1)
+    math_HbO = individual_epochs[ind].copy()["Math"].pick(long_channels).get_data() #.mean(axis=2).mean(axis=1)
+    Hard_math_HbO = individual_epochs[ind].copy()["Hard_Math"].pick(long_channels).get_data() #.mean(axis=2).mean(axis=1)
+    Control_HbO = individual_epochs[ind].copy()["Control"].pick(long_channels).crop(0,20.1, True).get_data() #.mean(axis=2).mean(axis=1)
 
-    math_AUC = individual_epochs[ind].copy()["Math"].pick(long_channels).get_data().mean(axis=2).mean(axis=1)
-    Hard_math_HbO = individual_epochs[ind].copy()["Hard_Math"].pick(long_channels).get_data().mean(axis=2).mean(axis=1)
-    Control_HbO = individual_epochs[ind].copy()["Control"].pick(long_channels).get_data().mean(axis=2).mean(axis=1)
-    
-    
-    t_stat_math_control, p_value_math_control = ttest_ind(math_HbO, Control_HbO,equal_var=False)
-    t_stat_hard_math_control, p_value_hard_math_control = ttest_ind(Hard_math_HbO, Control_HbO,equal_var=False)
+    active_times = individual_epochs[ind]["Math"].times
+    control_times = individual_epochs[ind]["Control"].copy().crop(0,20.1, True).times
+    math_AUC = np.trapezoid(math_HbO, x=active_times, axis=2).mean(axis=0)
+    Hard_math_AUC = np.trapezoid(Hard_math_HbO, x=active_times, axis=2).mean(axis=0)
+    Control_AUC = np.trapezoid(Control_HbO, x=control_times, axis=2).mean(axis=0)
+
+    t_stat_math_control, p_value_math_control = ttest_ind(math_AUC, Control_AUC,equal_var=False)
+    t_stat_hard_math_control, p_value_hard_math_control = ttest_ind(Hard_math_AUC, Control_AUC,equal_var=False)
     new_row = {
     "ID": ind,
     "Mean_Math_HbO": np.mean(math_HbO),
@@ -106,5 +116,43 @@ for ind, epochs in individual_epochs.items():
 
     df.loc[len(df)] = new_row
 
-df.to_csv()
+    # Manual Bonferroni correction for multiple comparisons (2 comparisons)
+    df["Math_Control_p-value_corrected"] = np.minimum(
+    df["Math_Control_p-value"] * 2, 1
+    )
+
+    df["Hard_Math_Control_p-value_corrected"] = np.minimum(
+        df["Hard_Math_Control_p-value"] * 2, 1
+    )
+
+    
+    evoked_dict = {
+        "Math": individual_epochs[ind]["Math"]
+            .pick(long_channels)
+            .average()
+            .pick("hbo"),
+
+        "Hard Math": individual_epochs[ind]["Hard_Math"]
+            .pick(long_channels)
+            .average()
+            .pick("hbo"),
+
+        "Control": individual_epochs[ind]["Control"]
+            .pick(long_channels)
+            .average()
+            .pick("hbo"),
+    }
+
+    fig = mne.viz.plot_compare_evokeds(
+        evoked_dict,
+        combine="mean",
+        ci=0.95,
+        colors=color_dict,
+        show=False,
+        title=f"Patient: {ind}"
+    )
+    filename = os.path.join(save_path, f"standard_fNIRS_response_plot_{ind}.pdf")
+    fig[0].savefig(filename, format="pdf", bbox_inches="tight")
+
+df.to_csv(os.path.join(save_path, "wavelet_analysis_results.csv"), index=False)
 print("debug")
