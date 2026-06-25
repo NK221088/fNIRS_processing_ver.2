@@ -300,17 +300,32 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         hrf_model_.__name__ = '_gamma_custom_delay_hrf'
         
         try:
-            design_matrix = make_first_level_design_matrix(frame_times,
+            if hrf_model == "fir":
+                design_matrix = make_first_level_design_matrix(frame_times,
+                                    events,
+                                    fir_delays=fir_delays,
+                                    drift_model=drift_model,
+                                    drift_order=drift_order,
+                                    hrf_model=hrf_model,
+                                    min_onset=min_onset,
+                                    high_pass=high_pass,
+                                    add_regs=add_regs,
+                                    oversampling=oversampling,
+                                    add_reg_names=add_reg_names,
+                                    ) 
+            else:
+                design_matrix = make_first_level_design_matrix(frame_times,
                                             events,
                                             drift_model=drift_model,
                                             drift_order=drift_order,
-                                            hrf_model="glover + derivative",
+                                            hrf_model=hrf_model,
                                             min_onset=min_onset,
                                             high_pass=high_pass,
                                             add_regs=add_regs,
                                             oversampling=oversampling,
                                             add_reg_names=add_reg_names,
                                             ) 
+
             glm_estimates = _run_glm("PCA_HbO", subject, haemo, design_matrix, n_jobs=1)
 
         except Exception as e:
@@ -1810,4 +1825,4 @@ PCA_components = construct_PCA_components(datasets[dataLoaders[0]]["all_individu
 PCA_long_components = PCA_components["long"]
 PCA_short_components = PCA_components["short"]
 
-run_glm_analysis(all_participants, current_loader, "cosine", "glover", number_of_subjects)
+run_glm_analysis(all_participants, current_loader, "cosine", "fir", number_of_subjects)
