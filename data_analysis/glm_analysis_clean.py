@@ -1806,14 +1806,6 @@ for data_loader in dataLoaders:
 all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
 number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])]#, len((datasets[dataLoaders[1]]["all_individuals"]))]
 
-# names = {}
-# for participant in all_participants:
-#     names.setdefault(participant.name[:2], []).append(participant)
-
-# standardize = lambda ch: (ch - ch.mean()) / ch.std()
-# for key, value in names.items():
-#   names[key] = [val.raw_haemo.apply_function(standardize, "all", channel_wise=True) for val in value]
-
 PCA_components = construct_PCA_components(datasets[dataLoaders[0]]["all_individuals"])
 PCA_long_components = PCA_components["long"]
 PCA_short_components = PCA_components["short"]
