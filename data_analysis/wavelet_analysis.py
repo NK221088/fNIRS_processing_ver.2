@@ -13,6 +13,7 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
 from collections import defaultdict
 from preprocessing_toolbox.load_data_function import data_loaders
+import matplotlib.pyplot as plt
 
 load_dotenv()
 save_path = Path(os.getenv(rf"Evoked_plots_path"))
@@ -78,7 +79,7 @@ first_names = [name.split("_")[0] for name in names]
 name_indices = {first_name: [ind for ind, name in enumerate(names) if name.split("_")[0] == first_name] for first_name in first_names}
 individual_epochs = {first_name: [all_epochs[i] for i in name_indices[first_name]] for first_name in first_names}
 
-df = pd.DataFrame(columns=["ID", "Mean_Math_HbO", "Mean_Hard_Math_HbO", "Mean_Control_HbO", "Math_Control_p-value", "Hard_Math_Control_p-value"])
+df = pd.DataFrame(columns=["ID", "Math AUC", "Hard Math AUC", "Control AUC", "Math / Control p-value", "Hard Math / Control p-value"])
 
 color_dict = {
     "Math": "#AA3377",
@@ -107,22 +108,22 @@ for ind, epochs in individual_epochs.items():
     t_stat_hard_math_control, p_value_hard_math_control = ttest_ind(Hard_math_AUC, Control_AUC,equal_var=False)
     new_row = {
     "ID": ind,
-    "Mean_Math_HbO": np.mean(math_HbO),
-    "Mean_Hard_Math_HbO": np.mean(Hard_math_HbO),
-    "Mean_Control_HbO": np.mean(Control_HbO),
-    "Math_Control_p-value": p_value_math_control,
-    "Hard_Math_Control_p-value": p_value_hard_math_control,
+    "Math AUC": math_AUC,
+    "Hard Math AUC": Hard_math_AUC,
+    "Control AUC": Control_AUC,
+    "Math / Control p-value": p_value_math_control,
+    "Hard Math / Control p-value": p_value_hard_math_control,
     }
 
     df.loc[len(df)] = new_row
 
     # Manual Bonferroni correction for multiple comparisons (2 comparisons)
-    df["Math_Control_p-value_corrected"] = np.minimum(
-    df["Math_Control_p-value"] * 2, 1
+    df["Math / Control p-value"] = np.minimum(
+    df["Math / Control p-value"] * 2, 1
     )
 
-    df["Hard_Math_Control_p-value_corrected"] = np.minimum(
-        df["Hard_Math_Control_p-value"] * 2, 1
+    df["Hard Math / Control p-value"] = np.minimum(
+        df["Hard Math / Control p-value"] * 2, 1
     )
 
     
@@ -151,8 +152,37 @@ for ind, epochs in individual_epochs.items():
         show=False,
         title=f"Patient: {ind}"
     )
+
+
+    ax = fig[0].axes[0]
+
+    fig_new, ax_new = plt.subplots(figsize=(8, 6))
+    ax_new.spines['top'].set_visible(False)
+    ax_new.spines['right'].set_visible(False)
+
+    # Copy everything from the MNE axes to the new one
+    for line in ax.lines:
+        ax_new.plot(line.get_xdata(), line.get_ydata(), 
+                    color=line.get_color(), 
+                    linestyle=line.get_linestyle(),
+                    linewidth=line.get_linewidth(),
+                    label=line.get_label())
+
+    for collection in ax.collections:
+        ax_new.add_collection(collection)
+
+    ax_new.set_xlim(ax.get_xlim()[0], 25)
+    ax_new.set_ylim(ax.get_ylim())
+    ax_new.set_xlabel(ax.get_xlabel())
+    ax_new.set_ylabel(ax.get_ylabel())
+    ax_new.set_title(ax.get_title())
+    ax_new.axvline(x=20, color='black', linestyle='--', linewidth=1, label='End of Control Epochs')
+    ax_new.legend()
+    ax_new.axvline(x=0, color='black', linestyle='--', linewidth=1)
+
     filename = os.path.join(save_path, f"standard_fNIRS_response_plot_{ind}.pdf")
-    fig[0].savefig(filename, format="pdf", bbox_inches="tight")
+    fig_new.savefig(filename, format="pdf", bbox_inches="tight")
+    plt.close(fig_new)
 
 df.to_csv(os.path.join(save_path, "wavelet_analysis_results.csv"), index=False)
 print("debug")
