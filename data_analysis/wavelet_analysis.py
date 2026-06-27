@@ -94,15 +94,15 @@ for ind, epochs in individual_epochs.items():
     individual_epochs[ind] = mne.concatenate_epochs(epochs)
     
     
-    math_HbO = individual_epochs[ind].copy()["Math"].pick(long_channels).get_data() #.mean(axis=2).mean(axis=1)
-    Hard_math_HbO = individual_epochs[ind].copy()["Hard_Math"].pick(long_channels).get_data() #.mean(axis=2).mean(axis=1)
+    math_HbO = individual_epochs[ind].copy()["Math"].pick(long_channels).crop(0,20.1, True).get_data() #.mean(axis=2).mean(axis=1)
+    Hard_math_HbO = individual_epochs[ind].copy()["Hard_Math"].pick(long_channels).crop(0,20.1, True).get_data() #.mean(axis=2).mean(axis=1)
     Control_HbO = individual_epochs[ind].copy()["Control"].pick(long_channels).crop(0,20.1, True).get_data() #.mean(axis=2).mean(axis=1)
 
     active_times = individual_epochs[ind]["Math"].times
     control_times = individual_epochs[ind]["Control"].copy().crop(0,20.1, True).times
-    math_AUC = np.trapezoid(math_HbO, x=active_times, axis=2).mean(axis=0)
-    Hard_math_AUC = np.trapezoid(Hard_math_HbO, x=active_times, axis=2).mean(axis=0)
-    Control_AUC = np.trapezoid(Control_HbO, x=control_times, axis=2).mean(axis=0)
+    math_AUC = np.trapezoid(math_HbO, x=control_times, axis=2).mean(axis=1)
+    Hard_math_AUC = np.trapezoid(Hard_math_HbO, x=control_times, axis=2).mean(axis=1)
+    Control_AUC = np.trapezoid(Control_HbO, x=control_times, axis=2).mean(axis=1)
 
     t_stat_math_control, p_value_math_control = ttest_ind(math_AUC, Control_AUC,equal_var=False)
     t_stat_hard_math_control, p_value_hard_math_control = ttest_ind(Hard_math_AUC, Control_AUC,equal_var=False)
@@ -116,32 +116,16 @@ for ind, epochs in individual_epochs.items():
     }
 
     df.loc[len(df)] = new_row
-
-    # Manual Bonferroni correction for multiple comparisons (2 comparisons)
-    df["Math / Control p-value"] = np.minimum(
-    df["Math / Control p-value"] * 2, 1
-    )
-
-    df["Hard Math / Control p-value"] = np.minimum(
-        df["Hard Math / Control p-value"] * 2, 1
-    )
-
     
+    def epochs_to_evoked_list(epochs, picks, hbo_pick="hbo"):
+        """Convert an Epochs object to a list of single-trial Evoked objects."""
+        epochs_picked = epochs.pick(picks, verbose=False).pick(hbo_pick, verbose=False)
+        return [epochs_picked[i].average() for i in range(len(epochs_picked))]
+
     evoked_dict = {
-        "Math": individual_epochs[ind]["Math"]
-            .pick(long_channels)
-            .average()
-            .pick("hbo"),
-
-        "Hard Math": individual_epochs[ind]["Hard_Math"]
-            .pick(long_channels)
-            .average()
-            .pick("hbo"),
-
-        "Control": individual_epochs[ind]["Control"]
-            .pick(long_channels)
-            .average()
-            .pick("hbo"),
+        "Math": epochs_to_evoked_list(individual_epochs[ind]["Math"], long_channels),
+        "Hard Math": epochs_to_evoked_list(individual_epochs[ind]["Hard_Math"], long_channels),
+        "Control": epochs_to_evoked_list(individual_epochs[ind]["Control"], long_channels),
     }
 
     fig = mne.viz.plot_compare_evokeds(
@@ -168,8 +152,19 @@ for ind, epochs in individual_epochs.items():
                     linewidth=line.get_linewidth(),
                     label=line.get_label())
 
+    from matplotlib.collections import PolyCollection
+
     for collection in ax.collections:
-        ax_new.add_collection(collection)
+        if isinstance(collection, PolyCollection):
+            new_col = PolyCollection(
+                [p.vertices for p in collection.get_paths()],
+                facecolor=collection.get_facecolor(),
+                edgecolor=collection.get_edgecolor(),
+                alpha=collection.get_alpha(),
+            )
+            ax_new.add_collection(new_col)
+        else:
+            ax_new.add_collection(collection)  # your original line, still fine for anything else
 
     ax_new.set_xlim(ax.get_xlim()[0], 25)
     ax_new.set_ylim(ax.get_ylim())
@@ -183,6 +178,14 @@ for ind, epochs in individual_epochs.items():
     filename = os.path.join(save_path, f"standard_fNIRS_response_plot_{ind}.pdf")
     fig_new.savefig(filename, format="pdf", bbox_inches="tight")
     plt.close(fig_new)
+# Manual Bonferroni correction for multiple comparisons (2 comparisons)
+df["Math / Control p-value"] = np.minimum(
+df["Math / Control p-value"] * 2, 1
+)
+
+df["Hard Math / Control p-value"] = np.minimum(
+    df["Hard Math / Control p-value"] * 2, 1
+)
 
 df.to_csv(os.path.join(save_path, "wavelet_analysis_results.csv"), index=False)
 print("debug")
