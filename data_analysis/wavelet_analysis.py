@@ -14,6 +14,9 @@ sys.path.append(parent_dir)
 from collections import defaultdict
 from preprocessing_toolbox.load_data_function import data_loaders
 import matplotlib.pyplot as plt
+from matplotlib.collections import PolyCollection
+from collections import Counter
+from mne.stats import permutation_t_test
 
 load_dotenv()
 save_path = Path(os.getenv(rf"Evoked_plots_path"))
@@ -44,7 +47,7 @@ for data_loader in dataLoaders:
         "snr_rejection": "SNR",  # Default to None, can be set to "SNR" or "CV"
         "snr_threshold": 8,  # Default threshold for SNR
         "Apply_TDDR": True,  
-        "interpolate_bad_channels": True,
+        "interpolate_bad_channels": False,
     }
     current_loader = data_loaders[data_loader](
                     data_name = data_loader,
@@ -71,15 +74,15 @@ for data_loader in dataLoaders:
 all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
 number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])]#, len((datasets[dataLoaders[1]]["all_individuals"]))]
 
-long_channels = mne_nirs.channels.get_long_channels(all_participants[0].raw_haemo).ch_names
+long_channels = mne_nirs.channels.get_long_channels(all_participants[0].raw_haemo).copy().pick("hbo").ch_names #  [ch for ch in all_participants[0].raw_haemo.ch_names if "hbt" in ch] # 
 
 names = [ind.name for ind in all_participants]
 all_epochs = [ind.epochs for ind in all_participants]
 first_names = [name.split("_")[0] for name in names]
 name_indices = {first_name: [ind for ind, name in enumerate(names) if name.split("_")[0] == first_name] for first_name in first_names}
-individual_epochs = {first_name: [all_epochs[i] for i in name_indices[first_name]] for first_name in first_names}
+individual_epochs = {first_name: [all_epochs[i].copy().pick(long_channels) for i in name_indices[first_name]] for first_name in first_names}
 
-df = pd.DataFrame(columns=["ID", "Math AUC", "Hard Math AUC", "Control AUC", "Math / Control p-value", "Hard Math / Control p-value"])
+df = pd.DataFrame(columns=["ID", "No. Math", "No. Hard Math", "No. Control", "Mean Math AUC", "Mean Hard Math AUC", "Mean Control AUC", "Std. Math AUC", "Std. Hard Math AUC", "Std. Control AUC", "Math / Control p-value", "Hard Math / Control p-value"])
 
 color_dict = {
     "Math": "#AA3377",
@@ -87,30 +90,84 @@ color_dict = {
     "Control": "b"
 }
 
+channel_counts = {}
+math_lenghts = []
+hard_math_lengths = []
+control_lengths = []
+
+math_mean = []
+hard_math_means = []
+control_means = []
+
 for ind, epochs in individual_epochs.items():
-    bad_channels = list(set(channel for epoch in epochs for channel in epoch.info['bads']))
+    n_epochs = len(epochs)
+    min_fraction = round(0.5 * n_epochs)
+    bad_channel_counts = Counter(ch for epoch in epochs for ch in epoch.copy().info['bads'])
+    bad_channel_indices = np.array([list(bad_channel_counts.values())]).flatten() > min_fraction
+    bad_channels = list(set(np.array([list(bad_channel_counts.keys())]).flatten()[bad_channel_indices]))
+    # bad_channels = list(set(channel for epoch in epochs for channel in epoch.info['bads']))
+    good_long_channels = [ch for ch in long_channels if ch not in bad_channels]
+
+    print(f"{ind}: {len(bad_channels)} bad channels dropped, {len(good_long_channels)} good long channels remaining")
+    channel_counts[ind] = [len(bad_channels), len(good_long_channels)]
+
     for epoch in epochs:
         epoch.info['bads'] = bad_channels
+    
+    epochs = [epoch.drop_channels(epoch.info["bads"]) for epoch in epochs]
     individual_epochs[ind] = mne.concatenate_epochs(epochs)
     
+    t_start = 0
+    t_end = 20.1
+    math_HbO = individual_epochs[ind].copy()["Math"].pick(good_long_channels).crop(t_start, t_end, True).get_data() #.mean(axis=2).mean(axis=1)
+    Hard_math_HbO = individual_epochs[ind].copy()["Hard_Math"].pick(good_long_channels).crop(t_start, t_end, True).get_data() #.mean(axis=2).mean(axis=1)
+    Control_HbO = individual_epochs[ind].copy()["Control"].pick(good_long_channels).crop(t_start, t_end, True).get_data() #.mean(axis=2).mean(axis=1)
+
+
+    times = individual_epochs[ind].copy()["Math"].crop(t_start, t_end, True).times
+    math_AUC = np.trapezoid(math_HbO, x=times, axis=2).mean(axis=1)
+    Hard_math_AUC = np.trapezoid(Hard_math_HbO, x=times, axis=2).mean(axis=1)
+    Control_AUC = np.trapezoid(Control_HbO, x=times, axis=2).mean(axis=1)
     
-    math_HbO = individual_epochs[ind].copy()["Math"].pick(long_channels).crop(0,20.1, True).get_data() #.mean(axis=2).mean(axis=1)
-    Hard_math_HbO = individual_epochs[ind].copy()["Hard_Math"].pick(long_channels).crop(0,20.1, True).get_data() #.mean(axis=2).mean(axis=1)
-    Control_HbO = individual_epochs[ind].copy()["Control"].pick(long_channels).crop(0,20.1, True).get_data() #.mean(axis=2).mean(axis=1)
+    
+    from scipy.stats import permutation_test
 
-    active_times = individual_epochs[ind]["Math"].times
-    control_times = individual_epochs[ind]["Control"].copy().crop(0,20.1, True).times
-    math_AUC = np.trapezoid(math_HbO, x=control_times, axis=2).mean(axis=1)
-    Hard_math_AUC = np.trapezoid(Hard_math_HbO, x=control_times, axis=2).mean(axis=1)
-    Control_AUC = np.trapezoid(Control_HbO, x=control_times, axis=2).mean(axis=1)
+    def statistic(x, y):
+        return np.mean(x) - np.mean(y)
 
-    t_stat_math_control, p_value_math_control = ttest_ind(math_AUC, Control_AUC,equal_var=False)
-    t_stat_hard_math_control, p_value_hard_math_control = ttest_ind(Hard_math_AUC, Control_AUC,equal_var=False)
+    Math_result = permutation_test(
+        (math_AUC, Control_AUC),
+        statistic,
+        permutation_type='independent',
+        n_resamples=10000,
+        alternative='two-sided'  # math > control
+    )
+
+    Hard_Math_result = permutation_test(
+        (Hard_math_AUC, Control_AUC),
+        statistic,
+        permutation_type='independent',
+        n_resamples=10000,
+        alternative='two-sided'
+    )
+
+    p_value_math_control = Math_result.pvalue
+    p_value_hard_math_control = Hard_Math_result.pvalue
+
+    # t_stat_math_control, p_value_math_control = ttest_ind(math_AUC, Control_AUC,equal_var=False)
+    # t_stat_hard_math_control, p_value_hard_math_control = ttest_ind(Hard_math_AUC, Control_AUC,equal_var=False)   
+
     new_row = {
     "ID": ind,
-    "Math AUC": math_AUC,
-    "Hard Math AUC": Hard_math_AUC,
-    "Control AUC": Control_AUC,
+    "No. Math": len(math_AUC),
+    "No. Hard Math": len(Hard_math_AUC),
+    "No. Control": len(Control_AUC),
+    "Mean Math AUC": np.mean(math_AUC),
+    "Mean Hard Math AUC": np.mean(Hard_math_AUC),
+    "Mean Control AUC": np.mean(Control_AUC),
+    "Std. Math AUC": np.std(math_AUC),
+    "Std. Hard Math AUC": np.std(Hard_math_AUC),
+    "Std. Control AUC": np.std(Control_AUC),
     "Math / Control p-value": p_value_math_control,
     "Hard Math / Control p-value": p_value_hard_math_control,
     }
@@ -123,9 +180,9 @@ for ind, epochs in individual_epochs.items():
         return [epochs_picked[i].average() for i in range(len(epochs_picked))]
 
     evoked_dict = {
-        "Math": epochs_to_evoked_list(individual_epochs[ind]["Math"], long_channels),
-        "Hard Math": epochs_to_evoked_list(individual_epochs[ind]["Hard_Math"], long_channels),
-        "Control": epochs_to_evoked_list(individual_epochs[ind]["Control"], long_channels),
+        "Math": epochs_to_evoked_list(individual_epochs[ind]["Math"], good_long_channels),
+        "Hard Math": epochs_to_evoked_list(individual_epochs[ind]["Hard_Math"], good_long_channels),
+        "Control": epochs_to_evoked_list(individual_epochs[ind]["Control"], good_long_channels),
     }
 
     fig = mne.viz.plot_compare_evokeds(
@@ -152,7 +209,7 @@ for ind, epochs in individual_epochs.items():
                     linewidth=line.get_linewidth(),
                     label=line.get_label())
 
-    from matplotlib.collections import PolyCollection
+
 
     for collection in ax.collections:
         if isinstance(collection, PolyCollection):
@@ -186,6 +243,5 @@ df["Math / Control p-value"] * 2, 1
 df["Hard Math / Control p-value"] = np.minimum(
     df["Hard Math / Control p-value"] * 2, 1
 )
-
 df.to_csv(os.path.join(save_path, "wavelet_analysis_results.csv"), index=False)
 print("debug")
