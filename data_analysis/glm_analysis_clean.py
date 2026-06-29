@@ -56,7 +56,7 @@ save_path = Path(os.getenv(rf"data_save_path"))
 
 drug_path = Path(os.getenv(rf"Marwan_drug_data"))
 
-def _run_glm(method, subject, raw, design_matrix, noise_model="ar1", bins=0, n_jobs=1, verbose=0):
+def _run_glm(method, subject, raw, design_matrix, noise_model="ar1", bins=0, n_jobs=1, verbose=0, channel_names=[]):
     """
     GLM fit for an MNE structure containing fNIRS data.
 
@@ -155,7 +155,7 @@ def _run_glm(method, subject, raw, design_matrix, noise_model="ar1", bins=0, n_j
         
     elif method == "PCA_HbO":
         raw_copy = raw.copy()
-        pca_data = PCA_long_components[subject.name.split("_")[0]] @ mne_nirs.channels.get_long_channels(raw_copy).pick("hbo").get_data()
+        pca_data = PCA_long_components[subject.name.split("_")[0]] @ mne_nirs.channels.get_long_channels(raw_copy).get_data()
         ch_names=[f"PC{i+1}_hbo" for i in range(len(pca_data))]
         info = mne.create_info(
         ch_names=ch_names,
@@ -237,16 +237,13 @@ def _run_glm(method, subject, raw, design_matrix, noise_model="ar1", bins=0, n_j
 
     return RegressionResults(glm_raw.info, results, design_matrix)
     
-def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="glover", number_of_subjects=[]):
+def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="glover", number_of_subjects=[], channel_names=[]):
     
     print("Running GLM analysis")
     def glm_subject(subject, idx, data_types, drift_model, hrf_model):
         print(f"Constructing design matrix and running GLM on subject {idx+1}/{len(subjects)}")
         haemo = subject.raw_haemo.copy()
-        if "Math" in data_types:
-            relevant_channels = haemo.ch_names
-        else:
-            relevant_channels =  [ch for ch in haemo.ch_names if ("S1" in ch) or ("S2" in ch) or ("S3" in ch) or ("S4" in ch)]
+        relevant_channels = channel_names
         haemo = haemo.pick(picks=relevant_channels)
         # short_channel_haemo =  mne_nirs.channels.get_short_channels(haemo)
         haemo = mne_nirs.channels.get_long_channels(haemo)
@@ -260,7 +257,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         haemo_isis = haemo.copy()
         haemo_isis.annotations.rename(renames_isis)
         haemo.annotations.rename(renames_isis)
-        short_channel_haemo = mne_nirs.channels.get_short_channels(subject.raw_haemo_unfiltered).copy().pick("hbo")
+        short_channel_haemo = mne_nirs.channels.get_short_channels(subject.raw_haemo_unfiltered.copy().pick(channel_names))
         
         # haemo.resample(2.5, npad="auto")
         # short_channel_haemo.resample(2.5, npad="auto")
@@ -280,10 +277,10 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
         hrf_model = hrf_model
         min_onset = 0 # Normally used for fMRI in case events are coded relative to a trigger that happens before scanning. Not relevant here.
         high_pass = high_pass_value #high_pass_value
-        add_regs = PCA_short_channel_haemo.T # Old method: short_channel_haemo.get_data().T
+        add_regs = PCA_short_channel_haemo.T #short_channel_haemo.get_data().T #  Old method: 
         oversampling = 1
         drift_order = 1 # When we use the cosine drift model this parameter doesn't really matter, as the drift order is then actually determined by the high_pass argument
-        add_reg_names = [f"short_PC{i+1}" for i in range(len(PCA_short_channel_haemo))] # Old method: short_channel_haemo.ch_names
+        add_reg_names = [f"short_PC{i+1}" for i in range(len(PCA_short_channel_haemo))] # short_channel_haemo.ch_names #  Old method: 
         fir_delays = range(21) # Default when we don't use a FIR model
 
         t_r = _calculate_tr(frame_times)    
@@ -326,7 +323,7 @@ def run_glm_analysis(subjects, class_instance, drift_model="cosine", hrf_model="
                                             add_reg_names=add_reg_names,
                                             ) 
 
-            glm_estimates = _run_glm("PCA_HbO", subject, haemo, design_matrix, n_jobs=1)
+            glm_estimates = _run_glm("PCA_HbO", subject, haemo, design_matrix, n_jobs=1, channel_names=channel_names)
 
         except Exception as e:
             print(f"Error type: {type(e).__name__}")
@@ -1826,8 +1823,11 @@ for data_loader in dataLoaders:
 all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
 number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])]#, len((datasets[dataLoaders[1]]["all_individuals"]))]
 
-PCA_components = construct_PCA_components(datasets[dataLoaders[0]]["all_individuals"])
+chromophore = "hbt" # "hbt" # "hbr" #
+channel_names = [channel for channel in all_participants[0].raw_haemo.ch_names if chromophore in channel]
+
+PCA_components = construct_PCA_components(datasets[dataLoaders[0]]["all_individuals"], channel_names=channel_names)
 PCA_long_components = PCA_components["long"]
 PCA_short_components = PCA_components["short"]
 
-run_glm_analysis(all_participants, current_loader, "cosine", "glover + derivative", number_of_subjects)
+run_glm_analysis(all_participants, current_loader, "cosine", "glover + derivative", number_of_subjects, channel_names)

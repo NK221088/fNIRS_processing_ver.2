@@ -74,7 +74,9 @@ for data_loader in dataLoaders:
 all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
 number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])]#, len((datasets[dataLoaders[1]]["all_individuals"]))]
 
-long_channels = mne_nirs.channels.get_long_channels(all_participants[0].raw_haemo).copy().pick("hbo").ch_names #  [ch for ch in all_participants[0].raw_haemo.ch_names if "hbt" in ch] # 
+chromophore = "hbt" # "hbt" # "hbr" #
+channel_names = [channel for channel in all_participants[0].raw_haemo.ch_names if chromophore in channel]
+long_channels = mne_nirs.channels.get_long_channels(all_participants[0].raw_haemo.copy().pick(channel_names)).ch_names #  [ch for ch in all_participants[0].raw_haemo.ch_names if "hbt" in ch] # 
 
 names = [ind.name for ind in all_participants]
 all_epochs = [ind.epochs for ind in all_participants]

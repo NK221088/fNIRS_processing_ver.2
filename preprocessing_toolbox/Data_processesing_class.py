@@ -3957,6 +3957,34 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
 
                 raw_haemo_unfiltered = mne.preprocessing.nirs.beer_lambert_law(raw_od, ppf=dpf).copy()
 
+                sum_method = lambda data: np.sum(data, axis=0)
+                raw_tmp_unfiltered = raw_haemo_unfiltered.copy()
+
+                unique_ch_names = list(dict.fromkeys(ch.split(" ")[0] for ch in raw_tmp_unfiltered.ch_names))
+                groups = {channel: [i for i, ch in enumerate(raw_tmp_unfiltered.ch_names) if ch.split(" ")[0] == channel] for channel in unique_ch_names}
+
+                for ch in raw_tmp_unfiltered.info["chs"]:
+                    if ch["kind"] == mne.io.constants.FIFF.FIFFV_FNIRS_CH:
+                        ch["coil_type"] = mne.io.constants.FIFF.FIFFV_COIL_FNIRS_HBO
+
+                raw_HbT_unfiltered = mne.channels.combine_channels(raw_tmp_unfiltered, groups=groups, method=sum_method)
+
+                hbt_data_unfiltered = raw_HbT_unfiltered.get_data()
+                hbt_ch_names_unfiltered = [ch + " hbt" for ch in raw_HbT_unfiltered.ch_names]
+                hbt_info_unfiltered = mne.create_info(ch_names=hbt_ch_names_unfiltered, sfreq=raw_haemo_unfiltered.info['sfreq'])
+                hbt_info_unfiltered['subject_info'] = raw_haemo_unfiltered.info.get('subject_info', None)
+
+                info_channels_unfiltered = raw_haemo_unfiltered.copy().pick("hbo").info["chs"]
+                hbt_raw_unfiltered = mne.io.RawArray(hbt_data_unfiltered, hbt_info_unfiltered)
+                for idx, ch in enumerate(hbt_raw_unfiltered.info["chs"]):
+                    ch["loc"] = info_channels_unfiltered[idx]["loc"]
+                    ch["coil_type"] = info_channels_unfiltered[idx]["coil_type"]
+                    ch["unit"] = info_channels_unfiltered[idx]["unit"]
+                    ch["unit_mul"] = info_channels_unfiltered[idx]["unit_mul"]
+                    ch["kind"] = info_channels_unfiltered[idx]["kind"]
+
+                raw_haemo_unfiltered = raw_haemo_unfiltered.add_channels([hbt_raw_unfiltered], force_update_info=True)
+
                 # raw_haemo_unfiltered._data *= 1e6
                 
                 # from mne.io.constants import FIFF
@@ -3985,50 +4013,33 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 
                 raw_epochs = mne.Epochs(raw_haemo_unfiltered, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, reject=None, reject_by_annotation=None, proj=False, baseline=None, preload=True, detrend=None, verbose=True)
 
-
-                sum_method = lambda data: np.sum(data, axis=0)
                 raw_tmp = raw_haemo.copy()
-                chromophores = ["hbo", "hbr"]
-                groups = {chromo: [i for i, ch in enumerate(raw_tmp.ch_names) if ch[-3:] == chromo] for chromo in chromophores}
-                raw_mean = mne.channels.combine_channels(
-                raw_tmp, 
-                groups=groups, 
-                method="mean")
-                for ch in raw_mean.info["chs"]:
+
+                unique_ch_names = list(dict.fromkeys(ch.split(" ")[0] for ch in raw_tmp.ch_names))
+                groups = {channel: [i for i, ch in enumerate(raw_tmp.ch_names) if ch.split(" ")[0] == channel] for channel in unique_ch_names}
+
+                for ch in raw_tmp.info["chs"]:
                     if ch["kind"] == mne.io.constants.FIFF.FIFFV_FNIRS_CH:
-                        ch["coil_type"] = mne.io.constants.FIFF.FIFFV_COIL_FNIRS_HBO # We set the channel types to HbO to allow combination
-                groups = {"hbt": [0, 1]}
-                raw_HbT = mne.channels.combine_channels(
-                raw_mean, 
-                groups=groups, 
-                method=sum_method)
-                glm_raw = raw_HbT.copy()
-                # Get the HbT data
-                hbt_data = glm_raw.get_data()
-                hbt_data = np.tile(hbt_data, (15, 1))
+                        ch["coil_type"] = mne.io.constants.FIFF.FIFFV_COIL_FNIRS_HBO
 
-                # Create channel info for HbT
-                orig_ch_names = [ch for ch in mne_nirs.channels.get_long_channels(raw_haemo.copy().pick("hbo")).ch_names]
-                hbt_ch_names = [name.replace("hbo", "hbt") for name in orig_ch_names]
-                hbt_info = mne.create_info(
-                    ch_names=hbt_ch_names,
-                    sfreq=raw_haemo.info['sfreq'],
-                )
+                raw_HbT = mne.channels.combine_channels(raw_tmp, groups=groups, method=sum_method)
 
-                # Copy relevant info from raw_haemo
+                hbt_data = raw_HbT.get_data()
+                hbt_ch_names = [ch + " hbt" for ch in raw_HbT.ch_names]
+                hbt_info = mne.create_info(ch_names=hbt_ch_names, sfreq=raw_haemo.info['sfreq'])
                 hbt_info['subject_info'] = raw_haemo.info.get('subject_info', None)
 
-                # Create a new Raw object with HbT
-                info_channel = mne_nirs.channels.get_long_channels(raw_haemo.copy()).info["chs"][0]
+                info_channels = raw_haemo.copy().pick("hbo").info["chs"]
                 hbt_raw = mne.io.RawArray(hbt_data, hbt_info)
-                for ch in hbt_raw.info["chs"]:
-                    ch["coil_type"] = info_channel["coil_type"]
-                    ch["unit"] = info_channel["unit"]
-                    ch["unit_mul"] = info_channel["unit_mul"]
-                    ch["kind"] = info_channel["kind"]                    
+                for idx, ch in enumerate(hbt_raw.info["chs"]):
+                    ch["loc"] = info_channels[idx]["loc"]
+                    ch["coil_type"] = info_channels[idx]["coil_type"]
+                    ch["unit"] = info_channels[idx]["unit"]
+                    ch["unit_mul"] = info_channels[idx]["unit_mul"]
+                    ch["kind"] = info_channels[idx]["kind"]
 
-                # # Now add it to raw_haemo
                 raw_haemo = raw_haemo.add_channels([hbt_raw], force_update_info=True)
+
                 names = [ind.name for ind in self.Individual_participants]
                 if f"{patient_name}".replace("-", "") in names:
                     print("debug")

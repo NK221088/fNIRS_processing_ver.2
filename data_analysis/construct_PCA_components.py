@@ -12,7 +12,7 @@ from pathlib import Path
 load_dotenv()
 save_path = Path(os.getenv(rf"PCA_component_visualizations_path"))
 
-def extract_data(patient_data, channel_type):
+def extract_data(patient_data, channel_type, channel_names):
     names = [ind.name for ind in patient_data]
     first_names = {name.split("_")[0] for name in names}
     name_idx = {first_name: [idx for idx, n in enumerate(names) if n.split("_")[0] == first_name] for first_name in first_names}
@@ -25,9 +25,9 @@ def extract_data(patient_data, channel_type):
         for haemo in haemos:
             haemo.info['bads'] = bad_channels
         if channel_type == "long":
-            patient_raw_haemo[name] = mne_nirs.channels.get_long_channels(mne.concatenate_raws(haemos).copy()).pick("hbo").get_data()
+            patient_raw_haemo[name] = mne_nirs.channels.get_long_channels(mne.concatenate_raws(haemos.copy()).pick(channel_names)).get_data()
         elif channel_type == "short":
-            patient_raw_haemo[name] = mne_nirs.channels.get_short_channels(mne.concatenate_raws(haemos).copy()).pick("hbo").get_data()
+            patient_raw_haemo[name] = mne_nirs.channels.get_short_channels(mne.concatenate_raws(haemos.copy()).pick(channel_names)).get_data()
     return patient_raw_haemo
 def channel_importance(loadings, explained_variance_ratio, n_components):
     """Weighted sum of |loading| across kept components, weighted by each
@@ -37,13 +37,15 @@ def channel_importance(loadings, explained_variance_ratio, n_components):
     importance = (np.abs(loadings) * weights[:, None]).sum(axis=0)
     return importance / importance.sum()
 
-def construct_PCA_components(patient_data):
+def construct_PCA_components(patient_data, channel_names):
+    n_longs = []
+    n_shorts = []
     types = ["long", "short"]
     PCA_components = {"long": {}, "short": {}}
     top_channels = {"long": {}, "short": {}}
     importance_scores = {"long": {}, "short": {}}
     for channel_type in tqdm(types, position=0, desc="Channel types"):
-        patient_raw_haemo = extract_data(patient_data, channel_type)
+        patient_raw_haemo = extract_data(patient_data, channel_type, channel_names)
         pbar = tqdm(patient_raw_haemo.items(), position=1, leave=False, desc=f"{channel_type}")
         for idx, (name, raw) in enumerate(pbar):
             pbar.set_description(f"Processing {name}")
@@ -69,9 +71,11 @@ def construct_PCA_components(patient_data):
             # Components for 95% variance
             if channel_type == "long":
                 # n_components = np.searchsorted(cumvar, 0.95) + 1 #; 
+                # n_longs.append(n_components)
                 n_components = 9 # is chosen as the average number of components
             elif channel_type == "short":
                 # n_components = np.searchsorted(cumvar, 0.95) + 1 #; 
+                # n_shorts.append(n_components)
                 n_components = 5 # is chosen as the average number of components
 
 
@@ -81,23 +85,23 @@ def construct_PCA_components(patient_data):
 
             # pca is your fitted PCA object for a given patient
             if channel_type == "long":
-                channel_names = mne_nirs.channels.get_long_channels(patient_data[idx].raw_haemo.copy()).pick("hbo").ch_names
+                channel_names_ = mne_nirs.channels.get_long_channels(patient_data[idx].raw_haemo.copy().pick(channel_names)).ch_names
             elif channel_type == "short":
-                channel_names = mne_nirs.channels.get_short_channels(patient_data[idx].raw_haemo.copy()).pick("hbo").ch_names
+                channel_names_ = mne_nirs.channels.get_short_channels(patient_data[idx].raw_haemo.copy().pick(channel_names)).ch_names
 
             importance = channel_importance(loadings, pca.explained_variance_ratio_, n_components)
-            importance_scores[channel_type][name] = dict(zip(channel_names, importance))
+            importance_scores[channel_type][name] = dict(zip(channel_names_, importance))
             
             top_channels[channel_type][name] = {}
             for i, component in enumerate(loadings):
                 top3_idx = np.argsort(np.abs(component))[-3:][::-1]  # descending
-                top_channels[channel_type][name][f"PC{i+1}"] = [channel_names[j] for j in top3_idx]
+                top_channels[channel_type][name][f"PC{i+1}"] = [channel_names_[j] for j in top3_idx]
 
             fig, axes = plt.subplots(n_components, 1, figsize=(10, 3*n_components), squeeze=False)
             for i, ax in enumerate(axes[:, 0]):
-                ax.bar(range(len(channel_names)), pca.components_[i])
-                ax.set_xticks(range(len(channel_names)))
-                ax.set_xticklabels(channel_names, rotation=90, fontsize=7)
+                ax.bar(range(len(channel_names_)), pca.components_[i])
+                ax.set_xticks(range(len(channel_names_)))
+                ax.set_xticklabels(channel_names_, rotation=90, fontsize=7)
                 ax.set_title(f"PC{i+1} loadings ({pca.explained_variance_ratio_[i]*100:.1f}% variance)")
             plt.tight_layout()
             plt.savefig(os.path.join(os.path.join(save_path, channel_type), f"{name}_PCA_components.pdf"))

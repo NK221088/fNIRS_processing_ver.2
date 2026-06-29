@@ -74,7 +74,7 @@ threshold = 0.35
 print("Responders:")
 all_responders = list(count_data.keys())
 
-Marwan_plot = True
+Marwan_plot = False
 
 if Marwan_plot:
     covert_responders = ["P4", "P16", "P23", "P29", "P32", "P35", "P36"]
@@ -148,7 +148,7 @@ relevant_data_types = list(np.unique([condition for condition in all_conditions 
 picks_ =  [ch for ch in long_channels]
 all_n_back_ = ["Math", "Hard_Math", "Control"] #"single", 
 
-max_plot = True
+max_plot = False
 first_time = True
 
 ratio_data = {name: count_data[name] / total_data[name] for name in list(count_data.keys())}
