@@ -16,19 +16,29 @@ def extract_data(patient_data, channel_type, channel_names):
     names = [ind.name for ind in patient_data]
     first_names = {name.split("_")[0] for name in names}
     name_idx = {first_name: [idx for idx, n in enumerate(names) if n.split("_")[0] == first_name] for first_name in first_names}
+    good_channels = {}
     if channel_type == "long":
         patient_raw_haemo = {name: [patient_data[i].raw_haemo.copy() for i in idxs] for name, idxs in name_idx.items()}
     elif channel_type == "short":
         patient_raw_haemo = {name: [patient_data[i].raw_haemo_unfiltered.copy() for i in idxs] for name, idxs in name_idx.items()}
     for name, haemos in patient_raw_haemo.items():
-        bad_channels = list(set(channel for haemo in haemos for channel in haemo.info['bads']))
+        from collections import Counter
+        n_raws = len(haemos)
+        min_fraction = round(0.5 * n_raws)
+        bad_channel_counts = Counter(ch for raw in haemos for ch in raw.copy().info['bads'])
+        bad_channel_indices = np.array([list(bad_channel_counts.values())]).flatten() > min_fraction
+        bad_channels = list(set(np.array([list(bad_channel_counts.keys())]).flatten()[bad_channel_indices]))
+        good_channel_names = [ch for ch in channel_names if ch not in bad_channels]
+        good_channels[name] = good_channel_names
+        # Old Method: bad_channels = list(set(channel for haemo in haemos for channel in haemo.info['bads']))
+        
         for haemo in haemos:
             haemo.info['bads'] = bad_channels
         if channel_type == "long":
-            patient_raw_haemo[name] = mne_nirs.channels.get_long_channels(mne.concatenate_raws(haemos.copy()).pick(channel_names)).get_data()
+            patient_raw_haemo[name] = mne_nirs.channels.get_long_channels(mne.concatenate_raws(haemos.copy()).pick(good_channel_names)).get_data()
         elif channel_type == "short":
-            patient_raw_haemo[name] = mne_nirs.channels.get_short_channels(mne.concatenate_raws(haemos.copy()).pick(channel_names)).get_data()
-    return patient_raw_haemo
+            patient_raw_haemo[name] = mne_nirs.channels.get_short_channels(mne.concatenate_raws(haemos.copy()).pick(good_channel_names)).get_data()
+    return patient_raw_haemo, good_channels
 def channel_importance(loadings, explained_variance_ratio, n_components):
     """Weighted sum of |loading| across kept components, weighted by each
     component's explained variance ratio. Collapses all PCs into one
@@ -45,7 +55,7 @@ def construct_PCA_components(patient_data, channel_names):
     top_channels = {"long": {}, "short": {}}
     importance_scores = {"long": {}, "short": {}}
     for channel_type in tqdm(types, position=0, desc="Channel types"):
-        patient_raw_haemo = extract_data(patient_data, channel_type, channel_names)
+        patient_raw_haemo, good_channel_names = extract_data(patient_data, channel_type, channel_names)
         pbar = tqdm(patient_raw_haemo.items(), position=1, leave=False, desc=f"{channel_type}")
         for idx, (name, raw) in enumerate(pbar):
             pbar.set_description(f"Processing {name}")
@@ -70,13 +80,13 @@ def construct_PCA_components(patient_data, channel_names):
             
             # Components for 95% variance
             if channel_type == "long":
-                # n_components = np.searchsorted(cumvar, 0.95) + 1 #; 
-                # n_longs.append(n_components)
-                n_components = 9 # is chosen as the average number of components
+                n_components = np.searchsorted(cumvar, 0.95) + 1 #; 
+                n_longs.append(n_components)
+                # n_components = 9 # is chosen as the average number of components
             elif channel_type == "short":
-                # n_components = np.searchsorted(cumvar, 0.95) + 1 #; 
-                # n_shorts.append(n_components)
-                n_components = 5 # is chosen as the average number of components
+                n_components = np.searchsorted(cumvar, 0.95) + 1 #; 
+                n_shorts.append(n_components)
+                # n_components = 5 # is chosen as the average number of components
 
 
             # Project
@@ -85,9 +95,9 @@ def construct_PCA_components(patient_data, channel_names):
 
             # pca is your fitted PCA object for a given patient
             if channel_type == "long":
-                channel_names_ = mne_nirs.channels.get_long_channels(patient_data[idx].raw_haemo.copy().pick(channel_names)).ch_names
+                channel_names_ = mne_nirs.channels.get_long_channels(patient_data[idx].raw_haemo.copy().pick(good_channel_names[name])).ch_names
             elif channel_type == "short":
-                channel_names_ = mne_nirs.channels.get_short_channels(patient_data[idx].raw_haemo.copy().pick(channel_names)).ch_names
+                channel_names_ = mne_nirs.channels.get_short_channels(patient_data[idx].raw_haemo.copy().pick(good_channel_names[name])).ch_names
 
             importance = channel_importance(loadings, pca.explained_variance_ratio_, n_components)
             importance_scores[channel_type][name] = dict(zip(channel_names_, importance))
@@ -150,4 +160,4 @@ def construct_PCA_components(patient_data, channel_names):
         plt.savefig(os.path.join(os.path.join(save_path, channel_type), "top_3_contributors.pdf"))
         plt.close()
 
-    return PCA_components
+    return PCA_components, good_channel_names

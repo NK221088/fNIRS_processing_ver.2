@@ -1790,8 +1790,8 @@ for data_loader in dataLoaders:
         "reject_criteria": dict(hbo=80e-6),
         "unwanted": ["15.0"],
         "filter_lower_value": 0.01,
-        "filter_upper_value": 0.5,
-        "h_trans_bandwidth": 0.2,           
+        "filter_upper_value": 0.2,
+        "h_trans_bandwidth": 0.05,           
         "l_trans_bandwidth": 0.01,
         "snr_rejection": "SNR",  # Default to None, can be set to "SNR" or "CV"
         "snr_threshold": 8,  # Default threshold for SNR
@@ -1823,11 +1823,81 @@ for data_loader in dataLoaders:
 all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
 number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])]#, len((datasets[dataLoaders[1]]["all_individuals"]))]
 
-chromophore = "hbt" # "hbt" # "hbr" #
+chromophore = "hbo" # "hbt" # "hbr" #
 channel_names = [channel for channel in all_participants[0].raw_haemo.ch_names if chromophore in channel]
 
 PCA_components = construct_PCA_components(datasets[dataLoaders[0]]["all_individuals"], channel_names=channel_names)
 PCA_long_components = PCA_components["long"]
 PCA_short_components = PCA_components["short"]
+
+color_dict = {
+    "Math": "#AA3377",
+    "Hard Math": "g",
+    "Control": "b"
+}
+ch_names = [f"PC{i+1}_hbo" for i in range(PCA_long_components[all_participants[0].name.split("_")[0]].shape[0])]
+ch_types = ["hbo"] * len(ch_names)
+
+for participant in all_participants:
+    name = participant.name.split("_")[0]
+    loadings = PCA_long_components[name]
+    long_raw = mne_nirs.channels.get_long_channels(
+            participant.raw_haemo.copy().pick(channel_names)
+        )
+    pc_data = loadings @ long_raw.get_data()
+    
+    info = mne.create_info(
+            ch_names = ch_names,
+            sfreq = first.raw_haemo.info["sfreq"],
+            ch_types = ch_types
+            )
+    
+    glm_raw = mne.io.RawArray(pc_data, info)
+
+    events, event_dict = mne.events_from_annotations(participant.raw_haemo)
+
+    pc_epochs = mne.Epochs(
+            glm_raw, events, event_id=event_dict,
+            tmin=0, tmax=20, baseline=None, preload=True
+        )
+    
+    evoked_dict = {
+            cond: pc_epochs[cond].average() 
+            for cond in ["Math", "Hard_Math", "Control"]
+        }
+    
+    fig, axes = plt.subplots(3, 3, figsize=(15, 12))
+    fig.suptitle(f"{name} — PC evoked responses", fontsize=14)
+
+    for pc_idx, ax in enumerate(axes.flatten()):
+        pc_name = f"PC{pc_idx + 1}_{chromophore}"
+        for cond, color in color_dict.items():
+            cond_key = cond.replace(" ", "_")
+            epochs_cond = pc_epochs[cond_key].get_data(picks=[pc_name])
+            mean = epochs_cond[:, 0, :].mean(axis=0)
+            sem = epochs_cond[:, 0, :].std(axis=0) / np.sqrt(len(epochs_cond))
+            times = pc_epochs.times
+            ax.plot(times, mean, color=color, label=cond)
+            ax.fill_between(times, mean - sem, mean + sem, color=color, alpha=0.2)
+
+        ax.axvline(x=0, color='black', linestyle='--', linewidth=0.8)
+        ax.axvline(x=20, color='black', linestyle='--', linewidth=0.8)
+        ax.set_title(pc_name, fontsize=10)
+        ax.set_xlabel("Time (s)", fontsize=8)
+        ax.set_ylabel("PC score (a.u.)", fontsize=8)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        if pc_idx == 0:
+            ax.legend(fontsize=7)
+
+
+    plt.tight_layout()
+    filename = os.path.join(
+        rf"L:\Auditdata\CONNECT-ME\Nikolai\fNIRS\Marwans_project\PCA_evoked",
+        f"PC_evoked_{name}.pdf"
+    )
+    fig.savefig(filename, format="pdf", bbox_inches="tight")
+    plt.close(fig)
+
 
 run_glm_analysis(all_participants, current_loader, "cosine", "glover + derivative", number_of_subjects, channel_names)
