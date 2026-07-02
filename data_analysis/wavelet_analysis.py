@@ -352,12 +352,12 @@ for ind, epochs in individual_epochs.items():
 
     if math_result["n_clusters_total"] > 0:
         for start, end, p in math_result["sig_windows"]:
-            ax_new.axvline(x=start, color=color_dict["Math"], linestyle='-', linewidth=2, label=f'Math vs Control p={p:.3f}')
-            ax_new.axvline(x=end, color=color_dict["Math"], linestyle='-', linewidth=2)
+            ax_new.axvline(x=start, color=color_dict["Math"], linestyle='--', linewidth=2, label=f'Math vs Control p={p:.3f}')
+            ax_new.axvline(x=end, color=color_dict["Math"], linestyle='--', linewidth=2)
     if hard_math_result["n_clusters_total"] > 0:
         for start, end, p in hard_math_result["sig_windows"]:
-            ax_new.axvline(x=start, color=color_dict["Hard Math"], linestyle='-', linewidth=2, label=f'Hard Math vs Control p={p:.3f}')
-            ax_new.axvline(x=end, color=color_dict["Hard Math"], linestyle='-', linewidth=2)
+            ax_new.axvline(x=start, color=color_dict["Hard Math"], linestyle='--', linewidth=2, label=f'Hard Math vs Control p={p:.3f}')
+            ax_new.axvline(x=end, color=color_dict["Hard Math"], linestyle='--', linewidth=2)
     filename = os.path.join(save_path, f"standard_fNIRS_response_plot_{ind}.pdf")
     fig_new.savefig(filename, format="pdf", bbox_inches="tight")
     plt.close(fig_new)
