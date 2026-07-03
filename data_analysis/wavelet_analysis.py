@@ -74,11 +74,12 @@ for data_loader in dataLoaders:
 all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
 number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])]#, len((datasets[dataLoaders[1]]["all_individuals"]))]
 
-chromophore = "hbo" # "hbt" # "hbr" #
+chromophore = "hbt" # "hbt" # "hbr" #
 channel_names = [channel for channel in all_participants[0].raw_haemo.ch_names if chromophore in channel]
 
 long_channels = mne_nirs.channels.get_long_channels(all_participants[0].raw_haemo.copy().pick(channel_names)).ch_names #  [ch for ch in all_participants[0].raw_haemo.ch_names if "hbt" in ch] # 
 
+individual_recording_analysis = True
 names = [ind.name for ind in all_participants]
 all_epochs = [ind.epochs for ind in all_participants]
 first_names = [name.split("_")[0] for name in names]
@@ -180,27 +181,27 @@ control_means = []
 from mne.stats import permutation_cluster_test
 
 cluster_results = []
-
+if individual_recording_analysis:
+    individual_epochs = {ind.name: ind.epochs for ind in all_participants}
 for ind, epochs in individual_epochs.items():
-    n_epochs = len(epochs)
-    min_fraction = round(0.5 * n_epochs)
-    bad_channel_counts = Counter(ch for epoch in epochs for ch in epoch.copy().info['bads'])
-    bad_channel_indices = np.array([list(bad_channel_counts.values())]).flatten() > min_fraction
-    bad_channels = list(set(np.array([list(bad_channel_counts.keys())]).flatten()[bad_channel_indices]))
+    if individual_recording_analysis:        bad_channels = epochs.info['bads']
+    else:
+        n_epochs = len(epochs)
+        min_fraction = round(0.5 * n_epochs)
+        bad_channel_counts = Counter(ch for epoch in epochs for ch in epoch.copy().info['bads'])
+        bad_channel_indices = np.array([list(bad_channel_counts.values())]).flatten() > min_fraction
+        bad_channels = list(set(np.array([list(bad_channel_counts.keys())]).flatten()[bad_channel_indices]))
+        for epoch in epochs:
+            epoch.info['bads'] = bad_channels
+    
+        epochs = [epoch.drop_channels(epoch.info["bads"]) for epoch in epochs]
+        individual_epochs[ind] = mne.concatenate_epochs(epochs)
     # bad_channels = list(set(channel for epoch in epochs for channel in epoch.info['bads']))
     # good_long_channels = [ch for ch in long_channels if ch in good_channel_names[first_name]]
     good_long_channels = [ch for ch in long_channels if ch not in bad_channels]
 
-
     print(f"{ind}: {len(bad_channels)} bad channels dropped, {len(good_long_channels)} good long channels remaining")
     channel_counts[ind] = [len(bad_channels), len(good_long_channels)]
-
-    for epoch in epochs:
-        epoch.info['bads'] = bad_channels
-    
-    epochs = [epoch.drop_channels(epoch.info["bads"]) for epoch in epochs]
-    individual_epochs[ind] = mne.concatenate_epochs(epochs)
-
     
     t_start = 0
     t_end = 20.1
@@ -320,12 +321,14 @@ for ind, epochs in individual_epochs.items():
     ax_new.spines['right'].set_visible(False)
 
     # Copy everything from the MNE axes to the new one
+    data = {}
     for line in ax.lines:
         ax_new.plot(line.get_xdata(), line.get_ydata(), 
                     color=line.get_color(), 
                     linestyle=line.get_linestyle(),
                     linewidth=line.get_linewidth(),
                     label=line.get_label())
+        data[line.get_label()] = [line.get_xdata(), line.get_ydata()]
 
 
 
@@ -350,14 +353,36 @@ for ind, epochs in individual_epochs.items():
     ax_new.legend()
     ax_new.axvline(x=0, color='black', linestyle='--', linewidth=1)
 
+    hatch_patterns = ['//', 'xx', '\\\\', '++', 'oo']
     if math_result["n_clusters_total"] > 0:
-        for start, end, p in math_result["sig_windows"]:
-            ax_new.axvline(x=start, color=color_dict["Math"], linestyle='--', linewidth=2, label=f'Math vs Control p={p:.3f}')
-            ax_new.axvline(x=end, color=color_dict["Math"], linestyle='--', linewidth=2)
+        for idx, (start, end, p) in enumerate(math_result["sig_windows"]):
+            ax_new.fill_between(
+                            data["Math"][0], data["Math"][1], data["Control"][1],
+                            where=(data["Math"][0] >= start) & (data["Math"][0] <= end),
+                            facecolor='none', edgecolor=color_dict["Math"], hatch=hatch_patterns[idx % len(hatch_patterns)],
+                            alpha=0.7, linewidth=0.0, interpolate=True
+                        )
+            y1_start = data["Math"][1][(data["Math"][0] >= start) & (data["Math"][0] <= end)][0]
+            y2_start = data["Control"][1][(data["Math"][0] >= start) & (data["Math"][0] <= end)][0]
+            ax_new.vlines(start, ymin=min(y1_start, y2_start), ymax=max(y1_start, y2_start), color=color_dict["Math"], linestyle='--', linewidth=1)
+            y1_end = data["Math"][1][(data["Math"][0] >= start) & (data["Math"][0] <= end)][-1]
+            y2_end = data["Control"][1][(data["Math"][0] >= start) & (data["Math"][0] <= end)][-1]
+            ax_new.vlines(end, ymin=min(y1_end, y2_end), ymax=max(y1_end, y2_end), color=color_dict["Math"], linestyle='--', linewidth=1, label=f"Cluster {idx + 1}, p={p:.3f}")
     if hard_math_result["n_clusters_total"] > 0:
-        for start, end, p in hard_math_result["sig_windows"]:
-            ax_new.axvline(x=start, color=color_dict["Hard Math"], linestyle='--', linewidth=2, label=f'Hard Math vs Control p={p:.3f}')
-            ax_new.axvline(x=end, color=color_dict["Hard Math"], linestyle='--', linewidth=2)
+        for idx, (start, end, p) in enumerate(hard_math_result["sig_windows"]):
+            ax_new.fill_between(
+                            data["Hard Math"][0], data["Hard Math"][1], data["Control"][1],
+                            where=(data["Hard Math"][0] >= start) & (data["Hard Math"][0] <= end),
+                            facecolor='none', edgecolor=color_dict["Hard Math"], hatch=hatch_patterns[idx % len(hatch_patterns)],
+                            alpha=0.7, linewidth=0.0, interpolate=True
+                        )
+            y1_start = data["Hard Math"][1][(data["Hard Math"][0] >= start) & (data["Hard Math"][0] <= end)][0]
+            y2_start = data["Control"][1][(data["Hard Math"][0] >= start) & (data["Hard Math"][0] <= end)][0]
+            ax_new.vlines(start, ymin=min(y1_start, y2_start), ymax=max(y1_start, y2_start), color=color_dict["Hard Math"], linestyle='--', linewidth=1)
+            y1_end = data["Hard Math"][1][(data["Hard Math"][0] >= start) & (data["Hard Math"][0] <= end)][-1]
+            y2_end = data["Control"][1][(data["Hard Math"][0] >= start) & (data["Hard Math"][0] <= end)][-1]
+            ax_new.vlines(end, ymin=min(y1_end, y2_end), ymax=max(y1_end, y2_end), color=color_dict["Hard Math"], linestyle='--', linewidth=1, label=f"Cluster {idx + 1}, p={p:.3f}")
+    ax_new.legend()
     filename = os.path.join(save_path, f"standard_fNIRS_response_plot_{ind}.pdf")
     fig_new.savefig(filename, format="pdf", bbox_inches="tight")
     plt.close(fig_new)
