@@ -74,7 +74,7 @@ for data_loader in dataLoaders:
 all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
 number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])]#, len((datasets[dataLoaders[1]]["all_individuals"]))]
 
-chromophore = "hbt" # "hbt" # "hbr" #
+chromophore = "hbo" # "hbt" # "hbr" #
 channel_names = [channel for channel in all_participants[0].raw_haemo.ch_names if chromophore in channel]
 
 long_channels = mne_nirs.channels.get_long_channels(all_participants[0].raw_haemo.copy().pick(channel_names)).ch_names #  [ch for ch in all_participants[0].raw_haemo.ch_names if "hbt" in ch] # 
@@ -84,7 +84,19 @@ names = [ind.name for ind in all_participants]
 all_epochs = [ind.epochs for ind in all_participants]
 first_names = [name.split("_")[0] for name in names]
 name_indices = {first_name: [ind for ind, name in enumerate(names) if name.split("_")[0] == first_name] for first_name in first_names}
+# name_epoch_map = {first_name: [[name, ind] for ind, name in enumerate(names) if name.split("_")[0] == first_name] for first_name in first_names}
+# session_epoch_map = {first_name: defaultdict(list) for first_name in first_names}
+# for key, value in name_epoch_map.items():
+#     for subvalue in value:
+#         session_epoch_map[key][subvalue[0].split("_")[1]].append(all_epochs[subvalue[1]])
+# session_epoch_bad_channels = {first_name: {session: list(set(ch for epoch in epochs for ch in epoch.copy().info['bads'])) for session, epochs in sessions.items()} for first_name, sessions in session_epoch_map.items()}
 individual_epochs = {first_name: [all_epochs[i].copy().pick(long_channels) for i in name_indices[first_name]] for first_name in first_names}
+# for ind, sessions in session_epoch_bad_channels.items():
+#     for session, bad_channels in sessions.items():
+#         n_epochs = len(session_epoch_map[ind][session])
+#         min_fraction = round(0.01 * n_epochs)
+#         bad_channel_counts = Counter(bad_channels)
+#         session_epoch_bad_channels[ind][session] = [ch for ch, count in bad_channel_counts.items() if count > min_fraction]
 
 PCA_epochs = False
 if PCA_epochs:
@@ -184,7 +196,10 @@ cluster_results = []
 if individual_recording_analysis:
     individual_epochs = {ind.name: ind.epochs for ind in all_participants}
 for ind, epochs in individual_epochs.items():
-    if individual_recording_analysis:        bad_channels = epochs.info['bads']
+    if individual_recording_analysis:
+        # bad_channels = session_epoch_bad_channels[ind.split("_")[0]][ind.split("_")[1]]
+        bad_channels = epochs.info["bads"]
+        # individual_epochs[ind] = epochs
     else:
         n_epochs = len(epochs)
         min_fraction = round(0.5 * n_epochs)
@@ -203,34 +218,45 @@ for ind, epochs in individual_epochs.items():
     print(f"{ind}: {len(bad_channels)} bad channels dropped, {len(good_long_channels)} good long channels remaining")
     channel_counts[ind] = [len(bad_channels), len(good_long_channels)]
     
-    t_start = 0
-    t_end = 20.1
-    math_HbO = individual_epochs[ind].copy()["Math"].pick(good_long_channels).crop(t_start, t_end, True).get_data() #.mean(axis=2).mean(axis=1)
-    Hard_math_HbO = individual_epochs[ind].copy()["Hard_Math"].pick(good_long_channels).crop(t_start, t_end, True).get_data() #.mean(axis=2).mean(axis=1)
-    Control_HbO = individual_epochs[ind].copy()["Control"].pick(good_long_channels).crop(t_start, t_end, True).get_data() #.mean(axis=2).mean(axis=1)
-    times = individual_epochs[ind].copy()["Math"].pick(good_long_channels).crop(t_start, t_end, True).times
+    math_t_start = 0
+    math_t_end = 15
+    control_t_start = 5
+    control_t_end = 20.1
+    math_HbO = individual_epochs[ind].copy()["Math"].pick(good_long_channels).crop(math_t_start, math_t_end, True).get_data() #.mean(axis=2).mean(axis=1)
+    Hard_math_HbO = individual_epochs[ind].copy()["Hard_Math"].pick(good_long_channels).crop(math_t_start, math_t_end, True).get_data() #.mean(axis=2).mean(axis=1)
+    Control_HbO = individual_epochs[ind].copy()["Control"].pick(good_long_channels).crop(control_t_start, control_t_end, True).get_data() #.mean(axis=2).mean(axis=1)
+    times = individual_epochs[ind].copy()["Math"].pick(good_long_channels).crop(math_t_start, math_t_end, True).times
 
     # collapse channel dimension -> shape (n_epochs, n_times) per condition
     math_ts = math_HbO.mean(axis=1)
     hard_math_ts = Hard_math_HbO.mean(axis=1)
     control_ts = Control_HbO.mean(axis=1)
+    from mne.stats import ttest_ind_no_p
 
-    def run_cluster_test(cond_ts, control_ts, label):
+    from scipy import stats
+
+    def run_cluster_test(cond_ts, control_ts, label, alpha=0.05):
+        n1, n2 = cond_ts.shape[0], control_ts.shape[0]
+        df = n1 + n2 - 2
+        # one-tailed t threshold, positive (since tail=1 tests cond_ts > control_ts)
+        t_threshold = stats.t.ppf(1 - alpha, df)
+
         T_obs, clusters, cluster_p_values, H0 = permutation_cluster_test(
             [cond_ts, control_ts],
+            stat_fun=ttest_ind_no_p,
             n_permutations=5000,
-            threshold=None,   # auto F-threshold at p<0.05; tune if needed
-            tail=0,
+            threshold=t_threshold,   # explicit, matches signed t-stat + tail=1
+            tail=1,
             out_type='mask',
-            seed=42,          # reproducibility across reruns
+            seed=42,
         )
         sig = [(times[cl][0], times[cl][-1], p) 
-               for cl, p in zip(clusters, cluster_p_values)]
+            for cl, p in zip(clusters, cluster_p_values)]
         return {
             "condition": label,
             "n_clusters_total": len(clusters),
             "n_clusters_sig": len(sig),
-            "sig_windows": sig,          # list of (start_s, end_s, p)
+            "sig_windows": sig,
             "min_p": min(cluster_p_values) if len(cluster_p_values) else np.nan,
         }
 
@@ -240,58 +266,55 @@ for ind, epochs in individual_epochs.items():
     cluster_results.append({"ID": ind, **{f"math_{k}": v for k, v in math_result.items()},
                                           **{f"hardmath_{k}": v for k, v in hard_math_result.items()}})
 
-
-
-
-    times = individual_epochs[ind].copy()["Math"].crop(t_start, t_end, True).times
-    math_AUC = np.trapezoid(math_HbO, x=times, axis=2).mean(axis=1)
-    Hard_math_AUC = np.trapezoid(Hard_math_HbO, x=times, axis=2).mean(axis=1)
-    Control_AUC = np.trapezoid(Control_HbO, x=times, axis=2).mean(axis=1)
+    # times = individual_epochs[ind].copy()["Math"].crop(t_start, t_end, True).times
+    # math_AUC = np.trapezoid(math_HbO, x=times, axis=2).mean(axis=1)
+    # Hard_math_AUC = np.trapezoid(Hard_math_HbO, x=times, axis=2).mean(axis=1)
+    # Control_AUC = np.trapezoid(Control_HbO, x=times, axis=2).mean(axis=1)
     
     
-    from scipy.stats import permutation_test
+    # from scipy.stats import permutation_test
 
-    def statistic(x, y):
-        return np.mean(x) - np.mean(y)
+    # def statistic(x, y):
+    #     return np.mean(x) - np.mean(y)
 
-    Math_result = permutation_test(
-        (math_AUC, Control_AUC),
-        statistic,
-        permutation_type='independent',
-        n_resamples=10000,
-        alternative='two-sided'  # math > control
-    )
+    # Math_result = permutation_test(
+    #     (math_AUC, Control_AUC),
+    #     statistic,
+    #     permutation_type='independent',
+    #     n_resamples=10000,
+    #     alternative='two-sided'  # math > control
+    # )
 
-    Hard_Math_result = permutation_test(
-        (Hard_math_AUC, Control_AUC),
-        statistic,
-        permutation_type='independent',
-        n_resamples=10000,
-        alternative='two-sided'
-    )
+    # Hard_Math_result = permutation_test(
+    #     (Hard_math_AUC, Control_AUC),
+    #     statistic,
+    #     permutation_type='independent',
+    #     n_resamples=10000,
+    #     alternative='two-sided'
+    # )
 
-    p_value_math_control = Math_result.pvalue
-    p_value_hard_math_control = Hard_Math_result.pvalue
+    # p_value_math_control = Math_result.pvalue
+    # p_value_hard_math_control = Hard_Math_result.pvalue
 
-    # t_stat_math_control, p_value_math_control = ttest_ind(math_AUC, Control_AUC,equal_var=False)
-    # t_stat_hard_math_control, p_value_hard_math_control = ttest_ind(Hard_math_AUC, Control_AUC,equal_var=False)   
+    # # t_stat_math_control, p_value_math_control = ttest_ind(math_AUC, Control_AUC,equal_var=False)
+    # # t_stat_hard_math_control, p_value_hard_math_control = ttest_ind(Hard_math_AUC, Control_AUC,equal_var=False)   
 
-    new_row = {
-    "ID": ind,
-    "No. Math": len(math_AUC),
-    "No. Hard Math": len(Hard_math_AUC),
-    "No. Control": len(Control_AUC),
-    "Mean Math AUC": np.mean(math_AUC),
-    "Mean Hard Math AUC": np.mean(Hard_math_AUC),
-    "Mean Control AUC": np.mean(Control_AUC),
-    "Std. Math AUC": np.std(math_AUC),
-    "Std. Hard Math AUC": np.std(Hard_math_AUC),
-    "Std. Control AUC": np.std(Control_AUC),
-    "Math / Control p-value": p_value_math_control,
-    "Hard Math / Control p-value": p_value_hard_math_control,
-    }
+    # new_row = {
+    # "ID": ind,
+    # "No. Math": len(math_AUC),
+    # "No. Hard Math": len(Hard_math_AUC),
+    # "No. Control": len(Control_AUC),
+    # "Mean Math AUC": np.mean(math_AUC),
+    # "Mean Hard Math AUC": np.mean(Hard_math_AUC),
+    # "Mean Control AUC": np.mean(Control_AUC),
+    # "Std. Math AUC": np.std(math_AUC),
+    # "Std. Hard Math AUC": np.std(Hard_math_AUC),
+    # "Std. Control AUC": np.std(Control_AUC),
+    # "Math / Control p-value": p_value_math_control,
+    # "Hard Math / Control p-value": p_value_hard_math_control,
+    # }
 
-    df.loc[len(df)] = new_row
+    # df.loc[len(df)] = new_row
     
     def epochs_to_evoked_list(epochs, picks, hbo_pick="hbo"):
         """Convert an Epochs object to a list of single-trial Evoked objects."""
@@ -383,12 +406,37 @@ for ind, epochs in individual_epochs.items():
             y2_end = data["Control"][1][(data["Hard Math"][0] >= start) & (data["Hard Math"][0] <= end)][-1]
             ax_new.vlines(end, ymin=min(y1_end, y2_end), ymax=max(y1_end, y2_end), color=color_dict["Hard Math"], linestyle='--', linewidth=1, label=f"Cluster {idx + 1}, p={p:.3f}")
     ax_new.legend()
-    filename = os.path.join(save_path, f"standard_fNIRS_response_plot_{ind}.pdf")
+    if math_result["n_clusters_total"] > 0 or hard_math_result["n_clusters_total"] > 0:
+        filename = os.path.join(save_path, f"standard_fNIRS_response_plot_{ind}_clusters_found.pdf")
+    else:
+        filename = os.path.join(save_path, f"standard_fNIRS_response_plot_{ind}.pdf")
     fig_new.savefig(filename, format="pdf", bbox_inches="tight")
     plt.close(fig_new)
+    plt.close(fig[0])
 
 cluster_df = pd.DataFrame(cluster_results)
+
+cluster_df["ID_prefix"] = cluster_df["ID"].str.split("_").str[0]
+cluster_df["math_min_p_filled"] = cluster_df["math_min_p"].fillna(1)
+cluster_df["hardmath_min_p_filled"] = cluster_df["hardmath_min_p"].fillna(1)
+from statsmodels.stats.multitest import fdrcorrection
+# Apply FDR correction within each ID
+def fdr_combined(g):
+    pvals = pd.concat(
+        [g["math_min_p_filled"], g["hardmath_min_p_filled"]],
+        keys=["math", "hardmath"]
+    )
+    corrected = fdrcorrection(pvals.values)[1]
+    corrected_series = pd.Series(corrected, index=pvals.index)
+    return pd.DataFrame({
+        "math_p_value_fdr": corrected_series.loc["math"].values,
+        "hardmath_p_value_fdr": corrected_series.loc["hardmath"].values,
+    }, index=g.index)
+
+result = cluster_df.groupby("ID_prefix", group_keys=False).apply(fdr_combined)
+cluster_df[["math_p_value_fdr", "hardmath_p_value_fdr"]] = result
 cluster_df.to_csv(os.path.join(save_path, "cluster_permutation_results.csv"), index=False)
+
 
 # Manual Bonferroni correction for multiple comparisons (2 comparisons)
 df["Math / Control p-value"] = np.minimum(
