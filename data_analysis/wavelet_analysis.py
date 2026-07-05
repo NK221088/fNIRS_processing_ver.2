@@ -20,6 +20,7 @@ from mne.stats import permutation_t_test
 
 load_dotenv()
 save_path = Path(os.getenv(rf"Evoked_plots_path"))
+consciousness_states_path = Path(os.getenv(rf"Consciousness_states_path"))
 
 
 dataSetList = list(data_loaders.keys())
@@ -74,7 +75,7 @@ for data_loader in dataLoaders:
 all_participants = datasets[dataLoaders[0]]["all_individuals"] #+ datasets[dataLoaders[1]]["all_individuals"]
 number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])]#, len((datasets[dataLoaders[1]]["all_individuals"]))]
 
-chromophore = "hbo" # "hbt" # "hbr" #
+chromophore = "hbt" # "hbt" # "hbr" #
 channel_names = [channel for channel in all_participants[0].raw_haemo.ch_names if chromophore in channel]
 
 long_channels = mne_nirs.channels.get_long_channels(all_participants[0].raw_haemo.copy().pick(channel_names)).ch_names #  [ch for ch in all_participants[0].raw_haemo.ch_names if "hbt" in ch] # 
@@ -84,19 +85,19 @@ names = [ind.name for ind in all_participants]
 all_epochs = [ind.epochs for ind in all_participants]
 first_names = [name.split("_")[0] for name in names]
 name_indices = {first_name: [ind for ind, name in enumerate(names) if name.split("_")[0] == first_name] for first_name in first_names}
-# name_epoch_map = {first_name: [[name, ind] for ind, name in enumerate(names) if name.split("_")[0] == first_name] for first_name in first_names}
-# session_epoch_map = {first_name: defaultdict(list) for first_name in first_names}
-# for key, value in name_epoch_map.items():
-#     for subvalue in value:
-#         session_epoch_map[key][subvalue[0].split("_")[1]].append(all_epochs[subvalue[1]])
-# session_epoch_bad_channels = {first_name: {session: list(set(ch for epoch in epochs for ch in epoch.copy().info['bads'])) for session, epochs in sessions.items()} for first_name, sessions in session_epoch_map.items()}
+name_epoch_map = {first_name: [[name, ind] for ind, name in enumerate(names) if name.split("_")[0] == first_name] for first_name in first_names}
+session_epoch_map = {first_name: defaultdict(list) for first_name in first_names}
+for key, value in name_epoch_map.items():
+    for subvalue in value:
+        session_epoch_map[key][subvalue[0].split("_")[1]].append(all_epochs[subvalue[1]])
+session_epoch_bad_channels = {first_name: {session: list(set(ch for epoch in epochs for ch in epoch.copy().info['bads'])) for session, epochs in sessions.items()} for first_name, sessions in session_epoch_map.items()}
 individual_epochs = {first_name: [all_epochs[i].copy().pick(long_channels) for i in name_indices[first_name]] for first_name in first_names}
-# for ind, sessions in session_epoch_bad_channels.items():
-#     for session, bad_channels in sessions.items():
-#         n_epochs = len(session_epoch_map[ind][session])
-#         min_fraction = round(0.01 * n_epochs)
-#         bad_channel_counts = Counter(bad_channels)
-#         session_epoch_bad_channels[ind][session] = [ch for ch, count in bad_channel_counts.items() if count > min_fraction]
+for ind, sessions in session_epoch_bad_channels.items():
+    for session, bad_channels in sessions.items():
+        n_epochs = len(session_epoch_map[ind][session])
+        min_fraction = round(0.01 * n_epochs)
+        bad_channel_counts = Counter(bad_channels)
+        session_epoch_bad_channels[ind][session] = [ch for ch, count in bad_channel_counts.items() if count > min_fraction]
 
 PCA_epochs = False
 if PCA_epochs:
@@ -194,23 +195,29 @@ from mne.stats import permutation_cluster_test
 
 cluster_results = []
 if individual_recording_analysis:
-    individual_epochs = {ind.name: ind.epochs for ind in all_participants}
+    # individual_epochs = {ind.name: ind.epochs for ind in all_participants}
+    individual_epochs = {
+    f"{subject}_{session}": values
+    for subject, sessions in 
+        session_epoch_map.items()
+    for session, values in sessions.items()
+    }
 for ind, epochs in individual_epochs.items():
-    if individual_recording_analysis:
-        # bad_channels = session_epoch_bad_channels[ind.split("_")[0]][ind.split("_")[1]]
-        bad_channels = epochs.info["bads"]
-        # individual_epochs[ind] = epochs
-    else:
-        n_epochs = len(epochs)
-        min_fraction = round(0.5 * n_epochs)
-        bad_channel_counts = Counter(ch for epoch in epochs for ch in epoch.copy().info['bads'])
-        bad_channel_indices = np.array([list(bad_channel_counts.values())]).flatten() > min_fraction
-        bad_channels = list(set(np.array([list(bad_channel_counts.keys())]).flatten()[bad_channel_indices]))
-        for epoch in epochs:
-            epoch.info['bads'] = bad_channels
-    
-        epochs = [epoch.drop_channels(epoch.info["bads"]) for epoch in epochs]
-        individual_epochs[ind] = mne.concatenate_epochs(epochs)
+    # if individual_recording_analysis:
+    #     # bad_channels = session_epoch_bad_channels[ind.split("_")[0]][ind.split("_")[1]]
+    #     bad_channels = epochs.info["bads"]
+    #     # individual_epochs[ind] = epochs
+    # else:
+    n_epochs = len(epochs)
+    min_fraction = round(0.5 * n_epochs)
+    bad_channel_counts = Counter(ch for epoch in epochs for ch in epoch.copy().info['bads'])
+    bad_channel_indices = np.array([list(bad_channel_counts.values())]).flatten() > min_fraction
+    bad_channels = list(set(np.array([list(bad_channel_counts.keys())]).flatten()[bad_channel_indices]))
+    for epoch in epochs:
+        epoch.info['bads'] = bad_channels
+
+    epochs = [epoch.drop_channels(epoch.info["bads"]) for epoch in epochs]
+    individual_epochs[ind] = mne.concatenate_epochs(epochs)
     # bad_channels = list(set(channel for epoch in epochs for channel in epoch.info['bads']))
     # good_long_channels = [ch for ch in long_channels if ch in good_channel_names[first_name]]
     good_long_channels = [ch for ch in long_channels if ch not in bad_channels]
@@ -219,9 +226,9 @@ for ind, epochs in individual_epochs.items():
     channel_counts[ind] = [len(bad_channels), len(good_long_channels)]
     
     math_t_start = 0
-    math_t_end = 15
-    control_t_start = 5
-    control_t_end = 20.1
+    math_t_end = 25
+    control_t_start = 0
+    control_t_end = 25
     math_HbO = individual_epochs[ind].copy()["Math"].pick(good_long_channels).crop(math_t_start, math_t_end, True).get_data() #.mean(axis=2).mean(axis=1)
     Hard_math_HbO = individual_epochs[ind].copy()["Hard_Math"].pick(good_long_channels).crop(math_t_start, math_t_end, True).get_data() #.mean(axis=2).mean(axis=1)
     Control_HbO = individual_epochs[ind].copy()["Control"].pick(good_long_channels).crop(control_t_start, control_t_end, True).get_data() #.mean(axis=2).mean(axis=1)
@@ -416,7 +423,24 @@ for ind, epochs in individual_epochs.items():
 
 cluster_df = pd.DataFrame(cluster_results)
 
-cluster_df["ID_prefix"] = cluster_df["ID"].str.split("_").str[0]
+cluster_df[["ID_prefix", "Session", "recording"]] = cluster_df["ID"].str.split("_", expand=True)
+
+states = pd.read_excel(consciousness_states_path)
+states = states[["Subject", "Consciousness"]]
+states["Session"] = states.groupby("Subject").cumcount() + 1
+states["Subject"] = "P" + states["Subject"].astype(str)
+states["Session"] = "S" + states["Session"].astype(str)
+
+# Merge the state
+cluster_df = cluster_df.merge(
+    states[["Subject", "Session", "Consciousness"]],
+    left_on=["ID_prefix", "Session"],
+    right_on=["Subject", "Session"],
+    how="left"
+)
+
+cluster_df = cluster_df.drop(columns=["Subject", "Session", "recording"])
+
 cluster_df["math_min_p_filled"] = cluster_df["math_min_p"].fillna(1)
 cluster_df["hardmath_min_p_filled"] = cluster_df["hardmath_min_p"].fillna(1)
 from statsmodels.stats.multitest import fdrcorrection
@@ -447,4 +471,7 @@ df["Hard Math / Control p-value"] = np.minimum(
     df["Hard Math / Control p-value"] * 2, 1
 )
 df.to_csv(os.path.join(save_path, "wavelet_analysis_results.csv"), index=False)
+
+
+
 print("debug")
