@@ -3627,14 +3627,14 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.short_channel_correction = short_channel_correction
         self.negative_correlation_enhancement = negative_correlation_enhancement
         self.stimulus_duration = {
-                                'Control': 25,#20,
+                                'Control': 20,
                                 'Math': 25,
                                 'Hard_Math': 25,
                                 }
         self.scalp_coupling_threshold = scalp_coupling_threshold
         self.reject_criteria = reject_criteria
         self.tmin = tmin
-        self.tmax = 25
+        self.tmax = 20
         self.baseline = (None, 0)
         self.data_types = ['Math', 'Hard_Math']
         self.data_name = data_name
@@ -3761,34 +3761,17 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         new_descriptions = list(cropped_raw_data.annotations.description.copy())
         last_math_onset = np.max([an["onset"] for an in cropped_raw_data.annotations if an["description"] == "Math"])
         last_hard_math_onset = np.max([an["onset"] for an in cropped_raw_data.annotations if an["description"] == "Hard_Math"])
-
-        first_math_onset = np.min([an["onset"] for an in cropped_raw_data.annotations if an["description"] == "Math"])
-        new_onsets.append(first_math_onset - self.stimulus_duration["Control"])
+        new_onsets.append(last_math_onset + self.stimulus_duration["Math"])
         new_durations.append(self.stimulus_duration["Control"])
         new_descriptions.append("Control")
-
-        first_math_onset = np.min([an["onset"] for an in cropped_raw_data.annotations if an["description"] == "Math"])
-        new_onsets.append(first_math_onset - 2 * self.stimulus_duration["Control"])
+        new_onsets.append(last_hard_math_onset + self.stimulus_duration["Hard_Math"])
         new_durations.append(self.stimulus_duration["Control"])
         new_descriptions.append("Control")
-        
-        new_onsets.append(last_math_onset + self.stimulus_duration["Math"] + 10)
-        new_durations.append(self.stimulus_duration["Control"])
-        new_descriptions.append("Control")
-    
-        new_onsets.append(last_math_onset + self.stimulus_duration["Math"] + 10 + self.stimulus_duration["Control"])
-        new_durations.append(self.stimulus_duration["Control"])
-        new_descriptions.append("Control")
-        
-        new_onsets.append(last_hard_math_onset + self.stimulus_duration["Hard_Math"] + 10)
-        new_durations.append(self.stimulus_duration["Control"])
-        new_descriptions.append("Control")
-
-        # for annotation in cropped_raw_data.annotations:
-        #     if annotation["description"] in list(self.annotation_names.values()):
-        #         new_onsets.append(annotation["onset"] - self.stimulus_duration["Control"]) #+ self.stimulus_duration[annotation["description"]])
-        #         new_durations.append(self.stimulus_duration["Control"])
-        #         new_descriptions.append("Control")
+        for annotation in cropped_raw_data.annotations:
+            if annotation["description"] in list(self.annotation_names.values()):
+                new_onsets.append(annotation["onset"] - self.stimulus_duration["Control"]) #+ self.stimulus_duration[annotation["description"]])
+                new_durations.append(self.stimulus_duration["Control"])
+                new_descriptions.append("Control")
         new_annotations = mne.Annotations(onset = new_onsets, duration = new_durations, description = new_descriptions)
         cropped_raw_data.set_annotations(new_annotations)
         return cropped_raw_data

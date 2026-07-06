@@ -85,19 +85,19 @@ names = [ind.name for ind in all_participants]
 all_epochs = [ind.epochs for ind in all_participants]
 first_names = [name.split("_")[0] for name in names]
 name_indices = {first_name: [ind for ind, name in enumerate(names) if name.split("_")[0] == first_name] for first_name in first_names}
-name_epoch_map = {first_name: [[name, ind] for ind, name in enumerate(names) if name.split("_")[0] == first_name] for first_name in first_names}
-session_epoch_map = {first_name: defaultdict(list) for first_name in first_names}
-for key, value in name_epoch_map.items():
-    for subvalue in value:
-        session_epoch_map[key][subvalue[0].split("_")[1]].append(all_epochs[subvalue[1]])
-session_epoch_bad_channels = {first_name: {session: list(set(ch for epoch in epochs for ch in epoch.copy().info['bads'])) for session, epochs in sessions.items()} for first_name, sessions in session_epoch_map.items()}
+# name_epoch_map = {first_name: [[name, ind] for ind, name in enumerate(names) if name.split("_")[0] == first_name] for first_name in first_names}
+# session_epoch_map = {first_name: defaultdict(list) for first_name in first_names}
+# for key, value in name_epoch_map.items():
+#     for subvalue in value:
+#         session_epoch_map[key][subvalue[0].split("_")[1]].append(all_epochs[subvalue[1]])
+# session_epoch_bad_channels = {first_name: {session: list(set(ch for epoch in epochs for ch in epoch.copy().info['bads'])) for session, epochs in sessions.items()} for first_name, sessions in session_epoch_map.items()}
 individual_epochs = {first_name: [all_epochs[i].copy().pick(long_channels) for i in name_indices[first_name]] for first_name in first_names}
-for ind, sessions in session_epoch_bad_channels.items():
-    for session, bad_channels in sessions.items():
-        n_epochs = len(session_epoch_map[ind][session])
-        min_fraction = round(0.01 * n_epochs)
-        bad_channel_counts = Counter(bad_channels)
-        session_epoch_bad_channels[ind][session] = [ch for ch, count in bad_channel_counts.items() if count > min_fraction]
+# for ind, sessions in session_epoch_bad_channels.items():
+#     for session, bad_channels in sessions.items():
+#         n_epochs = len(session_epoch_map[ind][session])
+#         min_fraction = round(0.01 * n_epochs)
+#         bad_channel_counts = Counter(bad_channels)
+#         session_epoch_bad_channels[ind][session] = [ch for ch, count in bad_channel_counts.items() if count > min_fraction]
 
 PCA_epochs = False
 if PCA_epochs:
@@ -194,45 +194,155 @@ control_means = []
 from mne.stats import permutation_cluster_test
 
 cluster_results = []
+paired_mean_results = []
+mean_results = []
 if individual_recording_analysis:
-    # individual_epochs = {ind.name: ind.epochs for ind in all_participants}
-    individual_epochs = {
-    f"{subject}_{session}": values
-    for subject, sessions in 
-        session_epoch_map.items()
-    for session, values in sessions.items()
-    }
+    individual_epochs = {ind.name: ind.epochs for ind in all_participants}
+    # individual_epochs = {
+    # f"{subject}_{session}": values
+    # for subject, sessions in 
+    #     session_epoch_map.items()
+    # for session, values in sessions.items()
+    # }
 for ind, epochs in individual_epochs.items():
-    # if individual_recording_analysis:
+    if individual_recording_analysis:
     #     # bad_channels = session_epoch_bad_channels[ind.split("_")[0]][ind.split("_")[1]]
-    #     bad_channels = epochs.info["bads"]
+        bad_channels = epochs.info["bads"]
     #     # individual_epochs[ind] = epochs
-    # else:
-    n_epochs = len(epochs)
-    min_fraction = round(0.5 * n_epochs)
-    bad_channel_counts = Counter(ch for epoch in epochs for ch in epoch.copy().info['bads'])
-    bad_channel_indices = np.array([list(bad_channel_counts.values())]).flatten() > min_fraction
-    bad_channels = list(set(np.array([list(bad_channel_counts.keys())]).flatten()[bad_channel_indices]))
-    for epoch in epochs:
-        epoch.info['bads'] = bad_channels
+    else:
+        n_epochs = len(epochs)
+        min_fraction = round(0.5 * n_epochs)
+        bad_channel_counts = Counter(ch for epoch in epochs for ch in epoch.copy().info['bads'])
+        bad_channel_indices = np.array([list(bad_channel_counts.values())]).flatten() > min_fraction
+        bad_channels = list(set(np.array([list(bad_channel_counts.keys())]).flatten()[bad_channel_indices]))
+        for epoch in epochs:
+            epoch.info['bads'] = bad_channels
 
-    epochs = [epoch.drop_channels(epoch.info["bads"]) for epoch in epochs]
-    individual_epochs[ind] = mne.concatenate_epochs(epochs)
-    # bad_channels = list(set(channel for epoch in epochs for channel in epoch.info['bads']))
-    # good_long_channels = [ch for ch in long_channels if ch in good_channel_names[first_name]]
+        epochs = [epoch.drop_channels(epoch.info["bads"]) for epoch in epochs]
+        individual_epochs[ind] = mne.concatenate_epochs(epochs)
+        bad_channels = list(set(channel for epoch in epochs for channel in epoch.info['bads']))
+        good_long_channels = [ch for ch in long_channels if ch in good_channel_names[first_name]]
     good_long_channels = [ch for ch in long_channels if ch not in bad_channels]
 
     print(f"{ind}: {len(bad_channels)} bad channels dropped, {len(good_long_channels)} good long channels remaining")
     channel_counts[ind] = [len(bad_channels), len(good_long_channels)]
-    
+
     math_t_start = 0
     math_t_end = 25
-    control_t_start = 0
-    control_t_end = 25
+    control_t_start = 5
+    control_t_end = 20
+    math_HbO_mean = individual_epochs[ind].copy()["Math"].pick(good_long_channels).crop(math_t_start, math_t_end, True).get_data().mean(axis=2).mean(axis=1)
+    Hard_math_HbO_mean = individual_epochs[ind].copy()["Hard_Math"].pick(good_long_channels).crop(math_t_start, math_t_end, True).get_data().mean(axis=2).mean(axis=1)
+    Control_HbO_mean = individual_epochs[ind].copy()["Control"].pick(good_long_channels).crop(control_t_start, control_t_end, True).get_data().mean(axis=2).mean(axis=1)
+
+
+    math_t_start = 5
+    math_t_end = 15
+    control_t_start = 5
+    control_t_end = 15
     math_HbO = individual_epochs[ind].copy()["Math"].pick(good_long_channels).crop(math_t_start, math_t_end, True).get_data() #.mean(axis=2).mean(axis=1)
     Hard_math_HbO = individual_epochs[ind].copy()["Hard_Math"].pick(good_long_channels).crop(math_t_start, math_t_end, True).get_data() #.mean(axis=2).mean(axis=1)
     Control_HbO = individual_epochs[ind].copy()["Control"].pick(good_long_channels).crop(control_t_start, control_t_end, True).get_data() #.mean(axis=2).mean(axis=1)
     times = individual_epochs[ind].copy()["Math"].pick(good_long_channels).crop(math_t_start, math_t_end, True).times
+
+    from scipy.stats import permutation_test
+
+    def paired_diff_statistic(x, y, axis=0):
+        """Mean of paired differences (x - y)."""
+        return np.mean(x - y, axis=axis)
+
+    def mean_diff_statistic(x, y, axis=0):
+        """Difference of independent group means."""
+        return np.mean(x, axis=axis) - np.mean(y, axis=axis)
+
+
+    def run_paired_test(cond_means, preceding_control_means, label, n_resamples=10000, seed=42):
+        """
+        Approach 1: paired test — each condition epoch vs. its immediately 
+        preceding Control epoch. Sign-flip permutation test on the differences.
+        """
+        result = permutation_test(
+            (cond_means, preceding_control_means),
+            paired_diff_statistic,
+            permutation_type='samples',   # paired/sign-flip permutations
+            n_resamples=n_resamples,
+            alternative='greater',      # switch to 'greater' for one-sided cond > control
+            random_state=seed,
+        )
+        return {
+            "condition": label,
+            "test_type": "paired",
+            "n_pairs": len(cond_means),
+            "mean_diff": np.mean(cond_means - preceding_control_means),
+            "p_value": result.pvalue,
+        }
+
+    def run_group_test(cond_means, control_means, label, n_resamples=10000, seed=42):
+        """
+        Approach 2: independent-samples test — all condition epochs (recording-level) 
+        vs. all pooled Control epochs.
+        """
+        result = permutation_test(
+            (cond_means, control_means),
+            mean_diff_statistic,
+            permutation_type='independent',
+            n_resamples=n_resamples,
+            alternative='greater',
+            random_state=seed,
+        )
+        return {
+            "condition": label,
+            "test_type": "group",
+            "n_cond": len(cond_means),
+            "n_control": len(control_means),
+            "mean_diff": np.mean(cond_means) - np.mean(control_means),
+            "p_value": result.pvalue,
+        }
+
+    from scipy.stats import ttest_rel
+
+    def run_paired_ttest(cond_means, control_means, label):
+        t_stat, p_value = ttest_rel(cond_means, control_means)
+
+        return {
+            "condition": label,
+            "test_type": "paired_ttest",
+            "n_pairs": len(cond_means),
+            "mean_diff": np.mean(cond_means - control_means),
+            "t_stat": t_stat,
+            "p_value": p_value,
+        }
+    from scipy.stats import ttest_ind
+
+    def run_group_ttest(cond_means, control_means, label):
+        t_stat, p_value = ttest_ind(cond_means, control_means, equal_var=False)
+
+        return {
+            "condition": label,
+            "test_type": "independent_ttest",
+            "n_cond": len(cond_means),
+            "n_control": len(control_means),
+            "mean_diff": np.mean(cond_means) - np.mean(control_means),
+            "t_stat": t_stat,
+            "p_value": p_value,
+        }
+
+
+    math_paired_result      = run_paired_ttest(math_HbO_mean, Control_HbO_mean[0:5], "Math_vs_Control_paired")
+    hardmath_paired_result  = run_paired_ttest(Hard_math_HbO_mean, Control_HbO_mean[6:11], "HardMath_vs_Control_paired")
+
+    math_group_result       = run_group_ttest(math_HbO_mean, Control_HbO_mean, "Math_vs_Control_group")
+    hardmath_group_result   = run_group_ttest(Hard_math_HbO_mean, Control_HbO_mean, "HardMath_vs_Control_group")
+
+    # math_paired_result      = run_paired_test(math_HbO_mean, Control_HbO_mean[0:5], "Math_vs_Control_paired")
+    # hardmath_paired_result  = run_paired_test(Hard_math_HbO_mean, Control_HbO_mean[6:11], "HardMath_vs_Control_paired")
+
+    # math_group_result       = run_group_test(math_HbO_mean, Control_HbO_mean, "Math_vs_Control_group")
+    # hardmath_group_result   = run_group_test(Hard_math_HbO_mean, Control_HbO_mean, "HardMath_vs_Control_group")
+    paired_mean_results.append({"ID": ind, **{f"math_{k}": v for k, v in math_paired_result.items()},
+                                          **{f"hardmath_{k}": v for k, v in hardmath_paired_result.items()}})
+    mean_results.append({"ID": ind, **{f"math_{k}": v for k, v in math_group_result.items()},
+                                          **{f"hardmath_{k}": v for k, v in hardmath_group_result.items()}})
 
     # collapse channel dimension -> shape (n_epochs, n_times) per condition
     math_ts = math_HbO.mean(axis=1)
@@ -421,6 +531,9 @@ for ind, epochs in individual_epochs.items():
     plt.close(fig_new)
     plt.close(fig[0])
 
+
+paired_mean_df = pd.DataFrame(paired_mean_results)
+mean_df = pd.DataFrame(mean_results)
 cluster_df = pd.DataFrame(cluster_results)
 
 cluster_df[["ID_prefix", "Session", "recording"]] = cluster_df["ID"].str.split("_", expand=True)
