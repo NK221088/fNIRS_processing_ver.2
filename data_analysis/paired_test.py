@@ -6,8 +6,8 @@ import mne
 import mne_nirs
 import pandas as pd
 import numpy as np
-import rpy2.robjects as robjects
-print(robjects.r('1 + 1'))
+from scipy.stats import ttest_rel
+from scipy.stats import ttest_ind
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
@@ -17,7 +17,6 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import PolyCollection
 from collections import Counter
 from mne.stats import permutation_t_test
-from scipy.stats import chi2
 
 load_dotenv()
 save_path = Path(os.getenv(rf"Evoked_plots_path"))
@@ -79,16 +78,37 @@ number_of_subjects = [len(datasets[dataLoaders[0]]["all_individuals"])]#, len((d
 chromophore = "hbo" # "hbt" # "hbr" #
 channel_names = [channel for channel in all_participants[0].raw_haemo.ch_names if chromophore in channel]
 
-long_channels = mne_nirs.channels.get_long_channels(all_participants[0].raw_haemo.copy().pick(channel_names)).ch_names
+long_channels = mne_nirs.channels.get_long_channels(all_participants[0].raw_haemo.copy().pick(channel_names)).ch_names #  [ch for ch in all_participants[0].raw_haemo.ch_names if "hbt" in ch] # 
 
-individual_recording_analysis = True
+individual_recording_analysis = False
+session_analysis = True
 names = [ind.name for ind in all_participants]
 all_epochs = [ind.epochs for ind in all_participants]
 first_names = [name.split("_")[0] for name in names]
 name_indices = {first_name: [ind for ind, name in enumerate(names) if name.split("_")[0] == first_name] for first_name in first_names}
+name_epoch_map = {first_name: [[name, ind] for ind, name in enumerate(names) if name.split("_")[0] == first_name] for first_name in first_names}
+session_epoch_map = {first_name: defaultdict(list) for first_name in first_names}
+
+for key, value in name_epoch_map.items():
+    for subvalue in value:
+        session_epoch_map[key][subvalue[0].split("_")[1]].append(all_epochs[subvalue[1]])
+session_epoch_bad_channels = {first_name: {session: list(ch for epoch in epochs for ch in epoch.copy().info['bads']) for session, epochs in sessions.items()} for first_name, sessions in session_epoch_map.items()}
+
+all_updated = {}
+for id, value in session_epoch_map.items():
+    for session, epochs in value.items():
+        
+        collected_epochs = mne.concatenate_epochs(list(epochs))
+        all_updated[id + "_" + session] = collected_epochs
 
 individual_epochs = {first_name: [all_epochs[i].copy().pick(long_channels) for i in name_indices[first_name]] for first_name in first_names}
 
+for ind, sessions in session_epoch_bad_channels.items():
+    for session, bad_channels in sessions.items():
+        n_epochs = len(session_epoch_map[ind][session])
+        min_fraction = round(0.1 * n_epochs)
+        bad_channel_counts = Counter(bad_channels)
+        session_epoch_bad_channels[ind][session] = [ch for ch, count in bad_channel_counts.items() if count > min_fraction]
 
 channel_counts = {}
 math_lenghts = []
@@ -99,20 +119,23 @@ math_mean = []
 hard_math_means = []
 control_means = []
 
-df = pd.DataFrame(columns=["Subject", "Recording", "Condition", "Mean_Response"])
+from mne.stats import permutation_cluster_test
+
+cluster_results = []
+paired_mean_results = []
+mean_results = []
+
 if individual_recording_analysis:
     individual_epochs = {ind.name: ind.epochs for ind in all_participants}
-    # individual_epochs = {
-    # f"{subject}_{session}": values
-    # for subject, sessions in 
-    #     session_epoch_map.items()
-    # for session, values in sessions.items()
-    # }
+if session_analysis:
+    individual_epochs = all_updated
 for ind, epochs in individual_epochs.items():
     if individual_recording_analysis:
     #     # bad_channels = session_epoch_bad_channels[ind.split("_")[0]][ind.split("_")[1]]
         bad_channels = epochs.info["bads"]
     #     # individual_epochs[ind] = epochs
+    if session_analysis:
+        bad_channels = session_epoch_bad_channels[ind.split("_")[0]][ind.split("_")[1]]
     else:
         n_epochs = len(epochs)
         min_fraction = round(0.5 * n_epochs)
@@ -131,75 +154,104 @@ for ind, epochs in individual_epochs.items():
     print(f"{ind}: {len(bad_channels)} bad channels dropped, {len(good_long_channels)} good long channels remaining")
     channel_counts[ind] = [len(bad_channels), len(good_long_channels)]
 
-    math_t_start = 5
-    math_t_end = 20
+    math_t_start = 0
+    math_t_end = 24.9
     control_t_start = 5
     control_t_end = 20
     math_HbO_mean = individual_epochs[ind].copy()["Math"].pick(good_long_channels).crop(math_t_start, math_t_end, True).get_data().mean(axis=2).mean(axis=1)
     Hard_math_HbO_mean = individual_epochs[ind].copy()["Hard_Math"].pick(good_long_channels).crop(math_t_start, math_t_end, True).get_data().mean(axis=2).mean(axis=1)
     Control_HbO_mean = individual_epochs[ind].copy()["Control"].pick(good_long_channels).crop(control_t_start, control_t_end, True).get_data().mean(axis=2).mean(axis=1)
+    
+    from scipy.stats import permutation_test
 
-    ID_prefix, Session, Recording = ind.split("_")
-    Recording = (int(Session[1]) - 1) * 3 + int(Recording[1]) if Recording[0] != "B" else (int(Session[1]) - 1) * 3 + 1
-
-    for response in math_HbO_mean:
-        new_row = {"Subject": ID_prefix, "Recording": Recording, "Condition": "Math", "Mean_Response": response}
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-    for response in Hard_math_HbO_mean:
-        new_row = {"Subject": ID_prefix, "Recording": Recording, "Condition": "Hard_Math", "Mean_Response": response}
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-    for response in Control_HbO_mean:
-        new_row = {"Subject": ID_prefix, "Recording": Recording, "Condition": "Control", "Mean_Response": response}
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+    def paired_diff_statistic(x, y, axis=0):
+        """Mean of paired differences (x - y)."""
+        return np.mean(x - y, axis=axis)
 
 
-import rpy2.robjects as robjects
-from rpy2.robjects import pandas2ri
-from rpy2.robjects.packages import importr
-from scipy.stats import chi2
-import pandas as pd
+    def run_paired_test(cond_means, preceding_control_means, label, n_resamples=10000, seed=42):
+        """
+        Approach 1: paired test — each condition epoch vs. its immediately 
+        preceding Control epoch. Sign-flip permutation test on the differences.
+        """
+        result = permutation_test(
+            (cond_means, preceding_control_means),
+            paired_diff_statistic,
+            permutation_type='samples',   # paired/sign-flip permutations
+            n_resamples=n_resamples,
+            alternative='greater',      # switch to 'greater' for one-sided cond > control
+            random_state=seed,
+        )
+        return {
+            "condition": label,
+            "test_type": "paired",
+            "n_pairs": len(cond_means),
+            "mean_diff": np.mean(cond_means - preceding_control_means),
+            "p_value": result.pvalue,
+        }
 
-pandas2ri.activate()
+    from scipy.stats import ttest_rel
 
-lme4 = importr("lme4")
-lmerTest = importr("lmerTest")
-stats = importr("stats")
+    def run_paired_ttest(cond_means, control_means, label):
+        t_stat, p_value = ttest_rel(cond_means, control_means)
 
-results = []
+        return {
+            "condition": label,
+            "test_type": "paired_ttest",
+            "n_pairs": len(cond_means),
+            "mean_diff": np.mean(cond_means - control_means),
+            "t_stat": t_stat,
+            "p_value": p_value,
+        }
 
-for subject, group in df.groupby("Subject"):
-    for condition in ["Math", "Hard_Math"]:
-        sub_df = group[group["Condition"].isin([condition, "Control"])].copy()
-        sub_df["Condition"] = pd.Categorical(sub_df["Condition"], categories=["Control", condition])
+    n_blocks = len(math_HbO_mean) // 5
+    block = np.array([0, 1, 2, 3, 4])
+    math_controls = np.concatenate([block + 10 * i for i in range(n_blocks)])
+    hard_math_controls = [i for i in range(len(Control_HbO_mean)) if i not in math_controls]
 
-        r_df = pandas2ri.py2rpy(sub_df)
+    math_paired_result      = run_paired_ttest(math_HbO_mean, Control_HbO_mean[math_controls], "Math_vs_Control_paired")
+    hardmath_paired_result  = run_paired_ttest(Hard_math_HbO_mean, Control_HbO_mean[hard_math_controls], "HardMath_vs_Control_paired")
 
-        try:
-            model1 = lmerTest.lmer("Mean_Response ~ Condition + (1|Recording)", data=r_df, REML=False)
-            model2 = lmerTest.lmer("Mean_Response ~ (1|Recording)", data=r_df, REML=False)
+    paired_mean_results.append({"ID": ind, **{f"math_{k}": v for k, v in math_paired_result.items()},
+                                          **{f"hardmath_{k}": v for k, v in hardmath_paired_result.items()}})
 
-            loglik1 = stats.logLik(model1)[0]
-            loglik2 = stats.logLik(model2)[0]
 
-            lrt_stat = 2 * (loglik1 - loglik2)
-            df_diff = 1  # Condition contributes exactly one parameter (2 levels)
-            p_value = chi2.sf(lrt_stat, df_diff)
+paired_mean_df = pd.DataFrame(paired_mean_results)
 
-            results.append({
-                "Subject": subject,
-                "Condition": condition,
-                "loglik_full": loglik1,
-                "loglik_null": loglik2,
-                "lrt_stat": lrt_stat,
-                "p_value": p_value,
-            })
-        except Exception as e:
-            print(f"Failed for {subject}, {condition}: {e}")
-            results.append({
-                "Subject": subject, "Condition": condition,
-                "loglik_full": None, "loglik_null": None, "lrt_stat": None, "p_value": None,
-            })
+paired_mean_df[["ID_prefix", "Session"]] = paired_mean_df["ID"].str.split("_", expand=True)
 
-results_df = pd.DataFrame(results)
+states = pd.read_excel(consciousness_states_path)
+states = states[["Subject", "Consciousness"]]
+states["Session"] = states.groupby("Subject").cumcount() + 1
+states["Subject"] = "P" + states["Subject"].astype(str)
+states["Session"] = "S" + states["Session"].astype(str)
+
+# Merge the state
+paired_mean_df = paired_mean_df.merge(
+    states[["Subject", "Session", "Consciousness"]],
+    left_on=["ID_prefix", "Session"],
+    right_on=["Subject", "Session"],
+    how="left"
+)
+
+# paired_mean_df = paired_mean_df.drop(columns=["Subject", "Session", "recording"])
+
+
+from statsmodels.stats.multitest import fdrcorrection
+# Apply FDR correction within each ID
+def fdr_combined(g):
+    pvals = pd.concat(
+        [g["math_p_value"], g["hardmath_p_value"]],
+        keys=["math", "hardmath"]
+    )
+    corrected = fdrcorrection(pvals.values)[1]
+    corrected_series = pd.Series(corrected, index=pvals.index)
+    return pd.DataFrame({
+        "math_p_value_fdr": corrected_series.loc["math"].values,
+        "hardmath_p_value_fdr": corrected_series.loc["hardmath"].values,
+    }, index=g.index)
+
+result = paired_mean_df.groupby("ID_prefix", group_keys=False).apply(fdr_combined)
+paired_mean_df[["math_p_value_fdr", "hardmath_p_value_fdr"]] = result
 
 print("debug")

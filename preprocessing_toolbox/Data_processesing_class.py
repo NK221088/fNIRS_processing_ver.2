@@ -3761,12 +3761,12 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         new_descriptions = list(cropped_raw_data.annotations.description.copy())
         last_math_onset = np.max([an["onset"] for an in cropped_raw_data.annotations if an["description"] == "Math"])
         last_hard_math_onset = np.max([an["onset"] for an in cropped_raw_data.annotations if an["description"] == "Hard_Math"])
-        new_onsets.append(last_math_onset + self.stimulus_duration["Math"])
-        new_durations.append(self.stimulus_duration["Control"])
-        new_descriptions.append("Control")
-        new_onsets.append(last_hard_math_onset + self.stimulus_duration["Hard_Math"])
-        new_durations.append(self.stimulus_duration["Control"])
-        new_descriptions.append("Control")
+        # new_onsets.append(last_math_onset + self.stimulus_duration["Math"])
+        # new_durations.append(self.stimulus_duration["Control"])
+        # new_descriptions.append("Control")
+        # new_onsets.append(last_hard_math_onset + self.stimulus_duration["Hard_Math"])
+        # new_durations.append(self.stimulus_duration["Control"])
+        # new_descriptions.append("Control")
         for annotation in cropped_raw_data.annotations:
             if annotation["description"] in list(self.annotation_names.values()):
                 new_onsets.append(annotation["onset"] - self.stimulus_duration["Control"]) #+ self.stimulus_duration[annotation["description"]])
