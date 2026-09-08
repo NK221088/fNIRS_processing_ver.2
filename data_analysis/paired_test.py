@@ -82,33 +82,35 @@ long_channels = mne_nirs.channels.get_long_channels(all_participants[0].raw_haem
 
 individual_recording_analysis = False
 session_analysis = True
-names = [ind.name for ind in all_participants]
-all_epochs = [ind.epochs for ind in all_participants]
-first_names = [name.split("_")[0] for name in names]
-name_indices = {first_name: [ind for ind, name in enumerate(names) if name.split("_")[0] == first_name] for first_name in first_names}
-name_epoch_map = {first_name: [[name, ind] for ind, name in enumerate(names) if name.split("_")[0] == first_name] for first_name in first_names}
+names = [ind.name for ind in all_participants] # List of all patient names
+all_epochs = [ind.epochs for ind in all_participants] # All epochs
+first_names = [name.split("_")[0] for name in names] # First names of all patients
+name_indices = {first_name: [ind for ind, name in enumerate(names) if name.split("_")[0] == first_name] for first_name in first_names} # Find indices of recordings belonging to same patient
+name_epoch_map = {first_name: [[name, ind] for ind, name in enumerate(names) if name.split("_")[0] == first_name] for first_name in first_names} # Use indicies above to find the corresponding epochs for each patient
 session_epoch_map = {first_name: defaultdict(list) for first_name in first_names}
+session_epoch_bad_channels = {first_name: defaultdict(list) for first_name in first_names}
 
 for key, value in name_epoch_map.items():
     for subvalue in value:
-        session_epoch_map[key][subvalue[0].split("_")[1]].append(all_epochs[subvalue[1]])
-session_epoch_bad_channels = {first_name: {session: list(ch for epoch in epochs for ch in epoch.copy().info['bads']) for session, epochs in sessions.items()} for first_name, sessions in session_epoch_map.items()}
+        session_epoch_map[key][subvalue[0].split("_")[1]].append(all_epochs[subvalue[1]]) # Collect all epochs from same sessions for each patient
+        session_epoch_bad_channels[key][subvalue[0].split("_")[1]].extend(all_epochs[subvalue[1]].info["bads"]) # Collect all bad channels from same sessions for each patient
 
+for ind, sessions in session_epoch_bad_channels.items():
+    for session, bad_channels in sessions.items():
+        n_epochs = len(session_epoch_map[ind][session])
+        min_fraction = np.floor(1/3 * n_epochs)
+        bad_channel_counts = Counter(bad_channels)
+        session_epoch_bad_channels[ind][session] = [ch for ch, count in bad_channel_counts.items() if count > min_fraction]
+        
 all_updated = {}
 for id, value in session_epoch_map.items():
     for session, epochs in value.items():
-        
         collected_epochs = mne.concatenate_epochs(list(epochs))
         all_updated[id + "_" + session] = collected_epochs
 
 individual_epochs = {first_name: [all_epochs[i].copy().pick(long_channels) for i in name_indices[first_name]] for first_name in first_names}
 
-for ind, sessions in session_epoch_bad_channels.items():
-    for session, bad_channels in sessions.items():
-        n_epochs = len(session_epoch_map[ind][session])
-        min_fraction = round(0.1 * n_epochs)
-        bad_channel_counts = Counter(bad_channels)
-        session_epoch_bad_channels[ind][session] = [ch for ch, count in bad_channel_counts.items() if count > min_fraction]
+
 
 channel_counts = {}
 math_lenghts = []
