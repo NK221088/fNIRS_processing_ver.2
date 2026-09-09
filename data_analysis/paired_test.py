@@ -42,8 +42,8 @@ for data_loader in dataLoaders:
         "reject_criteria": dict(hbo=80e-6),
         "unwanted": ["15.0"],
         "filter_lower_value": 0.01,
-        "filter_upper_value": 0.2,
-        "h_trans_bandwidth": 0.05,           
+        "filter_upper_value": 0.8,
+        "h_trans_bandwidth": 0.01,           
         "l_trans_bandwidth": 0.01,
         "snr_rejection": "SNR",  # Default to None, can be set to "SNR" or "CV"
         "snr_threshold": 8,  # Default threshold for SNR
@@ -95,23 +95,20 @@ for key, value in name_epoch_map.items():
         session_epoch_map[key][subvalue[0].split("_")[1]].append(all_epochs[subvalue[1]]) # Collect all epochs from same sessions for each patient
         session_epoch_bad_channels[key][subvalue[0].split("_")[1]].extend(all_epochs[subvalue[1]].info["bads"]) # Collect all bad channels from same sessions for each patient
 
-for ind, sessions in session_epoch_bad_channels.items():
-    for session, bad_channels in sessions.items():
-        n_epochs = len(session_epoch_map[ind][session])
-        min_fraction = np.floor(1/3 * n_epochs)
-        bad_channel_counts = Counter(bad_channels)
-        session_epoch_bad_channels[ind][session] = [ch for ch, count in bad_channel_counts.items() if count > min_fraction]
-        
-all_updated = {}
-for id, value in session_epoch_map.items():
-    for session, epochs in value.items():
-        collected_epochs = mne.concatenate_epochs(list(epochs))
-        all_updated[id + "_" + session] = collected_epochs
+if session_analysis:
+    all_updated = {}
+    for ind, sessions in session_epoch_bad_channels.items():
+        for session, bad_channels in sessions.items():
+            n_recordings = len(session_epoch_map[ind][session])
+            min_fraction = round(1/3 * n_recordings)
+            bad_channel_counts = Counter(bad_channels)
+            session_epoch_bad_channels[ind][session] = [ch for ch, count in bad_channel_counts.items() if count > min_fraction]
+            for recording in session_epoch_map[ind][session]:
+                recording.info["bads"] = session_epoch_bad_channels[ind][session]
+            session_epoch_map[ind][session] = mne.concatenate_epochs(session_epoch_map[ind][session])
+            all_updated[ind + "_" + session] = session_epoch_map[ind][session]
 
 individual_epochs = {first_name: [all_epochs[i].copy().pick(long_channels) for i in name_indices[first_name]] for first_name in first_names}
-
-
-
 channel_counts = {}
 math_lenghts = []
 hard_math_lengths = []
@@ -136,7 +133,7 @@ for ind, epochs in individual_epochs.items():
     #     # bad_channels = session_epoch_bad_channels[ind.split("_")[0]][ind.split("_")[1]]
         bad_channels = epochs.info["bads"]
     #     # individual_epochs[ind] = epochs
-    if session_analysis:
+    elif session_analysis:
         bad_channels = session_epoch_bad_channels[ind.split("_")[0]][ind.split("_")[1]]
     else:
         n_epochs = len(epochs)
@@ -211,8 +208,8 @@ for ind, epochs in individual_epochs.items():
     math_controls = np.concatenate([block + 10 * i for i in range(n_blocks)])
     hard_math_controls = [i for i in range(len(Control_HbO_mean)) if i not in math_controls]
 
-    math_paired_result      = run_paired_ttest(math_HbO_mean, Control_HbO_mean[math_controls], "Math_vs_Control_paired")
-    hardmath_paired_result  = run_paired_ttest(Hard_math_HbO_mean, Control_HbO_mean[hard_math_controls], "HardMath_vs_Control_paired")
+    math_paired_result      = run_paired_test(math_HbO_mean, Control_HbO_mean[math_controls], "Math_vs_Control_paired")
+    hardmath_paired_result  = run_paired_test(Hard_math_HbO_mean, Control_HbO_mean[hard_math_controls], "HardMath_vs_Control_paired")
 
     paired_mean_results.append({"ID": ind, **{f"math_{k}": v for k, v in math_paired_result.items()},
                                           **{f"hardmath_{k}": v for k, v in hardmath_paired_result.items()}})
@@ -220,7 +217,10 @@ for ind, epochs in individual_epochs.items():
 
 paired_mean_df = pd.DataFrame(paired_mean_results)
 
-paired_mean_df[["ID_prefix", "Session"]] = paired_mean_df["ID"].str.split("_", expand=True)
+if individual_recording_analysis:
+    paired_mean_df[["ID_prefix", "Session", "Recording"]] = paired_mean_df["ID"].str.split("_", expand=True)
+else:
+    paired_mean_df[["ID_prefix", "Session"]] = paired_mean_df["ID"].str.split("_", expand=True)
 
 states = pd.read_excel(consciousness_states_path)
 states = states[["Subject", "Consciousness"]]

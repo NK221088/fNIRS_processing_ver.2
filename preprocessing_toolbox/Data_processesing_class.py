@@ -3884,8 +3884,6 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 print("ERROR")
             if patient_name in self.subjects_to_exclude[self.data_name]:
                 continue
-            if not "3" in patient_name:
-                continue
             try:
                 raw_intensity = self.define_raw_intensity(folder_name)
                 if len(raw_intensity.annotations.description) < 13:
@@ -4003,7 +4001,12 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 #     if ch['kind'] == FIFF.FIFFV_FNIRS_CH:
                 #         ch['unit_mul'] = FIFF.FIFF_UNITM_MU  # Set unit to micromolar
                 
-                raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
+                # raw_haemo.filter(self.filter_lower_value, self.filter_upper_value, h_trans_bandwidth=self.h_trans_bandwidth, l_trans_bandwidth=self.l_trans_bandwidth)
+                raw_haemo.filter(
+                l_freq=0.01, h_freq=0.1,
+                method='iir',
+                iir_params=dict(order=4, ftype='butter'),
+                )
                 
                 if self.negative_correlation_enhancement:
                     raw_haemo = mne_nirs.signal_enhancement.enhance_negative_correlation(raw_haemo)
