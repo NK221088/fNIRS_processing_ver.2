@@ -93,7 +93,7 @@ session_epoch_bad_channels = {first_name: defaultdict(list) for first_name in fi
 for key, value in name_epoch_map.items():
     for subvalue in value:
         session_epoch_map[key][subvalue[0].split("_")[1]].append(all_epochs[subvalue[1]]) # Collect all epochs from same sessions for each patient
-        session_epoch_bad_channels[key][subvalue[0].split("_")[1]].extend(all_epochs[subvalue[1]].info["bads"]) # Collect all bad channels from same sessions for each patient
+        session_epoch_bad_channels[key][subvalue[0].split("_")[1]].extend(all_epochs[subvalue[1]].copy().pick(long_channels).info["bads"]) # Collect all bad channels from same sessions for each patient
 
 if session_analysis:
     all_updated = {}

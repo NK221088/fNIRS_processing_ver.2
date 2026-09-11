@@ -82,14 +82,28 @@ def get_bad_channels_by_pairs(ch_names, snr_values, threshold, method):
             if pair_name not in pairs:
                 pairs[pair_name] = []
             pairs[pair_name].append(ch_name)
+
+    bad_avg = {}
+    for pair_name, pair_channels in pairs.items():
+        # Get SNR values for the channels in this pair
+        pair_snr_values = [snr_values[ch_names.index(ch)] for ch in pair_channels]
+        avg = np.mean(pair_snr_values)
+        if method == "SNR":
+            # For SNR: lower values are worse
+            bad_avg[pair_name] = avg < threshold
+        elif method == "CV":
+            # For CV: higher values are worse
+            bad_avg[pair_name] = avg > threshold
     
     # If any channel in a pair is bad, mark the entire pair as bad
     bad_channels = []
     for pair_name, pair_channels in pairs.items():
         # Check if any channel in this pair is individually bad
-        if any(ch in individual_bad_channels for ch in pair_channels):
-            # Mark all channels in this pair as bad
+        if bad_avg[pair_name]:
             bad_channels.extend(pair_channels)
-            print(f"Marking entire pair {pair_name} as bad: {pair_channels}")
+        # if any(ch in individual_bad_channels for ch in pair_channels):
+        #     # Mark all channels in this pair as bad
+        #     bad_channels.extend(pair_channels)
+        #     print(f"Marking entire pair {pair_name} as bad: {pair_channels}")
     
     return bad_channels

@@ -3917,12 +3917,13 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                 self.tmax = max(self.stimulus_duration.values())
                 if len(raw_intensity.annotations.description) < 22:
                     print(f"WAIT WHAT WHAT?!")
-                # raw_intensity = self.crop_data(raw_intensity)
+                cropped_raw_intensity = self.crop_data(raw_intensity)
                 if len(raw_intensity.annotations.description) < 22:
                     print(f"WAIT WHAT?!")
 
-                raw_intensity_long = mne_nirs.channels.get_long_channels(raw_intensity)
-                raw_intensity_short = mne_nirs.channels.get_short_channels(raw_intensity)
+                # cropped_raw_intensity_long = mne_nirs.channels.get_long_channels(cropped_raw_intensity)
+                raw_intensity_long = mne_nirs.channels.get_long_channels(cropped_raw_intensity)
+                raw_intensity_short = mne_nirs.channels.get_short_channels(cropped_raw_intensity)
                 
                 if self.snr_rejection != "None":
                     snr = snr_rejection(raw_intensity_long, self.snr_rejection)
