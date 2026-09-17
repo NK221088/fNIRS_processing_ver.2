@@ -19,7 +19,7 @@ from collections import Counter
 from mne.stats import permutation_t_test
 
 load_dotenv()
-save_path = Path(os.getenv(rf"Evoked_plots_path"))
+save_path = Path(os.getenv(rf"Evoked_plots_path_paired"))
 consciousness_states_path = Path(os.getenv(rf"Consciousness_states_path"))
 
 
@@ -89,6 +89,12 @@ name_indices = {first_name: [ind for ind, name in enumerate(names) if name.split
 name_epoch_map = {first_name: [[name, ind] for ind, name in enumerate(names) if name.split("_")[0] == first_name] for first_name in first_names} # Use indicies above to find the corresponding epochs for each patient
 session_epoch_map = {first_name: defaultdict(list) for first_name in first_names}
 session_epoch_bad_channels = {first_name: defaultdict(list) for first_name in first_names}
+
+color_dict = {
+    "Math": "#AA3377",
+    "Hard Math": "g",
+    "Control": "b"
+}
 
 for key, value in name_epoch_map.items():
     for subvalue in value:
@@ -160,7 +166,11 @@ for ind, epochs in individual_epochs.items():
     math_HbO_mean = individual_epochs[ind].copy()["Math"].pick(good_long_channels).crop(math_t_start, math_t_end, True).get_data().mean(axis=2).mean(axis=1)
     Hard_math_HbO_mean = individual_epochs[ind].copy()["Hard_Math"].pick(good_long_channels).crop(math_t_start, math_t_end, True).get_data().mean(axis=2).mean(axis=1)
     Control_HbO_mean = individual_epochs[ind].copy()["Control"].pick(good_long_channels).crop(control_t_start, control_t_end, True).get_data().mean(axis=2).mean(axis=1)
-    
+
+    math_HbO = individual_epochs[ind].copy()["Math"].pick(good_long_channels).crop(math_t_start, math_t_end, True).get_data().mean(axis=1)
+    Hard_math_HbO = individual_epochs[ind].copy()["Hard_Math"].pick(good_long_channels).crop(math_t_start, math_t_end, True).get_data().mean(axis=1)
+    Control_HbO = individual_epochs[ind].copy()["Control"].pick(good_long_channels).crop(control_t_start, control_t_end, True).get_data().mean(axis=1)
+
     from scipy.stats import permutation_test
 
     def paired_diff_statistic(x, y, axis=0):
@@ -182,25 +192,9 @@ for ind, epochs in individual_epochs.items():
             random_state=seed,
         )
         return {
-            "condition": label,
-            "test_type": "paired",
             "n_pairs": len(cond_means),
             "mean_diff": np.mean(cond_means - preceding_control_means),
             "p_value": result.pvalue,
-        }
-
-    from scipy.stats import ttest_rel
-
-    def run_paired_ttest(cond_means, control_means, label):
-        t_stat, p_value = ttest_rel(cond_means, control_means)
-
-        return {
-            "condition": label,
-            "test_type": "paired_ttest",
-            "n_pairs": len(cond_means),
-            "mean_diff": np.mean(cond_means - control_means),
-            "t_stat": t_stat,
-            "p_value": p_value,
         }
 
     n_blocks = len(math_HbO_mean) // 5
@@ -214,6 +208,128 @@ for ind, epochs in individual_epochs.items():
     paired_mean_results.append({"ID": ind, **{f"math_{k}": v for k, v in math_paired_result.items()},
                                           **{f"hardmath_{k}": v for k, v in hardmath_paired_result.items()}})
 
+    def epochs_to_evoked_list(epochs, picks, hbo_pick="hbo"):
+        """Convert an Epochs object to a list of single-trial Evoked objects."""
+        epochs_picked = epochs.pick(picks, verbose=False).pick(hbo_pick, verbose=False)
+        return [epochs_picked[i].average() for i in range(len(epochs_picked))]
+
+    evoked_dict = {
+        "Math": epochs_to_evoked_list(individual_epochs[ind]["Math"], good_long_channels),
+        "Hard Math": epochs_to_evoked_list(individual_epochs[ind]["Hard_Math"], good_long_channels),
+        "Control": epochs_to_evoked_list(individual_epochs[ind]["Control"], good_long_channels),
+    }
+
+    fig = mne.viz.plot_compare_evokeds(
+        evoked_dict,
+        combine="mean",
+        ci=0.95,
+        colors=color_dict,
+        show=False,
+        title=f"Patient: {ind}"
+    )
+
+
+    ax = fig[0].axes[0]
+
+    fig_new, ax_new = plt.subplots(figsize=(8, 6))
+    ax_new.spines['top'].set_visible(False)
+    ax_new.spines['right'].set_visible(False)
+
+    data = {}
+    for line in ax.lines:
+        ax_new.plot(line.get_xdata(), line.get_ydata(), 
+                    color=line.get_color(), 
+                    linestyle=line.get_linestyle(),
+                    linewidth=line.get_linewidth(),
+                    label=line.get_label())
+        data[line.get_label()] = [line.get_xdata(), line.get_ydata()]
+
+
+    for collection in ax.collections:
+        if isinstance(collection, PolyCollection):
+            new_col = PolyCollection(
+                [p.vertices for p in collection.get_paths()],
+                facecolor=collection.get_facecolor(),
+                edgecolor=collection.get_edgecolor(),
+                alpha=collection.get_alpha(),
+            )
+            ax_new.add_collection(new_col)
+        else:
+            ax_new.add_collection(collection)  # your original line, still fine for anything else
+
+    ax_new.set_xlim(ax.get_xlim()[0], 25)
+    ax_new.set_ylim(ax.get_ylim())
+    ax_new.set_xlabel(ax.get_xlabel())
+    ax_new.set_ylabel(ax.get_ylabel())
+    ax_new.set_title(ax.get_title())
+    ax_new.axvline(x=20, color='black', linestyle='--', linewidth=1, label='End of Control Epochs')
+    ax_new.legend()
+    ax_new.axvline(x=0, color='black', linestyle='--', linewidth=1)
+
+    filename = os.path.join(save_path, f"standard_fNIRS_response_plot_{ind}.pdf")
+    fig_new.savefig(filename, format="pdf", bbox_inches="tight")
+    plt.close(fig_new)
+    plt.close(fig[0])
+
+    
+    plt.figure(figsize=(12, 5))
+    control_counter = 0
+    math_counter = 0
+    labels = []
+
+    for i in range(len(math_HbO_mean) + len(Control_HbO_mean[math_controls])):
+        pos = i + 1
+        if i % 2 == 0:
+            bp = plt.boxplot(Control_HbO[math_controls][control_counter], positions=[pos], patch_artist=True)
+            bp['boxes'][0].set_facecolor('yellow')
+            labels.append(f"Control {control_counter}")
+            control_counter += 1
+        else:
+            bp = plt.boxplot(math_HbO[math_counter], positions=[pos], patch_artist=True)
+            bp['boxes'][0].set_facecolor('green')
+            labels.append(f"Math {math_counter}")
+            math_counter += 1
+
+    plt.xticks(range(1, len(labels) + 1), labels, rotation=45, ha='right')
+
+    from matplotlib.patches import Patch
+    plt.legend(handles=[
+        Patch(facecolor='yellow', label='Control'),
+        Patch(facecolor='green', label='Math')
+    ])
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_path, f"math_boxplot_{ind}.pdf"), format="pdf", bbox_inches="tight")
+    plt.close()
+
+
+    plt.figure(figsize=(12, 5))
+    control_counter = 0
+    math_counter = 0
+    labels = []
+
+    for i in range(len(Hard_math_HbO_mean) + len(Control_HbO_mean[hard_math_controls])):
+        pos = i + 1
+        if i % 2 == 0:
+            bp = plt.boxplot(Control_HbO[hard_math_controls][control_counter], positions=[pos], patch_artist=True)
+            bp['boxes'][0].set_facecolor('yellow')
+            labels.append(f"Control {control_counter}")
+            control_counter += 1
+        else:
+            bp = plt.boxplot(Hard_math_HbO[math_counter], positions=[pos], patch_artist=True)
+            bp['boxes'][0].set_facecolor('green')
+            labels.append(f"Math {math_counter}")
+            math_counter += 1
+
+    plt.xticks(range(1, len(labels) + 1), labels, rotation=45, ha='right')
+
+    from matplotlib.patches import Patch
+    plt.legend(handles=[
+        Patch(facecolor='yellow', label='Control'),
+        Patch(facecolor='green', label='Math')
+    ])
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_path, f"hard_math_boxplot_{ind}.pdf"), format="pdf", bbox_inches="tight")
+    plt.close()
 
 paired_mean_df = pd.DataFrame(paired_mean_results)
 
@@ -255,5 +371,5 @@ def fdr_combined(g):
 
 result = paired_mean_df.groupby("ID_prefix", group_keys=False).apply(fdr_combined)
 paired_mean_df[["math_p_value_fdr", "hardmath_p_value_fdr"]] = result
-
+paired_mean_df = paired_mean_df.drop(columns=['Subject'])
 print("debug")
