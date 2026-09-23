@@ -3648,36 +3648,37 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
-        self.subjects_to_exclude = {"fNIRS EEG Marwan data load": [
-                                                                    "P10_S1_B",
-                                                                    "P11_S1_P1",
-                                                                    "P17_S1_P2",
-                                                                    "P18_S2_P2",
-                                                                    "P1_S1_P2",
-                                                                    "P20_S3_P1",
-                                                                    "P22_S2_B",
-                                                                    "P22_S2_P2",
-                                                                    "P23_S1_B",
-                                                                    "P23_S1_P1",
-                                                                    "P23_S1_P2",
-                                                                    "P26_S1_P2",
-                                                                    "P33_S1_B",
-                                                                    "P35_S1_P1",
-                                                                    "P35_S3_P1",
-                                                                    "P36_S1_P1",
-                                                                    "P36_S1_P2",
-                                                                    "P37_S1_B",
-                                                                    "P38_S1_P1",
-                                                                    "P38_S1_P2",
-                                                                    "P39_S1_P2",
-                                                                    "P40_S1_P1",
-                                                                    "P40_S2_B",
-                                                                    "P41_S1_B",
-                                                                    "P42_S2_B",
-                                                                    "P42_S3_P2",
-                                                                    "P4_S3_B",
-                                                                    "P6_S2_P2"
-                                                                ], 
+        self.subjects_to_exclude = {"fNIRS EEG Marwan data load": []
+                                                                #     [
+                                                                #     "P10_S1_B",
+                                                                #     "P11_S1_P1",
+                                                                #     "P17_S1_P2",
+                                                                #     "P18_S2_P2",
+                                                                #     "P1_S1_P2",
+                                                                #     "P20_S3_P1",
+                                                                #     "P22_S2_B",
+                                                                #     "P22_S2_P2",
+                                                                #     "P23_S1_B",
+                                                                #     "P23_S1_P1",
+                                                                #     "P23_S1_P2",
+                                                                #     "P26_S1_P2",
+                                                                #     "P33_S1_B",
+                                                                #     "P35_S1_P1",
+                                                                #     "P35_S3_P1",
+                                                                #     "P36_S1_P1",
+                                                                #     "P36_S1_P2",
+                                                                #     "P37_S1_B",
+                                                                #     "P38_S1_P1",
+                                                                #     "P38_S1_P2",
+                                                                #     "P39_S1_P2",
+                                                                #     "P40_S1_P1",
+                                                                #     "P40_S2_B",
+                                                                #     "P41_S1_B",
+                                                                #     "P42_S2_B",
+                                                                #     "P42_S3_P2",
+                                                                #     "P4_S3_B",
+                                                                #     "P6_S2_P2"
+                                                                # ], 
                                     }
         self.folder_errors = []
         self.age_file = Path(os.getenv("demographic_data_path_Marwan".replace(" ", "_").replace("-", "_")))
@@ -3939,7 +3940,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
                     snr_bad_channels = []
 
                 raw_od = mne.preprocessing.nirs.optical_density(raw_intensity_long)
-                dpf = compute_differential_pathlength(raw_od)
+                dpf = compute_differential_pathlength(raw_od) # We compute only dpf on long channels to follow the practice of the original paper
                 raw_od_short = mne.preprocessing.nirs.optical_density(raw_intensity_short)
                 raw_od_original = raw_od.copy()
 
