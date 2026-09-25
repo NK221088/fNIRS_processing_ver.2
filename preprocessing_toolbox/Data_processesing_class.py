@@ -3648,7 +3648,7 @@ class fNIRS_EEG_Marwan_data_load(fNIRS_data_load):
         self.snr_rejection = snr_rejection
         self.snr_threshold = snr_threshold
         self.apply_tddr = apply_tddr
-        self.subjects_to_exclude = {"fNIRS EEG Marwan data load": []
+        self.subjects_to_exclude = {"fNIRS EEG Marwan data load": ["P35_S1_B"]
                                                                 #     [
                                                                 #     "P10_S1_B",
                                                                 #     "P11_S1_P1",
